@@ -33,7 +33,7 @@ const ENEMIES = {
     drops: [{ id: 'beeStinger', rate: 1 }, { id: 'honey', rate: 0.15 }],
     stats: { maxHp: 18, atk: 1.4, def: 1, speed: 105, critRate: 0.1, critMult: 1.5 },
     attacks: [
-      { name: '毒針', type: 'projectile', range: 6, width: 1, charge: 0, cooldown: 2, power: 1.0 },
+      { name: '毒針', type: 'projectile', range: 6, width: 1, charge: 0, cooldown: 4, power: 1.0 },
     ],
   },
   salamander: {
