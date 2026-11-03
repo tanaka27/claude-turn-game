@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>斬界アリーナ ターン制</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d1117; overflow: hidden;
+    font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; color: #e6edf3; }
+  canvas { display: block; cursor: crosshair; }
+  .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(5, 8, 12, 0.72); z-index: 10; }
+  .overlay.show { display: flex; }
+  .panel { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 28px 36px;
+    max-width: 760px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  h1 { margin: 0 0 2px; font-size: 40px; letter-spacing: 4px; color: #4fc3f7; }
+  .subtitle { color: #ffd54f; font-weight: bold; letter-spacing: 6px; margin-bottom: 8px; }
+  h2 { margin: 0 0 16px; font-size: 26px; }
+  p { margin: 6px 0; color: #9da7b3; }
+  .controls { text-align: left; margin: 18px auto; display: grid; grid-template-columns: auto 1fr;
+    gap: 6px 16px; font-size: 15px; max-width: 520px; }
+  .controls b { color: #ffd54f; white-space: nowrap; }
+  button { background: #1f6feb; color: #fff; border: 0; border-radius: 8px; padding: 12px 34px;
+    font-size: 18px; cursor: pointer; margin-top: 10px; }
+  button:hover { background: #388bfd; }
+  button:disabled { background: #30363d; color: #6e7681; cursor: default; }
+  button.secondary { background: #30363d; margin-left: 10px; }
+  button.secondary:hover { background: #484f58; }
+  .legend { display: flex; gap: 18px; justify-content: center; font-size: 13px; margin-top: 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px;
+    border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+  /* 持ち物・店 */
+  .panel.menu { max-width: 980px; width: calc(100vw - 48px); text-align: left; padding: 22px 26px; }
+  .menu-head { display: flex; align-items: baseline; gap: 18px; }
+  .menu-head h2 { margin: 0; }
+  .menu-head .gold { color: #ffd54f; font-weight: bold; }
+  .menu-head .x { margin: 0 0 0 auto; padding: 6px 16px; font-size: 14px; background: #30363d; }
+  .menu-body { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 18px; margin-top: 14px; }
+  .menu-body h3 { margin: 0 0 8px; font-size: 14px; color: #9da7b3; }
+  .menu-body h3 + div { margin-bottom: 14px; }
+  .list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
+  .item { background: #0d1117; border: 1px solid #30363d; border-left: 4px solid var(--rc, #30363d); border-radius: 6px;
+    padding: 6px 10px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; font-size: 13px; }
+  .item b { color: var(--rc, #e6edf3); }
+  .item span { color: #8b949e; font-size: 12px; }
+  .item .price { grid-column: 2; grid-row: 1; color: #ffd54f; }
+  .item.sel { border-color: #4fc3f7; background: #10233a; }
+  .item.empty { color: #6e7681; cursor: default; }
+  .item.potion { cursor: default; grid-template-columns: 1fr auto; align-items: center; }
+  .item.potion button { grid-row: 1 / 3; grid-column: 2; margin: 0; padding: 6px 12px; font-size: 13px; }
+  .item.mat { cursor: default; grid-template-columns: 1fr auto; align-items: center; }
+  .item.mat .btns { grid-row: 1 / 3; grid-column: 2; display: flex; gap: 4px; }
+  .item.mat button { margin: 0; padding: 4px 8px; font-size: 12px; }
+  #invList { max-height: 32vh; } #matList { max-height: 18vh; }
+  .menu-body h3 button { margin: 0 0 0 8px; padding: 2px 10px; font-size: 12px; }
+  .detail { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 14px; align-self: start; }
+  .detail .dname { font-size: 18px; font-weight: bold; }
+  .detail .dsub { color: #8b949e; font-size: 12px; margin-top: 2px; }
+  .detail .stats { margin: 12px 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+  .detail .row { display: flex; justify-content: space-between; }
+  .detail .up { color: #69f0ae; } .detail .down { color: #ff5252; }
+  .detail .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .detail button { margin: 0; padding: 8px 16px; font-size: 14px; }
+  .hint { color: #6e7681; font-size: 13px; }
+  /* キャラクター (一時停止から開く) */
+  .profile { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; }
+  .profile .pname { font-size: 17px; font-weight: bold; color: #4fc3f7; }
+  .profile .row { display: flex; justify-content: space-between; margin-top: 4px; }
+  .profile .bar { height: 6px; background: #30363d; border-radius: 3px; overflow: hidden; margin-top: 2px; }
+  .profile .bar i { display: block; height: 100%; background: var(--bc); }
+  .detail .sep { border-top: 1px solid #30363d; margin: 14px 0 10px; }
+  /* クエスト */
+  .panel.quest-panel { max-width: 640px; }
+  .qlist { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; max-height: 64vh; overflow-y: auto; }
+  .quest { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; }
+  .quest p { margin: 6px 0; color: #c9d1d9; font-size: 14px; }
+  .qhead { display: flex; align-items: center; gap: 10px; }
+  .qhead b { font-size: 16px; }
+  .qhead button { margin: 0 0 0 auto; padding: 6px 16px; font-size: 14px; }
+  .qtag { font-size: 12px; color: #8b949e; }
+  .q-available .qtag, .q-available b { color: #ffd54f; }
+  .q-ready .qtag, .q-ready b { color: #69f0ae; }
+  .q-claimed { opacity: 0.55; padding: 6px 14px; }
+  .q-lowLevel { opacity: 0.7; }
+  .qgoal { font-size: 13px; color: #e6edf3; }
+  .qreward { font-size: 13px; color: #ffd54f; margin-top: 2px; }
+  .note { color: #69f0ae; margin: 0; font-size: 14px; }
+  @media (max-width: 760px) { .menu-body { grid-template-columns: 1fr; } .list, #invList, #matList { max-height: 30vh; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="title" class="overlay show">
+  <div class="panel">
+    <h1>斬界アリーナ</h1><div class="subtitle">ターン制</div>
+    <p>町を出て魔物を倒し、経験値を集めてレベルを上げよう。<br>草原 → 森 → 遺跡と、門をくぐって奥へ進むほど敵は強くなる。</p>
+    <div class="controls">
+      <b>WASD / 矢印</b><span>1 マス移動（Q E Z C で斜め。テンキーも使える）</span>
+      <b>敵へ移動</b><span>その敵を攻撃する（通常攻撃）</span>
+      <b>クリック</b><span>となりのマスなら移動・攻撃、遠くのマスならそこまで歩く（敵に気づかれると止まる）</span>
+      <b>Space / .</b><span>その場で 1 ターン待つ</span>
+      <b>1 / 2 / 3 / 4</b><span>スキルを構える → マウスで狙ってクリック（同じキー / Enter でも可。右クリック・Esc でやめる）</span>
+      <b>R</b><span>回復薬を使う</span>
+      <b>I</b><span>持ち物（装備の付け替え・捨てる）</span>
+      <b>F</b><span>となりの人に話しかける（人のいるマスへ移動しても話しかける）</span>
+      <b>Esc / P</b><span>一時停止（一時停止中に C でキャラクターの画面）</span>
+      <b>マウスを敵に重ねる</b><span>敵のレベル・速度などを表示（名前の色: 赤＝格上、灰＝格下）</span>
+    </div>
+    <div class="legend">
+      <span style="--c:#ff4646">敵の技の予告</span>
+      <span style="--c:#ffffff">自分のスキルの範囲</span>
+      <span style="--c:#b388ff">敵の出現予告</span>
+    </div>
+    <p style="margin-top:12px">あなたが行動すると時間が進み、敵も動きます。行動しなければ時間は止まったままです。<br>
+      <b style="color:#ffd54f">速度</b>（すばやさで上がる）が高いほど、敵が 1 回動く間に何回も行動できます。画面上の「行動順」で確かめよう。<br>
+      強い技は赤い予告が出て、使った敵の次の番に当たります。「あと N」はそれまでにあなたが動ける回数です。<br>
+      壁は移動と攻撃を遮り、水場・柵は移動のみを遮ります。町は安全地帯。倒れると町のかがり火で復活します（所持金を少し失います）。<br>
+      素材は町の商人に売るとお金になります。衛兵隊長の頼みを聞いて報酬を得よう。光る床（門）で隣のゾーンへ。進行は自動で保存されます。</p>
+    <button id="continueBtn" style="display:none">続きから</button>
+    <button id="startBtn" disabled>はじめから</button>
+    <p id="saveInfo" class="hint">セーブを確認しています…</p>
+  </div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="panel menu">
+    <div class="menu-head">
+      <h2 id="menuTitle">持ち物</h2><span class="gold" id="menuGold"></span>
+      <button class="x" data-act="close">閉じる（Esc）</button>
+    </div>
+    <div class="menu-body">
+      <div>
+        <div id="profile"></div>
+        <h3>装備中</h3><div id="equipList" class="list"></div>
+        <div id="shopCol"><h3>商品</h3><div id="shopList" class="list"></div></div>
+      </div>
+      <div>
+        <h3>持ち物 <span id="invCount"></span></h3><div id="invList" class="list"></div>
+        <h3>素材 <span id="matSellAll"></span></h3><div id="matList" class="list"></div>
+      </div>
+      <div id="detail" class="detail"></div>
+    </div>
+  </div>
+</div>
+
+<div id="quest" class="overlay">
+  <div class="panel menu quest-panel">
+    <div class="menu-head">
+      <h2 id="questTitle">クエスト</h2>
+      <button class="x" data-act="close">閉じる（Esc）</button>
+    </div>
+    <div id="questList" class="qlist"></div>
+  </div>
+</div>
+
+<div id="pause" class="overlay">
+  <div class="panel"><h2>一時停止</h2><p>Esc / P で再開</p>
+    <button data-act="resume">再開</button><button class="secondary" data-act="char">キャラクター（C）</button>
+    <p id="saveWhere"></p></div>
+</div>
+
+<!-- 調整用の数値 → データ → マップ → ゲーム本体 (src/main.js が最後) の順に読み込む -->
+<script src="params.js"></script>
+<script src="data/stats.js"></script>
+<script src="data/theme.js"></script>
+<script src="data/player.js"></script>
+<script src="data/enemies.js"></script>
+<script src="data/items.js"></script>
+<script src="data/quests.js"></script>
+<script src="world.js"></script>
+<script src="src/core.js"></script>
+<script src="src/map.js"></script>
+<script src="src/units.js"></script>
+<script src="src/combat.js"></script>
+<script src="src/items.js"></script>
+<script src="src/save.js"></script>
+<script src="src/player.js"></script>
+<script src="src/ai.js"></script>
+<script src="src/turn.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/quests.js"></script>
+<script src="src/render.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/validate.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>

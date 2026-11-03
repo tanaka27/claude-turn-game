@@ -1,0 +1,227 @@
+// =====================================================================
+//  画面 (持ち物と店・NPC・一時停止)
+// =====================================================================
+'use strict';
+
+// ----- 持ち物・店の画面 -----
+// menu.mode: 'inv' (持ち物) / 'shop' (店) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る)
+// sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
+const menu = { mode: 'inv', sel: null };
+let shopStock = [], shopLevel = 0;
+
+// 店の品ぞろえ: 部位ごとに shopRarities のレア度を 1 つずつ。自分のレベルが変わったら入れ替える
+function refreshShop() {
+  if (shopLevel === player.level) return;
+  shopLevel = player.level;
+  shopStock = [];
+  for (const slot in IT.slots) for (const r of IT.shopRarities) shopStock.push(makeItem(slot, player.level, r));
+}
+
+function openMenu(mode) {
+  game.state = 'menu';
+  aiming = null;
+  player.travel = null;
+  menu.mode = mode;
+  menu.sel = null;
+  if (mode === 'shop') refreshShop();
+  if (mode === 'char') $('pause').classList.remove('show');
+  renderMenu();
+  $('menu').classList.add('show');
+}
+function closeMenu() {
+  $('menu').classList.remove('show');
+  $('quest').classList.remove('show');
+  game.state = 'play';
+  // キャラクターの画面は一時停止のまま開いているので、一時停止の画面に戻す
+  if (menu.mode === 'char' && game.paused) showPause();
+  saveGame();
+}
+
+function findSel() {
+  const s = menu.sel, p = player;
+  if (!s) return null;
+  if (s.from === 'inv') return p.inventory.find((it) => it.id === s.id) || null;
+  if (s.from === 'shop') return shopStock.find((it) => it.id === s.id) || null;
+  return Object.values(p.equip).find((it) => it && it.id === s.id) || null;
+}
+
+function itemChip(it, from) {
+  const r = rarityOf(it.rarity);
+  const on = menu.sel && menu.sel.id === it.id ? ' sel' : '';
+  const price = from === 'shop' ? `<span class="price">${itemValue(it)} G</span>` : '';
+  return `<div class="item${on}" data-from="${from}" data-id="${it.id}" style="--rc:${r.color}">
+    <b>${it.name}</b><span>${IT.slots[it.slot].label} Lv${it.level}</span>${price}</div>`;
+}
+
+// 選んだ装備の詳細。同じ部位の装備中のものとの差を出す
+function detailHtml(it, from) {
+  const p = player, r = rarityOf(it.rarity);
+  const cur = from === 'equip' ? null : p.equip[it.slot];
+  const keys = [...new Set([...Object.keys(it.stats), ...(cur ? Object.keys(cur.stats) : [])])];
+  const rows = keys.map((k) => {
+    const v = it.stats[k] || 0, diff = v - (cur ? cur.stats[k] || 0 : 0);
+    const d = from === 'equip' || Math.abs(diff) < 1e-9 ? '' :
+      `<span class="${diff > 0 ? 'up' : 'down'}">${fmtStat(k, diff, true)}</span>`;
+    return `<div class="row"><span>${STATS[k].label}</span><span>${v ? fmtStat(k, v, true) : '-'} ${d}</span></div>`;
+  }).join('');
+  const btn = (act, label, ok = true) => `<button data-act="${act}"${ok ? '' : ' disabled'}>${label}</button>`;
+  const full = p.inventory.length >= EC.inventorySize;
+  let btns = '';
+  if (from === 'equip') btns = btn('unequip', '外す', !full);
+  else if (from === 'shop') btns = btn('buy', `買う（${itemValue(it)} G）`, p.gold >= itemValue(it) && !full);
+  else {
+    btns = btn('equip', '装備する');
+    btns += menu.mode === 'shop' ? btn('sell', `売る（${sellPrice(it)} G）`) : btn('drop', '捨てる');
+  }
+  return `<div class="dname" style="color:${r.color}">${it.name}</div>
+    <div class="dsub">${r.name}・${IT.slots[it.slot].label}・Lv${it.level}</div>
+    ${cur ? `<div class="dsub">差は装備中の「${cur.name}」と比べたもの</div>` : ''}
+    <div class="stats">${rows}</div><div class="btns">${btns}</div>`;
+}
+
+function renderMenu() {
+  const p = player, po = IT.potion;
+  $('menuTitle').textContent = { shop: '商人の店', char: 'キャラクター' }[menu.mode] || '持ち物';
+  $('profile').innerHTML = menu.mode === 'char' ? profileHtml() : '';
+  $('menuGold').textContent = `所持金 ${p.gold} G　${po.name} ${p.potions} / ${po.max}`;
+  $('equipList').innerHTML = Object.keys(IT.slots).map((slot) => {
+    const it = p.equip[slot];
+    return it ? itemChip(it, 'equip') : `<div class="item empty">${IT.slots[slot].label}: なし</div>`;
+  }).join('');
+  $('invCount').textContent = `${p.inventory.length} / ${EC.inventorySize}`;
+  $('invList').innerHTML = p.inventory.map((it) => itemChip(it, 'inv')).join('') || '<p class="hint">何も持っていない</p>';
+  $('shopCol').style.display = menu.mode === 'shop' ? '' : 'none';
+  if (menu.mode === 'shop') {
+    const canPotion = p.gold >= po.price && p.potions < po.max;
+    $('shopList').innerHTML = `<div class="item potion"><b>${po.name}</b><span>最大HPの ${Math.round(po.heal * 100)}% 回復</span>
+      <button data-act="potion"${canPotion ? '' : ' disabled'}>買う（${po.price} G）</button></div>` +
+      shopStock.map((it) => itemChip(it, 'shop')).join('');
+  }
+  renderMaterials();
+  const it = findSel();
+  // キャラクターの画面では、装備を選んでいても下につよさを出す (付け替えで変わるのを見られるように)
+  $('detail').innerHTML = !it ? strengthHtml() + '<p class="hint">装備を選ぶと詳しく表示します</p>' :
+    detailHtml(it, menu.sel.from) + (menu.mode === 'char' ? '<div class="sep"></div>' + strengthHtml() : '');
+}
+
+// キャラクターの画面の左上: 名前・レベル・HP・経験値・撃破数・今いるゾーン
+function profileHtml() {
+  const p = player, maxed = p.level >= PG.maxLevel, need = expToNext(p.level);
+  const bar = (v, max, color) => `<div class="bar" style="--bc:${color}"><i style="width:${clamp(v / max, 0, 1) * 100}%"></i></div>`;
+  return `<div class="profile"><div class="pname">${p.name}　Lv${p.level}</div>
+    <div class="row"><span>HP</span><span>${Math.ceil(p.hp)} / ${p.stats.maxHp}</span></div>${bar(p.hp, p.stats.maxHp, '#ef5350')}
+    <div class="row"><span>経験値</span><span>${maxed ? '最大レベル' : `${p.exp} / ${need}（あと ${need - p.exp}）`}</span></div>${bar(maxed ? 1 : p.exp, maxed ? 1 : need, '#b39ddb')}
+    <div class="row"><span>撃破数</span><span>${game.kills}</span></div>
+    <div class="row"><span>いる場所</span><span>${zone.name}</span></div></div>`;
+}
+
+// つよさ: 全ステータスと、装備で上がっている分 (装備がないときとの差)
+function strengthHtml() {
+  const p = player, st = p.stats, bare = computeStats({ ...p, equip: {} });
+  const rows = Object.keys(STATS).map((k) => {
+    const diff = st[k] - bare[k];
+    const d = Math.abs(diff) < 1e-9 ? '' : `<span class="${diff > 0 ? 'up' : 'down'}">${fmtStat(k, diff, true)}</span>`;
+    return `<div class="row"><span>${STATS[k].label}</span><span>${fmtStat(k, st[k])} ${d}</span></div>`;
+  }).join('');
+  return `<div class="dname">つよさ</div><div class="dsub">Lv${p.level}　色の数字は装備で上がっている分</div><div class="stats">${rows}</div>`;
+}
+
+// 素材の一覧。店では 1 つずつ・種類ごと・全部を売れる
+const materialTotal = () => Object.entries(player.materials).reduce((s, [id, n]) => s + IT.materials[id].price * n, 0);
+function renderMaterials() {
+  const p = player, shop = menu.mode === 'shop';
+  const ids = Object.keys(IT.materials).filter((id) => p.materials[id] > 0);
+  $('matList').innerHTML = ids.map((id) => {
+    const m = IT.materials[id], n = p.materials[id];
+    const btns = shop ? `<div class="btns"><button data-act="sellMat" data-mat="${id}">1つ売る</button>
+      <button data-act="sellMat" data-mat="${id}" data-all="1">全部（${m.price * n} G）</button></div>` : '';
+    return `<div class="item mat" style="--rc:${m.color}"><b>${m.name} ×${n}</b><span>売値 ${m.price} G</span>${btns}</div>`;
+  }).join('') || '<p class="hint">素材は魔物を倒すと手に入る</p>';
+  $('matSellAll').innerHTML = shop && ids.length ? `<button data-act="sellAllMat">全部売る（${materialTotal()} G）</button>` : '';
+}
+function sellMaterial(id, all) {
+  const p = player, n = p.materials[id] || 0;
+  if (n <= 0) return;
+  const k = all ? n : 1;
+  p.gold += IT.materials[id].price * k;
+  p.materials[id] = n - k;
+  if (!p.materials[id]) delete p.materials[id];
+}
+
+function equipItem(it) {
+  const p = player, before = p.stats.maxHp;
+  p.inventory = p.inventory.filter((x) => x !== it);
+  if (p.equip[it.slot]) p.inventory.push(p.equip[it.slot]);
+  p.equip[it.slot] = it;
+  p.stats = computeStats(p);
+  p.hp = clamp(p.hp + p.stats.maxHp - before, 1, p.stats.maxHp);
+  menu.sel = { from: 'equip', id: it.id };
+}
+function unequipItem(it) {
+  const p = player, before = p.stats.maxHp;
+  p.equip[it.slot] = null;
+  p.inventory.push(it);
+  p.stats = computeStats(p);
+  p.hp = clamp(p.hp + p.stats.maxHp - before, 1, p.stats.maxHp);
+  menu.sel = { from: 'inv', id: it.id };
+}
+
+$('menu').addEventListener('click', (e) => {
+  if (game.state !== 'menu') return;
+  const p = player;
+  const act = e.target.closest('[data-act]');
+  if (act && !act.disabled) {
+    const it = findSel(), a = act.dataset.act;
+    if (a === 'close') { closeMenu(); return; }
+    if (a === 'potion' && p.gold >= IT.potion.price && p.potions < IT.potion.max) { p.gold -= IT.potion.price; p.potions++; }
+    else if (a === 'equip' && it) equipItem(it);
+    else if (a === 'unequip' && it && p.inventory.length < EC.inventorySize) unequipItem(it);
+    else if (a === 'drop' && it) { p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
+    else if (a === 'sellMat' && menu.mode === 'shop') sellMaterial(act.dataset.mat, !!act.dataset.all);
+    else if (a === 'sellAllMat' && menu.mode === 'shop') for (const id in p.materials) sellMaterial(id, true);
+    else if (a === 'sell' && it) { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
+    else if (a === 'buy' && it && p.gold >= itemValue(it) && p.inventory.length < EC.inventorySize) {
+      p.gold -= itemValue(it);
+      shopStock = shopStock.filter((x) => x !== it);
+      p.inventory.push(it);
+      menu.sel = { from: 'inv', id: it.id };
+    }
+    renderMenu();
+    return;
+  }
+  const chip = e.target.closest('.item[data-id]');
+  if (chip) { menu.sel = { from: chip.dataset.from, id: chip.dataset.id }; renderMenu(); }
+});
+
+// 話しかけられる NPC (となりのマスにいる人)
+function nearNpc() {
+  if (!player || player.dead) return null;
+  return (zone.npcs || []).find((n) => steps(n.tx, n.ty, player.tx, player.ty) <= 1) || null;
+}
+function talkTo(n) {
+  if (n.role === 'shop') openMenu('shop');
+  else if (n.role === 'quest') openQuest(n);
+}
+function interact() {
+  const n = nearNpc();
+  if (n) talkTo(n);
+  else log('話しかけられる人がいない。となりのマスで F を押そう。', '#9da7b3');
+}
+
+function togglePause() {
+  game.paused = !game.paused;
+  aiming = null;
+  if (player) player.travel = null;
+  if (game.paused) showPause();
+  else $('pause').classList.remove('show');
+}
+function showPause() {
+  $('saveWhere').textContent = saveWhereText();
+  $('pause').classList.add('show');
+}
+$('pause').addEventListener('click', (e) => {
+  const act = e.target.closest('[data-act]');
+  if (!act || game.state !== 'play' || !game.paused) return;
+  if (act.dataset.act === 'resume') togglePause();
+  else if (act.dataset.act === 'char') openMenu('char');
+});
