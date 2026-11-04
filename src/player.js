@@ -13,6 +13,7 @@ const NUMPAD = { Numpad8: [0, -1], Numpad2: [0, 1], Numpad4: [-1, 0], Numpad6: [
   Numpad7: [-1, -1], Numpad9: [1, -1], Numpad1: [-1, 1], Numpad3: [1, 1] };
 const WAIT_KEYS = [' ', '.'];
 const skillByKey = (k) => SKILLS.find((s) => s.key === k);
+const potionByKey = (k) => Object.keys(IT.potions).find((id) => IT.potions[id].key === k);
 
 // 主人公が行動できるか (主人公の番で、画面を開いていない)
 const canAct = () => game.state === 'play' && !game.paused && player && !player.dead;
@@ -44,7 +45,8 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (k === 'i') { openMenu('inv'); return; }
   if (k === 'f') { interact(); return; }
-  if (k === 'r') { act(usePotion); return; }
+  const potion = potionByKey(k);
+  if (potion) { act(() => usePotion(potion)); return; }
   const sk = skillByKey(k);
   if (sk && player.level < sk.unlockLevel) {
     log(`${sk.name}は Lv${sk.unlockLevel} で使えるようになる。`, '#9da7b3');

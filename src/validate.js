@@ -21,10 +21,17 @@ function validateData() {
       check(to, `world.js ${zid} の門 '${g.id}': 行き先のゾーン '${g.to}' がない`);
       check(!to || to.gates.some((t) => t.id === g.toGate), `world.js ${zid} の門 '${g.id}': 行き先の門 '${g.toGate}' がない`);
     }
-    for (const n of z.npcs || []) npcIds.push(n.id);
+    for (const n of z.npcs || []) {
+      npcIds.push(n.id);
+      check(n.role !== 'shop' || ITEMS.shops[n.shop], `world.js ${zid} の NPC '${n.id}': 店 '${n.shop}' が data/items.js の shops にない`);
+    }
   }
   check(WORLD.zones[WORLD.start] && WORLD.zones[WORLD.start].respawn, `world.js: start のゾーン '${WORLD.start}' に respawn がない`);
   check(WORLD.zones[WORLD.respawnZone] && WORLD.zones[WORLD.respawnZone].respawn, `world.js: respawnZone '${WORLD.respawnZone}' に respawn がない`);
+  // 門を順にたどって、全部のゾーンに行けるか
+  const reach = new Set([WORLD.start]);
+  for (const zid of reach) for (const g of WORLD.zones[zid] ? WORLD.zones[zid].gates : []) if (WORLD.zones[g.to]) reach.add(g.to);
+  for (const zid of Object.keys(WORLD.zones)) check(reach.has(zid), `world.js: ゾーン '${zid}' へは門をたどって行けない`);
 
   for (const [slot, e] of Object.entries(PLAYER.startEquip)) {
     check(ITEMS.slots[slot], `data/player.js startEquip: 部位 '${slot}' が data/items.js にない`);
@@ -46,8 +53,13 @@ function validateData() {
   const keys = PLAYER.skills.map((s) => s.key);
   check(new Set(keys).size === keys.length, 'data/player.js: スキルのキーが重なっている');
   // 移動・待機・画面のキーと重なると、そちらが先に使われてスキルが出ない
-  const reserved = [...Object.keys(MOVE_KEYS), ...WAIT_KEYS, 'i', 'f', 'r', 'p', 'escape', 'enter'];
+  const reserved = [...Object.keys(MOVE_KEYS), ...WAIT_KEYS, 'i', 'f', 'p', 'escape', 'enter'];
   for (const k of keys) check(!reserved.includes(k), `data/player.js: スキルのキー '${k}' は移動や画面のキーと重なっている`);
+  // 回復薬のキーも、移動・画面・スキルのキーと重ならないようにする
+  const potionKeys = Object.values(ITEMS.potions).map((po) => po.key);
+  check(new Set(potionKeys).size === potionKeys.length, 'data/items.js potions: 回復薬のキーが重なっている');
+  for (const k of potionKeys) check(!reserved.includes(k) && !keys.includes(k), `data/items.js potions: キー '${k}' は移動・画面・スキルのキーと重なっている`);
+  check(ITEMS.potions.potion, 'data/items.js potions: クエストの報酬に使う potion がない');
   for (const [type, d] of Object.entries(ENEMIES)) {
     check(d.stats.speed > 0, `data/enemies.js ${type}: speed がない`);
     for (const a of d.attacks) check(a.cooldown >= 1, `data/enemies.js ${type} の技「${a.name}」: cooldown は 1 以上にする`);
@@ -74,7 +86,10 @@ function validateData() {
     for (const k in s.base) check(STATS[k], `data/items.js ${slot}: 基本性能 '${k}' が data/stats.js にない`);
   }
   for (const k in ITEMS.affixes) check(STATS[k], `data/items.js: 追加性能 '${k}' が data/stats.js にない`);
-  for (const r of ITEMS.shopRarities) check(rarityIds.includes(r), `data/items.js shopRarities: レア度 '${r}' がない`);
+  for (const [id, sh] of Object.entries(ITEMS.shops)) {
+    for (const [slot, r] of sh.gear) check(ITEMS.slots[slot] && rarityIds.includes(r), `data/items.js shops.${id}: 部位 '${slot}' かレア度 '${r}' がない`);
+    for (const po of sh.potions) check(ITEMS.potions[po], `data/items.js shops.${id}: 回復薬 '${po}' が potions にない`);
+  }
   for (const [type, d] of Object.entries(ENEMIES)) {
     for (const m of d.drops || []) check(ITEMS.materials[m.id], `data/enemies.js ${type}: 素材 '${m.id}' が data/items.js の materials にない`);
   }

@@ -223,6 +223,8 @@ function enterZone(id, tx, ty) {
   }
   placeUnit(player, tx, ty);
   Object.assign(player, { travel: null, next: game.time });
+  // かがり火のある安全なゾーン (町) に入ったら、倒れたときに戻る先にする
+  if (zone.safe && zone.respawn) player.home = id;
   aiming = null;
   const mem = zoneMemory[id];
   camps.forEach((c, ci) => c.slots.forEach((s, si) => {

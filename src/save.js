@@ -9,7 +9,8 @@
 //     player:   { level, exp, base, hp, gold, potions, inventory, materials, equip, quests },
 //       base: 成長で上がったステータス { maxHp, str, vit, agi, int } (ないセーブはレベルの目安の値にする)
 //     progress: { kills, time },
-//     location: { zone, tx, ty } (マス) }
+//       potions: 回復薬の数 { 回復薬のキー: 数 } (数だけのセーブは回復薬 (potion) の数として読む)
+//     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン (ないセーブは WORLD.respawnZone) }
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
 const SAVE_VERSION = 1;
 const SAVE_KEY = 'zankai-turn-save';
@@ -22,14 +23,15 @@ const saveStore = { server: null, unreachable: false, probing: false, error: '',
 
 function buildSave() {
   const p = player;
-  // 倒れている間は、復活地点にいるものとして保存する
-  const r = WORLD.zones[WORLD.respawnZone].respawn;
+  // 倒れている間は、戻る町の復活地点にいるものとして保存する
+  const home = homeZone(), r = WORLD.zones[home].respawn;
   return {
     v: SAVE_VERSION, savedAt: Date.now(),
     player: { level: p.level, exp: p.exp, base: p.base, hp: p.dead ? null : p.hp, gold: p.gold, potions: p.potions,
       inventory: p.inventory, materials: p.materials, equip: p.equip, quests: p.quests },
     progress: { kills: game.kills, time: game.time },
-    location: p.dead ? { zone: WORLD.respawnZone, tx: tileOf(r.x), ty: tileOf(r.y) } : { zone: zone.id, tx: p.tx, ty: p.ty },
+    location: p.dead ? { zone: home, tx: tileOf(r.x), ty: tileOf(r.y) } : { zone: zone.id, tx: p.tx, ty: p.ty },
+    home,
   };
 }
 
@@ -58,7 +60,10 @@ function applySave(save) {
     if (questById(id) && st && ['active', 'ready', 'claimed'].includes(st.state)) p.quests[id] = { state: st.state, count: st.count || 0 };
   }
   p.gold = Math.max(0, s.gold || 0);
-  p.potions = clamp(s.potions || 0, 0, IT.potion.max);
+  const potions = typeof s.potions === 'number' ? { potion: s.potions } : s.potions || {};
+  for (const id in IT.potions) p.potions[id] = clamp(Math.floor(potions[id]) || 0, 0, IT.potions[id].max);
+  const home = WORLD.zones[save.home];
+  p.home = home && home.safe && home.respawn ? save.home : WORLD.respawnZone;
   const valid = (it) => it && IT.slots[it.slot] && it.stats && Object.keys(it.stats).every((k) => STATS[k]);
   p.inventory = (s.inventory || []).filter(valid).slice(0, EC.inventorySize);
   for (const slot in IT.slots) {

@@ -26,14 +26,16 @@
 { v: 1, savedAt,
   player:   { level, exp, base, hp, gold, potions, inventory, materials, equip, quests },
   progress: { kills, time },
-  location: { zone, tx, ty } }
+  location: { zone, tx, ty },
+  home }
 ```
 
-- `base` は成長で上がったステータス `{ maxHp, str, vit, agi, int }`（[progression.md](progression.md)）。`inventory` / `equip` は装備（`{ id, slot, name, rarity, level, stats }`）そのもの、`materials` は素材の数 `{ 素材のid: 数 }`、`quests` は `{ id: { state, count } }`
+- `base` は成長で上がったステータス `{ maxHp, str, vit, agi, int }`（[progression.md](progression.md)）。`inventory` / `equip` は装備（`{ id, slot, name, rarity, level, stats }`）そのもの、`materials` は素材の数 `{ 素材のid: 数 }`、`quests` は `{ id: { state, count } }`、`potions` は回復薬の数 `{ 回復薬のキー: 数 }`（数だけの古いセーブは回復薬 `potion` の数として読む）
 - `progress.time` はゲーム内の時刻（ターン）。`location` の `tx`, `ty` はマス
 - ステータスそのもの（こうげき力など）は保存せず、読み込むときに「`base` + 装備」から計算し直す（`computeStats`）。式や装備の数値を変えても、続きから遊ぶと新しい数値が反映される
 - `base` がない・数でない・目安から `spread × growthResetMult`（10）以上ずれた値は、そのレベルの目安の値にする
-- 倒れている間に保存するときは、町のかがり火にいるものとして保存する（`hp: null` で満タンから始まる）
+- `home` は倒れたときに戻る町のゾーン（[world.md](world.md)）。ない・町でないときは `WORLD.respawnZone`
+- 倒れている間に保存するときは、`home` の町のかがり火にいるものとして保存する（`hp: null` で満タンから始まる）
 - 読み込むとき、存在しないクエスト・部位・ステータスの装備・素材は捨てる（`STATS` にないステータスを持つ装備も捨てる）
 - 形が違う（`v` が 1 でない）セーブは読まない（`migrateSave` が null を返す）
 

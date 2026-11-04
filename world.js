@@ -20,6 +20,7 @@
 //   camps     : 敵の湧き場所。name / 中心(x, y) / level: 敵レベル / respawn: 再出現までのターン数 /
 //               spread: 湧く範囲の半径(px) / members: 敵 (モンスター) の種類 (data/enemies.js の ENEMIES のキー)
 //   npcs      : 話しかけられる人 (NPC)。id / name / glyph: 体に書く字 / color / x, y / role: 'shop'(店) / 'quest'(クエスト)
+//               店は shop: data/items.js の ITEMS.shops のキー (町ごとに品ぞろえが違う)
 //               NPC のマスは通れない。となりのマスから話しかける (NPC のマスへ移動しようとしても話しかける)
 //
 // 【地形の種類 (terrain)】
@@ -30,7 +31,7 @@
 
 const WORLD = {
   start: 'town',       // はじめから遊ぶときのゾーン
-  respawnZone: 'town', // 倒れたときに戻るゾーン
+  respawnZone: 'town', // 倒れたときに戻るゾーン (最初)。かがり火のある安全なゾーン (町) に入ると、そこが戻る先になる
 
   terrain: {
     wall: { name: '壁', blocksShots: true, minimap: '#5a6272', colors: { base: '#3b4250', top: '#4b5363', edge: '#1b1f27' } },
@@ -60,7 +61,7 @@ const WORLD = {
       ],
       camps: [],
       npcs: [
-        { id: 'merchant', name: '商人', glyph: '商', color: '#ffb300', x: 560, y: 760, role: 'shop' },
+        { id: 'merchant', name: '商人', glyph: '商', color: '#ffb300', x: 560, y: 760, role: 'shop', shop: 'townGeneral' },
         { id: 'captain', name: '衛兵隊長', glyph: '衛', color: '#90a4ae', x: 1040, y: 760, role: 'quest' },
       ],
     },
@@ -88,6 +89,7 @@ const WORLD = {
       gates: [
         { id: 'south', x: 1120, y: 1500, w: 160, h: 60, to: 'town', toGate: 'east', spawn: { x: 1200, y: 1430 } },
         { id: 'north', x: 1120, y: 40, w: 160, h: 60, to: 'forest', toGate: 'south', spawn: { x: 1200, y: 160 } },
+        { id: 'east', x: 2300, y: 1360, w: 60, h: 160, to: 'waystation', toGate: 'west', spawn: { x: 2230, y: 1440 } },
       ],
       camps: [
         { name: '東の草むら', x: 1600, y: 1130, level: 1, respawn: 60, spread: 60, members: ['wolf', 'wolf', 'wolf'] },
@@ -117,6 +119,8 @@ const WORLD = {
       gates: [
         { id: 'south', x: 1120, y: 1500, w: 160, h: 60, to: 'plains', toGate: 'north', spawn: { x: 1200, y: 1430 } },
         { id: 'north', x: 1120, y: 40, w: 160, h: 60, to: 'ruins', toGate: 'south', spawn: { x: 1200, y: 170 } },
+        { id: 'east', x: 2300, y: 1180, w: 60, h: 160, to: 'canyon', toGate: 'west', spawn: { x: 2230, y: 1260 } },
+        { id: 'west', x: 40, y: 920, w: 60, h: 160, to: 'hamlet', toGate: 'east', spawn: { x: 160, y: 1000 } },
       ],
       camps: [
         { name: '森の入口', x: 700, y: 1250, level: 6, respawn: 80, spread: 70, members: ['golem', 'wolf', 'wolf'] },
@@ -126,6 +130,83 @@ const WORLD = {
         { name: '東の茂み', x: 2000, y: 650, level: 8, respawn: 100, spread: 70, members: ['golem', 'golem', 'bee'] },
         { name: '古木の下', x: 900, y: 350, level: 8, respawn: 100, spread: 70, members: ['boar', 'golem', 'salamander'] },
         { name: '森の主の根元', x: 230, y: 210, level: 9, respawn: 300, spread: 0, members: ['treant'] },
+      ],
+    },
+
+    // ------------------------------------------------------------------
+    // 草原の東にある宿場町。武具屋と道具屋がある
+    waystation: {
+      name: '風見の宿場', w: 1600, h: 1200, safe: true,
+      respawn: { x: 800, y: 640 },
+      theme: { ground: '#2b2620', tile: '#302a23', decor: ['#3d362c', '#363027'] },
+      obstacles: [
+        ['house', 200, 160, 280, 160], ['house', 1120, 160, 280, 160],
+        ['house', 200, 860, 260, 180], ['house', 1140, 860, 260, 180],
+        ['house', 1000, 380, 200, 120],
+        ['fence', 480, 440, 200, 26], ['fence', 920, 560, 26, 160],
+        ['water', 1240, 600, 120, 120],
+        ['tree', 640, 920, 80, 80], ['tree', 880, 920, 80, 80], ['tree', 120, 440, 70, 70],
+      ],
+      gates: [
+        { id: 'west', x: 40, y: 520, w: 60, h: 160, to: 'plains', toGate: 'east', spawn: { x: 160, y: 600 } },
+        { id: 'north', x: 720, y: 40, w: 160, h: 60, to: 'canyon', toGate: 'south', spawn: { x: 800, y: 160 } },
+      ],
+      camps: [],
+      npcs: [
+        { id: 'armorer', name: '武具屋', glyph: '武', color: '#ef9a9a', x: 560, y: 720, role: 'shop', shop: 'wayArms' },
+        { id: 'grocer', name: '道具屋', glyph: '道', color: '#a5d6a7', x: 1040, y: 760, role: 'shop', shop: 'wayTools' },
+      ],
+    },
+
+    // ------------------------------------------------------------------
+    // 宿場の北。西の門は黒き森の東につながる
+    canyon: {
+      name: '赤岩の峡谷', w: 2400, h: 1600,
+      theme: { ground: '#2a1e18', tile: '#2f2219', decor: ['#3d2b20', '#35261c'] },
+      obstacles: [
+        // 谷を仕切る岩壁
+        ['wall', 400, 200, 80, 520], ['wall', 400, 1000, 80, 400],
+        ['wall', 900, 400, 600, 60], ['wall', 900, 1100, 600, 60],
+        ['wall', 1900, 200, 80, 500], ['wall', 1900, 900, 80, 500],
+        // 岩・水たまり
+        ['wall', 1160, 680, 80, 80], ['wall', 700, 760, 60, 60], ['wall', 1640, 1260, 60, 60],
+        ['wall', 600, 200, 60, 60], ['wall', 2200, 760, 80, 80],
+        ['water', 1500, 680, 160, 100], ['water', 160, 1240, 140, 100],
+        ['fence', 1000, 1300, 160, 26],
+      ],
+      gates: [
+        { id: 'south', x: 1120, y: 1500, w: 160, h: 60, to: 'waystation', toGate: 'north', spawn: { x: 1200, y: 1430 } },
+        { id: 'west', x: 40, y: 720, w: 60, h: 160, to: 'forest', toGate: 'east', spawn: { x: 160, y: 800 } },
+      ],
+      camps: [
+        { name: '峡谷の入口', x: 700, y: 1300, level: 4, respawn: 70, spread: 70, members: ['boar', 'wolf', 'bee'] },
+        { name: '赤岩の坂', x: 1700, y: 1000, level: 5, respawn: 75, spread: 70, members: ['boar', 'boar', 'salamander'] },
+        { name: '乾いた谷底', x: 1200, y: 900, level: 6, respawn: 80, spread: 70, members: ['golem', 'salamander', 'bee'] },
+        { name: '西の崖下', x: 250, y: 400, level: 6, respawn: 80, spread: 70, members: ['boar', 'golem', 'wolf'] },
+        { name: '火吹き岩', x: 2150, y: 400, level: 7, respawn: 90, spread: 70, members: ['salamander', 'salamander', 'salamander'] },
+        { name: '東の岩棚', x: 2150, y: 1200, level: 7, respawn: 90, spread: 70, members: ['golem', 'golem', 'boar'] },
+        { name: '北の岩場', x: 1200, y: 250, level: 8, respawn: 100, spread: 70, members: ['golem', 'bee', 'salamander'] },
+      ],
+    },
+
+    // ------------------------------------------------------------------
+    // 黒き森の西にある隠れ里。上回復薬と、強い装備を売る
+    hamlet: {
+      name: '森の隠れ里', w: 1200, h: 1000, safe: true,
+      respawn: { x: 600, y: 520 },
+      theme: { ground: '#18221a', tile: '#1b261d', decor: ['#283a2c', '#223226'] },
+      obstacles: [
+        ['house', 160, 140, 220, 150], ['house', 820, 140, 220, 150], ['house', 160, 720, 220, 150],
+        ['water', 520, 280, 160, 80],
+        ['tree', 480, 120, 80, 80], ['tree', 640, 800, 90, 90], ['tree', 900, 760, 80, 80], ['tree', 80, 480, 60, 60],
+      ],
+      gates: [
+        { id: 'east', x: 1100, y: 420, w: 60, h: 160, to: 'forest', toGate: 'west', spawn: { x: 1030, y: 500 } },
+      ],
+      camps: [],
+      npcs: [
+        { id: 'herbalist', name: '薬師', glyph: '薬', color: '#80cbc4', x: 440, y: 600, role: 'shop', shop: 'hamletHerbs' },
+        { id: 'artisan', name: '細工師', glyph: '細', color: '#ce93d8', x: 760, y: 600, role: 'shop', shop: 'hamletCraft' },
       ],
     },
 

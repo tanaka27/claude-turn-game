@@ -93,15 +93,15 @@ function pickUpAt(tx, ty) {
   loots = loots.filter((l) => !l.taken);
 }
 
-// 回復薬を使う (1 行動)。使えたら true
-function usePotion() {
-  const p = player, po = IT.potion;
+// 回復薬を使う (1 行動)。id: data/items.js の ITEMS.potions のキー。使えたら true
+function usePotion(id) {
+  const p = player, po = IT.potions[id];
   if (p.dead) return false;
-  if (p.potions <= 0) { log(`${po.name}がない。`, '#9da7b3'); return false; }
+  if (!(p.potions[id] > 0)) { log(`${po.name}がない。`, '#9da7b3'); return false; }
   if (p.hp >= p.stats.maxHp) { log('HP は満タンだ。', '#9da7b3'); return false; }
   const heal = Math.round(p.stats.maxHp * po.heal);
   p.hp = Math.min(p.stats.maxHp, p.hp + heal);
-  p.potions--;
+  p.potions[id]--;
   floatText(p.x, p.y - 30, `+${heal}`, '#69f0ae', 18);
   log(`${po.name}を使った。HP が ${heal} 回復した。`, '#69f0ae');
   burst(p.x, p.y, '#69f0ae', 14, 140);

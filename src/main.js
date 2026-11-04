@@ -10,7 +10,7 @@ function startGame(save) {
   zone = null;
   for (const k in zoneMemory) delete zoneMemory[k];
   logLines.length = 0;
-  shopLevel = 0;
+  for (const k in shopStocks) delete shopStocks[k];
   Object.assign(game, { state: 'play', paused: false, kills: 0, time: 0, shake: 0, saveT: P.save.interval });
   const start = WORLD.zones[WORLD.start].respawn;
   const at = save ? applySave(save) : { zone: WORLD.start, tx: tileOf(start.x), ty: tileOf(start.y), hp: null };

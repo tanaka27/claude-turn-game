@@ -55,7 +55,7 @@ function drawHUD() {
   // スキルバー
   const slots = SKILLS.map((s) => ({ label: s.label, name: s.name, cd: p.skillCd[s.key], max: skillCooldown(s), active: aiming === s,
       lock: p.level < s.unlockLevel ? s.unlockLevel : 0 }))
-    .concat([{ label: 'R', name: IT.potion.name, cd: 0, max: 1, count: p.potions }]);
+    .concat(Object.entries(IT.potions).map(([id, po]) => ({ label: po.key.toUpperCase(), name: po.name, cd: 0, max: 1, count: p.potions[id] || 0 })));
   const sz = 62, gap = 12, total = slots.length * sz + (slots.length - 1) * gap;
   let sx = (W - total) / 2;
   const sy = H - sz - 34;

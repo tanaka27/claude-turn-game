@@ -1,5 +1,5 @@
 // =====================================================================
-//  装備と回復薬 (レア度・部位・追加性能・店の品ぞろえ)
+//  装備と回復薬 (レア度・部位・追加性能・回復薬・店ごとの品ぞろえ)
 //  お金・持ち物の数・売値などは params.js の economy。
 // =====================================================================
 
@@ -30,9 +30,27 @@ const ITEMS = {
     agi: [4, 0.4], int: [10, 2], hpRegen: [0.05, 0.015],
   },
   value: [10, 8],       // 価値 (= 店の買値) [Lv1 の値, 1 レベルごとの増加] × レア度の value
-  // 店の品ぞろえ: 部位ごとに、自分のレベルのノーマルとレアを 1 つずつ。レベルが上がると入れ替わる
-  shopRarities: ['common', 'rare'],
-  potion: { name: '回復薬', price: 25, heal: 0.4, max: 20, start: 3 }, // heal: 最大HP比。使うと 1 行動
+  // 回復薬。key: 使うキー / heal: 最大HP比 / max: 持てる数 / start: 最初の数。使うと 1 行動
+  //   クエストの報酬の potions は先頭の回復薬 (potion) でもらう
+  potions: {
+    potion: { name: '回復薬', key: 'r', price: 25, heal: 0.4, max: 20, start: 3 },
+    hiPotion: { name: '上回復薬', key: 't', price: 80, heal: 0.8, max: 10, start: 0 },
+  },
+  // 店。world.js の NPC (role: 'shop') の shop にキーを書く
+  //   name: 画面の見出し / potions: 売る回復薬 / gear: 売る装備 [部位, レア度] (1 つずつ並ぶ)
+  //   levelOffset: 装備レベル = 自分のレベル + levelOffset / maxLevel: 装備レベルの上限 (なければ上限なし)
+  //   自分のレベルが変わると、次に店を開いたときに品ぞろえが入れ替わる。素材と装備はどの店でも売れる
+  shops: {
+    townGeneral: { name: '始まりの町の商店', potions: ['potion'], levelOffset: 0, maxLevel: 4,
+      gear: [['weapon', 'common'], ['armor', 'common'], ['accessory', 'common']] },
+    wayArms: { name: '宿場の武具屋', potions: [], levelOffset: 0, maxLevel: 8,
+      gear: [['weapon', 'common'], ['weapon', 'rare'], ['armor', 'common'], ['armor', 'rare']] },
+    wayTools: { name: '宿場の道具屋', potions: ['potion'], levelOffset: 0, maxLevel: 8,
+      gear: [['accessory', 'common'], ['accessory', 'rare']] },
+    hamletHerbs: { name: '隠れ里の薬師', potions: ['potion', 'hiPotion'], gear: [] },
+    hamletCraft: { name: '隠れ里の細工師', potions: [], levelOffset: 1,
+      gear: [['weapon', 'rare'], ['weapon', 'epic'], ['armor', 'rare'], ['armor', 'epic'], ['accessory', 'rare'], ['accessory', 'epic']] },
+  },
   // 素材 (敵が落とす。店で売るとお金になる)。price: 1 つの売値 / color: 落とし物と画面での色
   //   どの敵が何を落とすかは data/enemies.js の drops
   materials: {

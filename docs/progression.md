@@ -61,7 +61,7 @@
 - 敵を倒すと `gainExp` で経験値が入り、必要量を超えるたびに `levelUp`
 - 成長した値は `player.base`（`{ maxHp, str, vit, agi, int }`）に持つ（ばらつきがあるのでレベルからは計算できない）。`levelUp` が `growthTarget`（目安）に向けて足す。はじめからのときと、`base` のない前のセーブは `growthBase`（そのレベルの目安どおり）
 - ステータスは `computeStats` で毎回計算する: Lv1 の値（成長するものは `base`）＋ 装備（`player.equip`）→ `derivedStats` で こうげき力などを計算
-- プレイヤーが倒れると、その場で所持金（と `deathExpLoss` 分の経験値）を減らして保存し、1.4 秒後（実時間）に `respawnPlayer` で町のかがり火へ戻る
+- プレイヤーが倒れると、その場で所持金（と `deathExpLoss` 分の経験値）を減らして保存し、1.4 秒後（実時間）に `respawnPlayer` で最後に立ち寄った町（`player.home`。[world.md](world.md)）のかがり火へ戻る
 
 ## 仕組み: クエストとスキル解放
 

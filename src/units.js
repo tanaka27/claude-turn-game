@@ -3,6 +3,13 @@
 // =====================================================================
 'use strict';
 
+// 回復薬の数 { 回復薬のキー: 数 }
+function startPotions() {
+  const n = {};
+  for (const id in IT.potions) n[id] = IT.potions[id].start;
+  return n;
+}
+
 function createPlayer() {
   const d = PLAYER;
   const skillCd = {};
@@ -15,7 +22,7 @@ function createPlayer() {
   return {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
     stats: null, base: growthBase(1), hp: d.stats.maxHp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
-    gold: EC.startGold, potions: IT.potion.start, inventory: [], materials: {}, quests: {},
+    gold: EC.startGold, potions: startPotions(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null,
     skillCd, hitFlash: 0, dead: false,
   };
@@ -135,12 +142,13 @@ function levelUp() {
   burst(p.x, p.y, '#ffd54f', 30, 260);
 }
 
-// 倒れたら復活ゾーンのかがり火に戻る (失うものは倒れたときに減らしている)
+// 倒れたら最後に立ち寄った町 (player.home) のかがり火に戻る (失うものは倒れたときに減らしている)
+const homeZone = () => (WORLD.zones[player.home] && WORLD.zones[player.home].respawn ? player.home : WORLD.respawnZone);
 function respawnPlayer() {
-  const p = player;
-  const r = WORLD.zones[WORLD.respawnZone].respawn;
+  const p = player, home = homeZone();
+  const r = WORLD.zones[home].respawn;
   Object.assign(p, { hp: p.stats.maxHp, dead: false, facing: -Math.PI / 2 });
-  enterZone(WORLD.respawnZone, tileOf(r.x), tileOf(r.y));
+  enterZone(home, tileOf(r.x), tileOf(r.y));
   game.state = 'play';
   const lost = [game.deathLoss.exp > 0 ? `EXP -${game.deathLoss.exp}` : '', game.deathLoss.gold > 0 ? `-${game.deathLoss.gold} G` : ''].filter(Boolean);
   showMsg(['力尽きた…', ...lost].join('  '), zone.name);
