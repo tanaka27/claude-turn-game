@@ -14,7 +14,7 @@ const ENEMIES = {
   wolf: {
     name: 'ウルフ', glyph: '狼', radius: 14, color: '#90a4ae', exp: 12, itemRate: 0.08, ai: 'melee',
     drops: [{ id: 'wolfPelt', rate: 1 }, { id: 'wolfFang', rate: 0.15 }],
-    stats: { maxHp: 20, atk: 1.3, def: 2, speed: 110, critRate: 0.05, critMult: 1.5 },
+    stats: { maxHp: 9, atk: 4.6, def: 4, speed: 110, critRate: 0.05, critMult: 1.5 },
     attacks: [
       { name: '噛みつき', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
     ],
@@ -22,7 +22,7 @@ const ENEMIES = {
   boar: {
     name: 'ホーンボア', glyph: '猪', radius: 15, color: '#bc8f6f', exp: 18, itemRate: 0.1, ai: 'melee',
     drops: [{ id: 'boarHorn', rate: 1 }, { id: 'boarMeat', rate: 0.2 }],
-    stats: { maxHp: 34, atk: 1.9, def: 3, speed: 95, critRate: 0.05, critMult: 1.5 },
+    stats: { maxHp: 16, atk: 5.6, def: 6, speed: 95, critRate: 0.05, critMult: 1.5 },
     attacks: [
       { name: '角突き', type: 'melee', shape: 'line', range: 3, width: 1, charge: 1, cooldown: 4, power: 1.7 },
       { name: '体当たり', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.8 },
@@ -31,7 +31,7 @@ const ENEMIES = {
   bee: {
     name: 'キラービー', glyph: '蜂', radius: 13, color: '#fff176', exp: 16, itemRate: 0.1, ai: 'ranged', keepDistance: 4,
     drops: [{ id: 'beeStinger', rate: 1 }, { id: 'honey', rate: 0.15 }],
-    stats: { maxHp: 18, atk: 1.4, def: 1, speed: 105, critRate: 0.1, critMult: 1.5 },
+    stats: { maxHp: 9, atk: 4.8, def: 2, speed: 105, critRate: 0.1, critMult: 1.5 },
     attacks: [
       { name: '毒針', type: 'projectile', range: 6, width: 1, charge: 0, cooldown: 4, power: 1.0 },
     ],
@@ -39,7 +39,7 @@ const ENEMIES = {
   salamander: {
     name: 'サラマンダー', glyph: '蜥', radius: 14, color: '#ff8a65', exp: 22, itemRate: 0.12, ai: 'ranged', keepDistance: 4,
     drops: [{ id: 'fireScale', rate: 1 }, { id: 'flameSac', rate: 0.12 }],
-    stats: { maxHp: 20, atk: 1.9, def: 2, speed: 85, critRate: 0.05, critMult: 1.5 },
+    stats: { maxHp: 9, atk: 5.6, def: 4, speed: 85, critRate: 0.05, critMult: 1.5 },
     attacks: [
       { name: '火炎弾', type: 'lob', castRange: 6, radius: 1.5, charge: 1, cooldown: 3, power: 1.5 },
     ],
@@ -47,7 +47,7 @@ const ENEMIES = {
   golem: {
     name: 'ロックゴーレム', glyph: '岩', radius: 19, color: '#a1887f', exp: 40, itemRate: 0.25, ai: 'melee',
     drops: [{ id: 'stoneShard', rate: 1 }, { id: 'manaCore', rate: 0.15 }],
-    stats: { maxHp: 96, atk: 2.8, def: 7, speed: 70, critRate: 0.05, critMult: 1.5 },
+    stats: { maxHp: 39, atk: 7.1, def: 14, speed: 70, critRate: 0.05, critMult: 1.5 },
     attacks: [
       { name: '叩きつけ', type: 'melee', shape: 'circle', range: 2.3, charge: 1, cooldown: 3, power: 1.6 },
       { name: '岩の拳', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
@@ -57,7 +57,7 @@ const ENEMIES = {
   wolfKing: {
     name: '狼王', glyph: '牙', radius: 24, color: '#607d8b', exp: 250, itemRate: 1, itemCount: 1, ai: 'melee', isBoss: true,
     drops: [{ id: 'kingPelt', rate: 1 }, { id: 'kingFang', rate: 1 }],
-    stats: { maxHp: 300, atk: 2.2, def: 5, speed: 110, critRate: 0.08, critMult: 1.5 },
+    stats: { maxHp: 128, atk: 6.1, def: 10, speed: 110, critRate: 0.08, critMult: 1.5 },
     attacks: [
       { name: '突進', type: 'melee', shape: 'line', range: 5, width: 1, charge: 1, cooldown: 5, power: 1.6 },
       { name: '爪の薙ぎ払い', type: 'melee', shape: 'fan', range: 2.3, angle: 150, charge: 1, cooldown: 3, power: 1.5 },
@@ -69,7 +69,7 @@ const ENEMIES = {
   treant: {
     name: '森の主', glyph: '樹', radius: 26, color: '#558b2f', exp: 350, itemRate: 1, itemCount: 2, ai: 'melee', isBoss: true,
     drops: [{ id: 'ancientBranch', rate: 1 }, { id: 'treantFruit', rate: 1 }],
-    stats: { maxHp: 360, atk: 2.5, def: 7, speed: 80, critRate: 0.05, critMult: 1.5 },
+    stats: { maxHp: 156, atk: 6.5, def: 14, speed: 80, critRate: 0.05, critMult: 1.5 },
     attacks: [
       { name: '根の衝撃', type: 'melee', shape: 'circle', range: 3.3, charge: 1, cooldown: 4, power: 1.6 },
       { name: '種飛ばし', type: 'projectile', range: 7, width: 1, count: 5, spread: 70, charge: 1, cooldown: 5, power: 0.9 },
@@ -81,7 +81,7 @@ const ENEMIES = {
   dragon: {
     name: '魔竜', glyph: '竜', radius: 27, color: '#ef5350', exp: 400, itemRate: 1, itemCount: 2, ai: 'melee', isBoss: true,
     drops: [{ id: 'dragonScale', rate: 1, count: 2 }, { id: 'dragonHeart', rate: 1 }],
-    stats: { maxHp: 400, atk: 3.1, def: 9, speed: 100, critRate: 0.1, critMult: 1.5 },
+    stats: { maxHp: 168, atk: 7.3, def: 18, speed: 100, critRate: 0.1, critMult: 1.5 },
     attacks: [
       { name: '尾の薙ぎ払い', type: 'melee', shape: 'fan', range: 2.5, angle: 160, charge: 1, cooldown: 3, power: 1.6 },
       { name: '火炎の息', type: 'projectile', range: 7, width: 1, count: 5, spread: 50, charge: 1, cooldown: 5, power: 1.0 },

@@ -109,16 +109,28 @@ function cancelCharge(u) {
   u.charging = null;
 }
 
-// 戻り値: ダメージが入ったか
+// 戻り値: 当たったか (ミスも当たったことにする。帰還中で無効のときは当たっていない)
 function dealDamage(src, tgt, power, what) {
   if (tgt.dead) return false;
   if (tgt.invuln) { floatText(tgt.x, tgt.y - tgt.r - 6, '無効', '#80deea', 15); return false; }
-  const s = src.stats, K = P.damage.defConstant;
-  let dmg = s.atk * power * (K / (K + Math.max(0, tgt.stats.def)));
-  dmg *= 1 + rand(-1, 1) * P.damage.variance;
+  const s = src.stats, D = P.damage;
+  const vary = () => 1 + rand(-1, 1) * D.variance;
   const crit = Math.random() < s.critRate;
-  if (crit) dmg *= s.critMult;
-  dmg = Math.max(1, Math.round(dmg));
+  let dmg;
+  if (crit) {
+    // 会心は防御を無視する
+    dmg = Math.max(1, Math.round(s.atk * D.atkRate * s.critMult * power * vary()));
+  } else {
+    const base = (s.atk * D.atkRate - Math.max(0, tgt.stats.def) * D.defRate) * power;
+    dmg = base < D.minBase ? randInt(0, 1) : Math.max(1, Math.round(base * vary()));
+  }
+  if (dmg === 0) {
+    if (tgt.isPlayer) tgt.travel = null;
+    else if (tgt.state === 'idle') aggro(tgt);
+    log(tgt.isPlayer ? `${src.name}の${what}！ ミス！ ダメージを受けない` : `${what}: ミス！ ${tgt.name}にダメージを与えられない`, '#9e9e9e');
+    floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, 'ミス', '#9e9e9e', 15);
+    return true;
+  }
   tgt.hp -= dmg;
   tgt.hitFlash = 0.15;
   if (tgt.isPlayer) {
