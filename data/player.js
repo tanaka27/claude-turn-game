@@ -2,20 +2,21 @@
 //  主人公の定義 (初期ステータス・通常攻撃・スキル・最初の装備)
 // =====================================================================
 //
-// 【ステータスの意味】(主人公はドラクエ風。敵は atk / def / speed / critRate を直接持つ)
+// 【ステータスの意味】(主人公はドラクエ風。敵は atk / def / int / mdef / speed / critRate を直接持つ)
 //   レベルアップで上がる (上がり方は params.js の progression.growth):
 //     maxHp       : さいだいHP
 //     str         : ちから。こうげき力のもと
 //     vit         : みのまもり。しゅび力のもと
 //     agi         : すばやさ。速度を決める
-//     int         : かしこさ。スキル加速を決める
+//     int         : かしこさ。術のダメージ・術防御・スキル加速を決める
 //   レベルアップでは上がらない (装備でだけ変わる):
 //     luk         : うんのよさ。会心率を決める
 //     critMult    : 会心時のダメージ倍率
 //     hpRegen     : 1 ターンごとの HP 回復量
 //   上の値から計算する (式は params.js の derivedStats。ここには書かない):
 //     atk         : こうげき力 = ちから + 装備。ダメージの基礎値
-//     def         : しゅび力 = みのまもり + 装備。被ダメージを軽減
+//     def         : しゅび力 = みのまもり + 装備。物理の被ダメージを軽減
+//     mdef        : 術防御 = かしこさ × 0.5 + 装備。術の被ダメージを軽減
 //     speed       : 速度 (100 が基準)。行動 1 回にかかる時間 = 100 / speed ターン。
 //                   速いほど、敵が 1 回動く間に何回も動ける
 //     skillHaste  : スキル加速。スキルの再使用ターン数 = 基本 × 100 / (100 + skillHaste)
@@ -33,7 +34,10 @@
 //   charge : 0 なら使ったその場で判定する。1 なら予告 (予測範囲) を出し、使った者の次の行動で判定する
 //            (その間に範囲の外へ出れば当たらない。速いほど逃げる時間がある)
 //   cooldown: 再使用までの行動回数 (主人公は自分の行動回数、敵はその敵の行動回数で数える)
-//   power  : 威力倍率
+//   kind   : 'physical' … 物理 (省略時)。こうげき力としゅび力で計算 (params.js のダメージ計算式)
+//            'magic'    … 術。かしこさと術防御で計算 (params.js の術のダメージ計算式)
+//   power  : 物理の威力倍率
+//   base   : 術の固定ダメージ / intRate : 術のかしこさの効き (省略時は params.js の magic.intRate)
 //   pierce : true なら弾が貫通
 //   count / spread : 同時発射数 / 拡散角度(度)
 //   castRange / radius / scatter : lob の最大射程 / 着弾範囲の半径 / 複数弾の散らばり (どれもマス)
@@ -68,8 +72,8 @@ const PLAYER = {
       range: 2.3, cooldown: 7, power: 1.6,
     },
     {
-      key: '3', label: '3', name: 'メテオ', type: 'lob', unlockLevel: 6,
-      castRange: 8, radius: 2.3, cooldown: 14, power: 2.8,
+      key: '3', label: '3', name: 'メテオ', type: 'lob', kind: 'magic', unlockLevel: 6,
+      castRange: 8, radius: 2.3, cooldown: 14, base: 6,
     },
     {
       key: '4', label: '4', name: 'ダッシュ', type: 'dash', unlockLevel: 1,

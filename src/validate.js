@@ -50,6 +50,16 @@ function validateData() {
     check(!(k in PLAYER.stats), `data/player.js stats: '${k}' は params.js の derivedStats で計算するので書かない`);
     check(d.from in PLAYER.stats, `params.js derivedStats.${k}: もとのステータス '${d.from}' が data/player.js の stats にない`);
   }
+  // 技の種類: 物理は power、術は base が要る
+  const attacks = [['data/player.js', PLAYER.basicAttack],
+    ...PLAYER.skills.filter((s) => s.type !== 'dash').map((s) => ['data/player.js', s]),
+    ...Object.entries(ENEMIES).flatMap(([type, d]) => d.attacks.map((a) => [`data/enemies.js ${type}`, a]))];
+  for (const [where, a] of attacks) {
+    const kind = a.kind || 'physical';
+    check(kind === 'physical' || kind === 'magic', `${where} の技「${a.name}」: kind '${kind}' は physical か magic にする`);
+    check(kind !== 'physical' || a.power > 0, `${where} の技「${a.name}」: 物理の技に power がない`);
+    check(kind !== 'magic' || a.base >= 0, `${where} の技「${a.name}」: 術に base がない`);
+  }
   const keys = PLAYER.skills.map((s) => s.key);
   check(new Set(keys).size === keys.length, 'data/player.js: スキルのキーが重なっている');
   // 移動・待機・画面のキーと重なると、そちらが先に使われてスキルが出ない
@@ -63,6 +73,7 @@ function validateData() {
   for (const [type, d] of Object.entries(ENEMIES)) {
     check(d.stats.speed > 0, `data/enemies.js ${type}: speed がない`);
     for (const a of d.attacks) check(a.cooldown >= 1, `data/enemies.js ${type} の技「${a.name}」: cooldown は 1 以上にする`);
+    check(d.stats.int >= 0 && d.stats.mdef >= 0, `data/enemies.js ${type}: int か mdef がない`);
   }
 
   // 復活地点・門から入ったときの位置・NPC・湧き場所の中心が、通れるマスにあるか (world.js)

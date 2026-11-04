@@ -18,6 +18,7 @@ const STATS = {
   luk: { label: 'うんのよさ', dec: 0, hud: { dec: 0 } },
   atk: { label: 'こうげき力', dec: 0, hud: { dec: 0 } },
   def: { label: 'しゅび力', dec: 0, hud: { dec: 0 } },
+  mdef: { label: '術防御', dec: 0, hud: { dec: 0 } },
   speed: { label: '速度', dec: 0, hud: { dec: 0 } },
   skillHaste: { label: 'スキル加速', dec: 0 },
   critRate: { label: '会心率', pct: true, hud: { dec: 0 } },

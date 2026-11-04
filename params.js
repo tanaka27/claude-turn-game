@@ -17,6 +17,12 @@
 //   それ以外は 基礎ダメージ × 乱数(1 ± variance)
 //   会心のときは防御を無視して 攻撃側atk × atkRate × critMult × power × 乱数(1 ± variance)
 //   ※四捨五入。会心と通常は最低 1
+//   これは物理 (kind: 'physical'、省略時) の技。術 (kind: 'magic') は下の【術のダメージ計算式】
+//
+// 【術のダメージ計算式】
+//   基礎ダメージ = 技の固定値(base) + 攻撃側int × 技の intRate (省略時は magic.intRate)
+//   ダメージ = 基礎ダメージ × mdefScale / (mdefScale + 防御側mdef) × 乱数(1 ± variance)
+//   ※四捨五入。最低 1。術は会心にならず、ミスもない
 //
 
 const PARAMS = {
@@ -33,7 +39,12 @@ const PARAMS = {
     atkRate: 0.5,       // こうげき力の効き (ドラクエの「こうげき力 / 2」)
     defRate: 0.25,      // しゅび力の効き (ドラクエの「しゅび力 / 4」)
     minBase: 1,         // 基礎ダメージがこれ未満だと 0 か 1 になる
-    variance: 1 / 16,   // 乱数の幅 (ドラクエの ±1/16)
+    variance: 1 / 16,   // 乱数の幅 (ドラクエの ±1/16)。術も同じ幅
+  },
+
+  magic: {
+    intRate: 0.8,       // かしこさ 1 につき基礎ダメージ +0.8 (技に intRate があればそちら)
+    mdefScale: 50,      // 術防御がこの値のとき、ダメージが半分になる
   },
 
   // ------------------------------------------------------------------
@@ -68,6 +79,7 @@ const PARAMS = {
     def: { from: 'vit', base: 0, per: 1, start: 0 },              // しゅび力 = みのまもり + 防具
     speed: { from: 'agi', base: 20, per: 2, start: 100 },         // 速度: すばやさ 20 で 100。すばやさ 1 につき +2
     skillHaste: { from: 'int', base: 10, per: 0.5, start: 0 },    // かしこさ 10 で 0
+    mdef: { from: 'int', base: 0, per: 0.5, start: 0 },           // 術防御 = かしこさ × 0.5 + 装備
     critRate: { from: 'luk', base: 0, per: 0.005, start: 0, max: 1 }, // うんのよさ 20 で 10%
   },
 
@@ -75,7 +87,9 @@ const PARAMS = {
   enemyLevel: {
     hpGrowth: 0.15,       // HP +15%
     atkGrowth: 0.17,      // 攻撃力 +17%
+    intGrowth: 0.17,      // かしこさ +17%
     defGrowth: 0.8,       // 防御力 +0.8
+    mdefGrowth: 0.8,      // 術防御 +0.8
     speedGrowth: 2,       // 速度 +2
     expGrowth: 0.25,      // 獲得経験値 +25%
     grayDiff: 5,          // プレイヤーよりこのレベル以上低い敵は…

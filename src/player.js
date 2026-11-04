@@ -100,7 +100,7 @@ function bumpAttack(e) {
   const p = player;
   p.facing = Math.atan2(e.ty - p.ty, e.tx - p.tx);
   effects.push({ type: 'tiles', tiles: [[e.tx, e.ty]], t: 0, life: 0.25, faction: 'player' });
-  dealDamage(p, e, BASIC.power, BASIC.name);
+  dealDamage(p, e, BASIC, BASIC.name);
 }
 
 function waitTurn() { return true; }

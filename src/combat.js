@@ -71,7 +71,7 @@ function resolveAttack(h) {
   const strike = (t) => {
     if (hit.has(t) || t.dead) return false;
     hit.add(t);
-    return dealDamage(u, t, a.power, a.name);
+    return dealDamage(u, t, a, a.name);
   };
   if (a.type === 'projectile') {
     for (const ray of h.rays) {
@@ -109,12 +109,18 @@ function cancelCharge(u) {
   u.charging = null;
 }
 
-// 戻り値: 当たったか (ミスも当たったことにする。帰還中で無効のときは当たっていない)
-function dealDamage(src, tgt, power, what) {
-  if (tgt.dead) return false;
-  if (tgt.invuln) { floatText(tgt.x, tgt.y - tgt.r - 6, '無効', '#80deea', 15); return false; }
+// 技 a (kind / power / base / intRate) のダメージ。戻り値 { dmg, crit }
+function rollDamage(src, tgt, a) {
   const s = src.stats, D = P.damage;
   const vary = () => 1 + rand(-1, 1) * D.variance;
+  if (a.kind === 'magic') {
+    // 術: 固定値 + かしこさに比例した分を、術防御で割合で減らす。会心・ミスはない
+    const M = P.magic;
+    const base = a.base + s.int * (a.intRate !== undefined ? a.intRate : M.intRate);
+    return { dmg: Math.max(1, Math.round(base * M.mdefScale / (M.mdefScale + Math.max(0, tgt.stats.mdef)) * vary())), crit: false };
+  }
+  // 物理 (ドラクエ式)
+  const power = a.power;
   const crit = Math.random() < s.critRate;
   let dmg;
   if (crit) {
@@ -124,6 +130,14 @@ function dealDamage(src, tgt, power, what) {
     const base = (s.atk * D.atkRate - Math.max(0, tgt.stats.def) * D.defRate) * power;
     dmg = base < D.minBase ? randInt(0, 1) : Math.max(1, Math.round(base * vary()));
   }
+  return { dmg, crit };
+}
+
+// a: 技 (物理か術か・威力)。戻り値: 当たったか (ミスも当たったことにする。帰還中で無効のときは当たっていない)
+function dealDamage(src, tgt, a, what) {
+  if (tgt.dead) return false;
+  if (tgt.invuln) { floatText(tgt.x, tgt.y - tgt.r - 6, '無効', '#80deea', 15); return false; }
+  const { dmg, crit } = rollDamage(src, tgt, a);
   if (dmg === 0) {
     if (tgt.isPlayer) tgt.travel = null;
     else if (tgt.state === 'idle') aggro(tgt);

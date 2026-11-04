@@ -35,6 +35,8 @@ function createEnemy(type, tx, ty, camp, slot) {
   st.maxHp = Math.round(st.maxHp * (1 + EL.hpGrowth * g));
   st.atk = st.atk * (1 + EL.atkGrowth * g);
   st.def = st.def + EL.defGrowth * g;
+  st.int = st.int * (1 + EL.intGrowth * g);
+  st.mdef = st.mdef + EL.mdefGrowth * g;
   st.speed = st.speed + EL.speedGrowth * g;
   const e = {
     type, def: d, faction: 'enemy', name: d.name, isBoss: !!d.isBoss, tx, ty, x: 0, y: 0, r: d.radius, color: d.color,
