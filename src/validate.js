@@ -11,7 +11,15 @@ function validateData() {
   const rarityIds = ITEMS.rarities.map((r) => r.id);
   const npcIds = [];
 
+  const mapCells = {};
   for (const [zid, z] of Object.entries(WORLD.zones)) {
+    const okPos = Array.isArray(z.mapPos) && z.mapPos.length === 2 && z.mapPos.every((v) => Number.isInteger(v) && v >= 0);
+    check(okPos, `world.js ${zid}: 世界地図の位置 mapPos [列, 行] がない`);
+    if (okPos) {
+      const key = z.mapPos.join(',');
+      check(!mapCells[key], `world.js ${zid}: 世界地図の位置 mapPos が '${mapCells[key]}' と重なっている`);
+      mapCells[key] = zid;
+    }
     for (const o of z.obstacles) check(WORLD.terrain[o[0]], `world.js ${zid}: 地形の種類 '${o[0]}' が terrain にない`);
     for (const c of z.camps || []) {
       for (const m of c.members) check(ENEMIES[m], `world.js ${zid} の湧き場所「${c.name}」: 敵 '${m}' が data/enemies.js にない`);
@@ -59,6 +67,12 @@ function validateData() {
     check(kind === 'physical' || kind === 'magic', `${where} の技「${a.name}」: kind '${kind}' は physical か magic にする`);
     check(kind !== 'physical' || a.power > 0, `${where} の技「${a.name}」: 物理の技に power がない`);
     check(kind !== 'magic' || a.base >= 0, `${where} の技「${a.name}」: 術に base がない`);
+  }
+  // MP: 主人公は最大 MP と MP 再生を持つ。スキルの消費 MP は 0 以上で、Lv1 の最大 MP を超えない (超えると使えない技になる)
+  for (const k of ['maxMp', 'mpRegen']) check(PLAYER.stats[k] >= 0, `data/player.js stats: ${k} がない`);
+  for (const s of PLAYER.skills) {
+    check(s.mp === undefined || s.mp >= 0, `data/player.js のスキル「${s.name}」: mp は 0 以上にする`);
+    check(!(s.mp > PLAYER.stats.maxMp), `data/player.js のスキル「${s.name}」: mp ${s.mp} が Lv1 の maxMp ${PLAYER.stats.maxMp} より大きい`);
   }
   const keys = PLAYER.skills.map((s) => s.key);
   check(new Set(keys).size === keys.length, 'data/player.js: スキルのキーが重なっている');

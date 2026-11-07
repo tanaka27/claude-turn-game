@@ -11,6 +11,7 @@
 
 const STATS = {
   maxHp: { label: 'さいだいHP', dec: 0 },
+  maxMp: { label: 'さいだいMP', dec: 0 },
   str: { label: 'ちから', dec: 0, hud: { dec: 0 } },
   vit: { label: 'みのまもり', dec: 0, hud: { dec: 0 } },
   agi: { label: 'すばやさ', dec: 0, hud: { dec: 0 } },
@@ -24,4 +25,5 @@ const STATS = {
   critRate: { label: '会心率', pct: true, hud: { dec: 0 } },
   critMult: { label: '会心倍率', dec: 2 },
   hpRegen: { label: 'HP再生', dec: 2 },
+  mpRegen: { label: 'MP再生', dec: 2 },
 };

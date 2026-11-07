@@ -6,8 +6,9 @@
 
 // セーブの形 (v1)
 //   { v: 1, savedAt,
-//     player:   { level, exp, base, hp, gold, potions, inventory, materials, equip, quests },
-//       base: 成長で上がったステータス { maxHp, str, vit, agi, int } (ないセーブはレベルの目安の値にする)
+//     player:   { level, exp, base, hp, mp, gold, potions, inventory, materials, equip, quests },
+//       base: 成長で上がったステータス { maxHp, maxMp, str, vit, agi, int } (ないもの (MP が入る前のセーブの maxMp など) はレベルの目安の値にする)
+//       mp: 今の MP (ないセーブは満タンで始める)
 //     progress: { kills, time },
 //       potions: 回復薬の数 { 回復薬のキー: 数 } (数だけのセーブは回復薬 (potion) の数として読む)
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン (ないセーブは WORLD.respawnZone) }
@@ -27,7 +28,7 @@ function buildSave() {
   const home = homeZone(), r = WORLD.zones[home].respawn;
   return {
     v: SAVE_VERSION, savedAt: Date.now(),
-    player: { level: p.level, exp: p.exp, base: p.base, hp: p.dead ? null : p.hp, gold: p.gold, potions: p.potions,
+    player: { level: p.level, exp: p.exp, base: p.base, hp: p.dead ? null : p.hp, mp: p.dead ? null : p.mp, gold: p.gold, potions: p.potions,
       inventory: p.inventory, materials: p.materials, equip: p.equip, quests: p.quests },
     progress: { kills: game.kills, time: game.time },
     location: p.dead ? { zone: home, tx: tileOf(r.x), ty: tileOf(r.y) } : { zone: zone.id, tx: p.tx, ty: p.ty },
@@ -42,7 +43,7 @@ function migrateSave(d) {
   return d;
 }
 
-// 作ったばかりの player にセーブの中身を戻す。戻り値: 始める場所と HP
+// 作ったばかりの player にセーブの中身を戻す。戻り値: 始める場所と HP・MP
 function applySave(save) {
   const s = save.player, p = player;
   p.level = clamp(Math.floor(s.level) || 1, 1, PG.maxLevel);
@@ -75,7 +76,7 @@ function applySave(save) {
     const n = Math.floor(s.materials[id]);
     if (IT.materials[id] && n > 0) p.materials[id] = n;
   }
-  return { ...save.location, hp: s.hp };
+  return { ...save.location, hp: s.hp, mp: s.mp };
 }
 
 // ----- 保存先: ブラウザ -----

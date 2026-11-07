@@ -19,27 +19,29 @@ function bar(x, y, w, h, ratio, color, label) {
 
 // HUD の上のクリックできるボタン ({ id, x, y, w, h })。drawHUD が毎回作り直す
 const hudButtons = [];
+let statsBottom = 0; // 右上のステータス欄の下端 (世界地図がこれより下に収まるようにする)
 const hudButtonAt = (x, y) => hudButtons.find((b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) || null;
 
 function drawHUD() {
   if (!player) return;
   const p = player, st = p.stats;
   ctx.textBaseline = 'alphabetic';
-  // HP
+  // HP・MP・経験値
   bar(20, 20, 300, 22, p.hp / st.maxHp, p.hp / st.maxHp > 0.3 ? '#43a047' : '#e53935', `HP ${Math.ceil(p.hp)} / ${Math.round(st.maxHp)}`);
+  bar(20, 50, 300, 16, p.mp / st.maxMp, THEME.mp, `MP ${Math.floor(p.mp)} / ${Math.round(st.maxMp)}`);
   const maxed = p.level >= PG.maxLevel, need = expToNext(p.level);
-  bar(20, 50, 300, 10, maxed ? 1 : p.exp / need, '#9575cd');
+  bar(20, 74, 300, 8, maxed ? 1 : p.exp / need, '#9575cd');
   ctx.textAlign = 'left'; ctx.fillStyle = '#e6edf3'; ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(`Lv ${p.level}  ${p.name}`, 20, 84);
+  ctx.fillText(`Lv ${p.level}  ${p.name}`, 20, 104);
   ctx.font = '13px sans-serif'; ctx.fillStyle = '#b39ddb';
-  ctx.fillText(maxed ? 'EXP MAX' : `EXP ${p.exp} / ${need}`, 150, 84);
+  ctx.fillText(maxed ? 'EXP MAX' : `EXP ${p.exp} / ${need}`, 150, 104);
   ctx.fillStyle = '#9da7b3';
   const status = inSafeZone() ? '安全地帯' : game.time - p.lastHurt >= PG.restDelay ? '休息中' : '戦闘中';
-  ctx.fillText(`撃破 ${game.kills}   ${status}   ターン ${Math.floor(game.time)}`, 20, 104);
+  ctx.fillText(`撃破 ${game.kills}   ${status}   ターン ${Math.floor(game.time)}`, 20, 124);
   ctx.fillStyle = '#ffd54f'; ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(`${p.gold} G`, 220, 104);
+  ctx.fillText(`${p.gold} G`, 220, 124);
   ctx.fillStyle = '#80deea'; ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(`${zone.name}（${zoneLevelText(zone)}）`, 20, 126);
+  ctx.fillText(`${zone.name}（${zoneLevelText(zone)}）`, 20, 146);
 
   // ステータス
   // 並び順と表示のしかたは data/stats.js の hud
@@ -49,6 +51,7 @@ function drawHUD() {
     return [label, (hud.prefix || '') + v + (hud.suffix || '')];
   });
   const px = W - 190, py = 16;
+  statsBottom = py + 18 + lines.length * 19;
   ctx.fillStyle = 'rgba(13,17,23,0.75)'; roundRect(px, py, 174, 18 + lines.length * 19, 8); ctx.fill();
   ctx.font = '13px sans-serif';
   lines.forEach(([k, v], i) => {
@@ -58,7 +61,7 @@ function drawHUD() {
 
   // スキルバー
   const slots = SKILLS.map((s) => ({ label: s.label, name: s.name, cd: p.skillCd[s.key], max: skillCooldown(s), active: aiming === s,
-      lock: p.level < s.unlockLevel ? s.unlockLevel : 0 }))
+      lock: p.level < s.unlockLevel ? s.unlockLevel : 0, mp: skillMp(s), short: !enoughMp(s) }))
     .concat(Object.entries(IT.potions).map(([id, po]) => ({ label: po.key.toUpperCase(), name: po.name, cd: 0, max: 1, count: p.potions[id] || 0 })))
     .concat([{ label: 'I', name: '道具', cd: 0, max: 1, button: 'items' }]);
   hudButtons.length = 0;
@@ -71,7 +74,7 @@ function drawHUD() {
     if (s.button) hudButtons.push({ id: s.button, x: sx, y: sy, w: sz, h: sz });
     ctx.fillStyle = s.active ? 'rgba(80,200,255,0.35)' : hover ? 'rgba(48,80,110,0.95)' : s.button ? 'rgba(30,40,55,0.9)' : 'rgba(13,17,23,0.85)';
     roundRect(sx, sy, sz, sz, 10); ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = s.button ? '#ffd54f' : s.cd > 0 || s.lock ? '#30363d' : '#4fc3f7'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = s.button ? '#ffd54f' : s.cd > 0 || s.lock || s.short ? '#30363d' : '#4fc3f7'; ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = '#e6edf3'; ctx.font = 'bold 14px sans-serif';
     if (s.lock) {
       // まだ使えないスキルは名前を暗くし、使えるようになるレベルを出す
@@ -81,6 +84,13 @@ function drawHUD() {
       ctx.fillText(`Lv${s.lock} で解放`, sx + sz / 2, sy + sz / 2 + 14);
     } else {
       ctx.fillText(s.name, sx + sz / 2, sy + sz / 2 + 5);
+    }
+    if (s.mp && !s.lock) {
+      // 消費 MP (足りないときは色を変える)
+      ctx.textAlign = 'right'; ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = s.short ? THEME.mpShort : THEME.mp;
+      ctx.fillText(`MP${s.mp}`, sx + sz - 6, sy + 15);
+      ctx.textAlign = 'center';
     }
     if (s.count !== undefined) {
       ctx.textAlign = 'right'; ctx.font = 'bold 13px sans-serif';
@@ -125,7 +135,7 @@ function drawHUD() {
   if (boss) {
     // 画面が狭いと左上の HP バーと重なるので、そのときは少し下に出す
     const bw = Math.min(520, W - 420), bx = (W - bw) / 2;
-    bar(bx, bx < 340 ? 140 : 58, bw, 18, boss.hp / boss.stats.maxHp, '#c62828', `Lv${boss.level} ${boss.name}  ${Math.ceil(boss.hp)} / ${boss.stats.maxHp}`);
+    bar(bx, bx < 340 ? 160 : 58, bw, 18, boss.hp / boss.stats.maxHp, '#c62828', `Lv${boss.level} ${boss.name}  ${Math.ceil(boss.hp)} / ${boss.stats.maxHp}`);
   }
 
   drawTurnOrder();
@@ -149,8 +159,19 @@ function drawHUD() {
   }
 }
 
+// 右下の地図。M キーかクリックで、今いるゾーンの地図 (minimap) と世界地図 (worldMap) を切り替える
+let worldMapOn = false;
+function toggleWorldMap() { worldMapOn = !worldMapOn; }
+function mapHint(x, y, w, text) {
+  ctx.font = '11px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = 'rgba(13,17,23,0.8)'; ctx.fillRect(x + w - ctx.measureText(text).width - 9, y - 19, ctx.measureText(text).width + 12, 16);
+  ctx.fillStyle = '#9da7b3'; ctx.fillText(text, x + w + 1, y - 7);
+}
 function drawMinimap() {
+  if (worldMapOn) { drawWorldMap(); return; }
   const s = Math.min(200 / MAP_W, 150 / MAP_H), mw = MAP_W * s, mh = MAP_H * s, mx = W - mw - 16, my = H - mh - 16;
+  hudButtons.push({ id: 'map', x: mx - 3, y: my - 3, w: mw + 6, h: mh + 6 });
+  mapHint(mx - 3, my - 3, mw + 6, 'M: 世界地図');
   ctx.fillStyle = 'rgba(13,17,23,0.8)'; ctx.fillRect(mx - 3, my - 3, mw + 6, mh + 6);
   for (const o of obstacles) {
     ctx.fillStyle = WORLD.terrain[o.kind].minimap;
@@ -172,6 +193,65 @@ function drawMinimap() {
   }
   ctx.fillStyle = '#4fc3f7';
   pathCircle(mx + player.x * s, my + player.y * s, 3.5); ctx.fill();
+}
+
+// 世界地図: 全ゾーンを world.js の mapPos に並べ、地形・門・かがり火・NPC と、門どうしのつながりを描く。
+// 今いるゾーンは枠を明るくし、主人公の位置を出す。ゾーンの大きさは実際の比率 (fullW が枠の幅いっぱい)
+function drawWorldMap() {
+  const M = WORLD.worldMap, zones = Object.entries(WORLD.zones);
+  const cols = Math.max(...zones.map(([, z]) => z.mapPos[0])) + 1, rows = Math.max(...zones.map(([, z]) => z.mapPos[1])) + 1;
+  const pad = 8, labelH = 26, margin = 13;
+  // 枠の大きさ: スキル欄の右と、右上のステータス (statsBottom) の下に収まるように縮める (文字は縮めない)
+  const sb = hudButtons.find((b) => b.id === 'items');
+  const availW = W - margin - (sb ? sb.x + sb.w + 12 : 0), availH = H - margin - statsBottom - 12;
+  const k = clamp(Math.min(1, (availW - (cols - 1) * M.gap - pad * 2) / (cols * M.cellW),
+    (availH - rows * labelH - (rows - 1) * M.gap - pad * 2) / (rows * M.cellH)), M.minScale, 1);
+  const cellW = M.cellW * k, cellH = M.cellH * k;
+  const ww = cols * cellW + (cols - 1) * M.gap + pad * 2, wh = rows * (cellH + labelH) + (rows - 1) * M.gap + pad * 2;
+  const ox = W - ww - margin, oy = H - wh - margin;
+  hudButtons.push({ id: 'map', x: ox, y: oy, w: ww, h: wh });
+  mapHint(ox, oy, ww, 'M: このエリアの地図');
+  ctx.fillStyle = 'rgba(13,17,23,0.88)'; roundRect(ox, oy, ww, wh, 8); ctx.fill();
+  // 縮尺: fullW の幅が枠いっぱい。高さが枠をはみ出すゾーンがあればそれに合わせて小さくする
+  const zs = Math.min(cellW / M.fullW, ...zones.map(([, z]) => cellH / z.h));
+  // ゾーンを描く左上 (x, y。枠の中央) と枠の左上 (cx, cy。枠の下に名前を書く)
+  const pos = {};
+  for (const [id, z] of zones) {
+    const [c, r] = z.mapPos;
+    const cx = ox + pad + c * (cellW + M.gap), cy = oy + pad + r * (cellH + labelH + M.gap);
+    pos[id] = { x: cx + (cellW - z.w * zs) / 2, y: cy + (cellH - z.h * zs) / 2, cx, cy };
+  }
+  const gateAt = (id, g) => ({ x: pos[id].x + (g.x + g.w / 2) * zs, y: pos[id].y + (g.y + g.h / 2) * zs });
+  // 門どうしのつながり (同じ組を 2 回描かないよう、id の小さいほうからだけ)
+  ctx.strokeStyle = 'rgba(128,222,234,0.55)'; ctx.lineWidth = 2;
+  for (const [id, z] of zones) for (const g of z.gates) {
+    if (id > g.to) continue;
+    const dest = WORLD.zones[g.to].gates.find((t) => t.id === g.toGate);
+    if (!dest) continue;
+    const a = gateAt(id, g), b = gateAt(g.to, dest);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  for (const [id, z] of zones) {
+    const p = pos[id], here = id === zone.id;
+    ctx.fillStyle = z.theme.ground; ctx.fillRect(p.x, p.y, z.w * zs, z.h * zs);
+    for (const [kind, x, y, w, h] of z.obstacles) {
+      ctx.fillStyle = WORLD.terrain[kind].minimap;
+      ctx.fillRect(p.x + x * zs, p.y + y * zs, Math.max(1, w * zs), Math.max(1, h * zs));
+    }
+    ctx.fillStyle = '#80deea';
+    for (const g of z.gates) ctx.fillRect(p.x + g.x * zs, p.y + g.y * zs, Math.max(2, g.w * zs), Math.max(2, g.h * zs));
+    if (z.respawn) { ctx.fillStyle = '#ff9800'; pathCircle(p.x + z.respawn.x * zs, p.y + z.respawn.y * zs, 2.5); ctx.fill(); }
+    ctx.fillStyle = '#ffe082';
+    for (const n of z.npcs || []) { pathCircle(p.x + n.x * zs, p.y + n.y * zs, 2); ctx.fill(); }
+    ctx.strokeStyle = here ? '#4fc3f7' : 'rgba(255,255,255,0.25)'; ctx.lineWidth = here ? 2 : 1;
+    ctx.strokeRect(p.x, p.y, z.w * zs, z.h * zs);
+    if (here) { ctx.fillStyle = '#4fc3f7'; pathCircle(p.x + player.x * zs, p.y + player.y * zs, 3.5); ctx.fill(); }
+    // 名前と敵レベル (町は「安全」)
+    const lx = p.cx + cellW / 2, ly = p.cy + cellH + 11;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = here ? '#4fc3f7' : '#e6edf3'; ctx.fillText(z.name, lx, ly);
+    ctx.font = '10px sans-serif'; ctx.fillStyle = z.safe ? '#a5d6a7' : '#9da7b3'; ctx.fillText(zoneLevelText(z), lx, ly + 12);
+  }
 }
 
 function drawTooltip() {

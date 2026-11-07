@@ -21,7 +21,7 @@ function createPlayer() {
   }
   return {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
-    stats: null, base: growthBase(1), hp: d.stats.maxHp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
+    stats: null, base: growthBase(1), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: EC.startGold, potions: startPotions(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null,
     skillCd, hitFlash: 0, dead: false,
@@ -74,6 +74,7 @@ const actionCost = (u) => TN.baseSpeed / Math.max(TN.minSpeed, u.stats.speed);
 
 const opponents = (faction) => (faction === 'player' ? enemies : (player && !player.dead ? [player] : []));
 const skillCooldown = (sk) => sk.cooldown * 100 / (100 + player.stats.skillHaste);
+const skillMp = (sk) => sk.mp || 0;
 
 // ----- 成長 -----
 const DS = P.derivedStats;
@@ -137,6 +138,7 @@ function levelUp() {
   }
   p.stats = computeStats(p);
   p.hp = p.stats.maxHp;
+  p.mp = p.stats.maxMp;
   const learned = SKILLS.filter((s) => s.unlockLevel === p.level).map((s) => `${s.name}（${s.label}）`);
   showMsg(`LEVEL UP!  Lv ${p.level}`, [gains.join('　'), learned.length ? `新しいスキル: ${learned.join('、')}` : ''].filter(Boolean).join('\n'));
   log(`レベルが ${p.level} に上がった！`, '#ffd54f');
@@ -149,7 +151,7 @@ const homeZone = () => (WORLD.zones[player.home] && WORLD.zones[player.home].res
 function respawnPlayer() {
   const p = player, home = homeZone();
   const r = WORLD.zones[home].respawn;
-  Object.assign(p, { hp: p.stats.maxHp, dead: false, facing: -Math.PI / 2 });
+  Object.assign(p, { hp: p.stats.maxHp, mp: p.stats.maxMp, dead: false, facing: -Math.PI / 2 });
   enterZone(home, tileOf(r.x), tileOf(r.y));
   game.state = 'play';
   const lost = [game.deathLoss.exp > 0 ? `EXP -${game.deathLoss.exp}` : '', game.deathLoss.gold > 0 ? `-${game.deathLoss.gold} G` : ''].filter(Boolean);

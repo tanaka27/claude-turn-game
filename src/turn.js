@@ -28,7 +28,7 @@ function runUntilPlayer() {
   }
 }
 
-// ゲーム内の時刻を t まで進める (HP の回復・湧き場所・落とし物は経った時間ぶん進む)
+// ゲーム内の時刻を t まで進める (HP・MP の回復・湧き場所・落とし物は経った時間ぶん進む)
 function advanceTime(t) {
   const dt = t - game.time;
   if (dt <= 0) return;
@@ -37,6 +37,7 @@ function advanceTime(t) {
   if (!p.dead) {
     const resting = game.time - p.lastHurt >= PG.restDelay;
     p.hp = Math.min(p.stats.maxHp, p.hp + (p.stats.hpRegen + (resting ? p.stats.maxHp * PG.restRegenRate : 0)) * dt);
+    p.mp = Math.min(p.stats.maxMp, p.mp + (p.stats.mpRegen + (resting ? p.stats.maxMp * PG.restMpRegenRate : 0)) * dt);
   }
   updateCamps(dt);
   updateLoots(dt);

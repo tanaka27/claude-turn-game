@@ -114,12 +114,13 @@ function renderMenu() {
     detailHtml(it, menu.sel.from) + (menu.mode === 'char' ? '<div class="sep"></div>' + strengthHtml() : '');
 }
 
-// キャラクターの画面の左上: 名前・レベル・HP・経験値・撃破数・今いるゾーン
+// キャラクターの画面の左上: 名前・レベル・HP・MP・経験値・撃破数・今いるゾーン
 function profileHtml() {
   const p = player, maxed = p.level >= PG.maxLevel, need = expToNext(p.level);
   const bar = (v, max, color) => `<div class="bar" style="--bc:${color}"><i style="width:${clamp(v / max, 0, 1) * 100}%"></i></div>`;
   return `<div class="profile"><div class="pname">${p.name}　Lv${p.level}</div>
     <div class="row"><span>HP</span><span>${Math.ceil(p.hp)} / ${p.stats.maxHp}</span></div>${bar(p.hp, p.stats.maxHp, '#ef5350')}
+    <div class="row"><span>MP</span><span>${Math.floor(p.mp)} / ${p.stats.maxMp}</span></div>${bar(p.mp, p.stats.maxMp, THEME.mp)}
     <div class="row"><span>経験値</span><span>${maxed ? '最大レベル' : `${p.exp} / ${need}（あと ${need - p.exp}）`}</span></div>${bar(maxed ? 1 : p.exp, maxed ? 1 : need, '#b39ddb')}
     <div class="row"><span>撃破数</span><span>${game.kills}</span></div>
     <div class="row"><span>いる場所</span><span>${zone.name}</span></div></div>`;
@@ -184,20 +185,22 @@ function sellMaterial(id, all) {
 }
 
 function equipItem(it) {
-  const p = player, before = p.stats.maxHp;
+  const p = player, before = p.stats.maxHp, beforeMp = p.stats.maxMp;
   p.inventory = p.inventory.filter((x) => x !== it);
   if (p.equip[it.slot]) p.inventory.push(p.equip[it.slot]);
   p.equip[it.slot] = it;
   p.stats = computeStats(p);
   p.hp = clamp(p.hp + p.stats.maxHp - before, 1, p.stats.maxHp);
+  p.mp = clamp(p.mp + p.stats.maxMp - beforeMp, 0, p.stats.maxMp);
   menu.sel = { from: 'equip', id: it.id };
 }
 function unequipItem(it) {
-  const p = player, before = p.stats.maxHp;
+  const p = player, before = p.stats.maxHp, beforeMp = p.stats.maxMp;
   p.equip[it.slot] = null;
   p.inventory.push(it);
   p.stats = computeStats(p);
   p.hp = clamp(p.hp + p.stats.maxHp - before, 1, p.stats.maxHp);
+  p.mp = clamp(p.mp + p.stats.maxMp - beforeMp, 0, p.stats.maxMp);
   menu.sel = { from: 'inv', id: it.id };
 }
 

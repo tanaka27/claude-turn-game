@@ -5,6 +5,7 @@
 // 【ステータスの意味】(主人公はドラクエ風。敵は atk / def / int / mdef / speed / critRate を直接持つ)
 //   レベルアップで上がる (上がり方は params.js の progression.growth):
 //     maxHp       : さいだいHP
+//     maxMp       : さいだいMP。スキルを使うと減る (スキルごとの mp)
 //     str         : ちから。こうげき力のもと
 //     vit         : みのまもり。しゅび力のもと
 //     agi         : すばやさ。速度を決める
@@ -13,6 +14,7 @@
 //     luk         : うんのよさ。会心率を決める
 //     critMult    : 会心時のダメージ倍率
 //     hpRegen     : 1 ターンごとの HP 回復量
+//     mpRegen     : 1 ターンごとの MP 回復量
 //   上の値から計算する (式は params.js の derivedStats。ここには書かない):
 //     atk         : こうげき力 = ちから + 装備。ダメージの基礎値
 //     def         : しゅび力 = みのまもり + 装備。物理の被ダメージを軽減
@@ -34,6 +36,7 @@
 //   charge : 0 なら使ったその場で判定する。1 なら予告 (予測範囲) を出し、使った者の次の行動で判定する
 //            (その間に範囲の外へ出れば当たらない。速いほど逃げる時間がある)
 //   cooldown: 再使用までの行動回数 (主人公は自分の行動回数、敵はその敵の行動回数で数える)
+//   mp     : 主人公のスキルが使う MP。足りないと使えない (省略時 0)
 //   kind   : 'physical' … 物理 (省略時)。こうげき力としゅび力で計算 (params.js のダメージ計算式)
 //            'magic'    … 術。かしこさと術防御で計算 (params.js の術のダメージ計算式)
 //   power  : 物理の威力倍率
@@ -50,6 +53,7 @@ const PLAYER = {
   // Lv1 の値
   stats: {
     maxHp: 20,
+    maxMp: 12,
     str: 10,
     vit: 4,
     agi: 20,
@@ -57,6 +61,7 @@ const PLAYER = {
     luk: 20,
     critMult: 1.6,
     hpRegen: 0.05,
+    mpRegen: 0.2,
   },
   // 通常攻撃: 敵のいるマスへ移動しようとすると、その敵を攻撃する (体当たり)
   basicAttack: { name: '斬撃', power: 1.0 },
@@ -65,19 +70,19 @@ const PLAYER = {
   skills: [
     {
       key: '1', label: '1', name: '衝撃波', type: 'projectile', unlockLevel: 1,
-      range: 9, width: 1, cooldown: 5, power: 1.4, pierce: true,
+      range: 9, width: 1, cooldown: 5, mp: 3, power: 1.4, pierce: true,
     },
     {
       key: '2', label: '2', name: '旋風斬', type: 'melee', shape: 'circle', unlockLevel: 3,
-      range: 2.3, cooldown: 7, power: 1.6,
+      range: 2.3, cooldown: 6, mp: 4, power: 1.6,
     },
     {
       key: '3', label: '3', name: 'メテオ', type: 'lob', kind: 'magic', unlockLevel: 6,
-      castRange: 8, radius: 2.3, cooldown: 14, base: 6,
+      castRange: 8, radius: 2.3, cooldown: 10, mp: 8, base: 6,
     },
     {
       key: '4', label: '4', name: 'ダッシュ', type: 'dash', unlockLevel: 1,
-      distance: 4, cooldown: 6,
+      distance: 4, cooldown: 6, mp: 2,
     },
   ],
   // はじめから遊ぶときの装備 (部位: { level, rarity }。null は何も付けない)

@@ -29,6 +29,7 @@ window.addEventListener('keydown', (e) => {
   if (game.state !== 'play') return;
   if (k === 'escape' && aiming) { aiming = null; return; }
   if (!e.repeat && (k === 'escape' || k === 'p')) { togglePause(); return; }
+  if (!e.repeat && k === 'm') { toggleWorldMap(); return; }
   if (game.paused) { if (k === 'c') openMenu('char'); return; }
   if (!canAct()) return;
   // 押しっぱなしのときは、少し間をあけて次の行動をする
@@ -52,6 +53,8 @@ window.addEventListener('keydown', (e) => {
     log(`${sk.name}は Lv${sk.unlockLevel} で使えるようになる。`, '#9da7b3');
   } else if (sk && player.skillCd[sk.key] > 0) {
     log(`${sk.name}はあと ${Math.ceil(player.skillCd[sk.key])} 行動で使える。`, '#9da7b3');
+  } else if (sk && !enoughMp(sk)) {
+    logNoMp(sk);
   } else if (sk) {
     aiming = sk;
   }
@@ -66,9 +69,9 @@ canvas.addEventListener('mousedown', (e) => {
   if (!canAct()) return;
   if (e.button === 2) { aiming = null; player.travel = null; return; }
   if (e.button !== 0) return;
-  // HUD のボタン (画面下の「道具」) を押したら、マスへの操作はしない
+  // HUD のボタン (画面下の「道具」、右下の地図) を押したら、マスへの操作はしない
   const hb = hudButtonAt(e.clientX, e.clientY);
-  if (hb) { if (hb.id === 'items') openMenu('inv'); return; }
+  if (hb) { if (hb.id === 'items') openMenu('inv'); else if (hb.id === 'map') toggleWorldMap(); return; }
   updateMouseTile();
   if (aiming) { castSkill(aiming, mouse.tx, mouse.ty); return; }
   const { tx, ty } = mouse;
@@ -116,6 +119,7 @@ function castSkill(sk, tx, ty) {
   const p = player;
   aiming = null;
   if (!canAct() || p.skillCd[sk.key] > 0) return;
+  if (!enoughMp(sk)) { logNoMp(sk); return; }
   game.inputT = game.rt;
   if (sk.type === 'dash') {
     if (!dash(sk, tx, ty)) return;
@@ -126,8 +130,13 @@ function castSkill(sk, tx, ty) {
     resolveAttack(h);
   }
   p.skillCd[sk.key] = skillCooldown(sk);
+  p.mp = Math.max(0, p.mp - skillMp(sk));
   endPlayerAction();
 }
+
+// MP が足りるか (MP は小数で回復していくので、表示と同じく切り捨てで比べる)
+const enoughMp = (sk) => Math.floor(player.mp + 1e-9) >= skillMp(sk);
+const logNoMp = (sk) => log(`MP が足りない（${sk.name}は MP ${skillMp(sk)}、今 ${Math.floor(player.mp)}）。`, '#9da7b3');
 
 // ダッシュ: 狙ったマスの向き (8 方向) へ、ふさがるまで distance マス一気に進む。進めなければ false
 function dash(sk, tx, ty) {

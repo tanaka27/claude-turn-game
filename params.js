@@ -60,6 +60,7 @@ const PARAMS = {
     //   Lv1 の値は data/player.js の PLAYER.stats。ここにないステータスはレベルアップでは上がらない
     growth: {
       maxHp: { gain: [[10, 25], [20, 55], [30, 85]], spread: 1.5 },
+      maxMp: { gain: [[10, 14], [20, 32], [30, 50]], spread: 1 },
       str: { gain: [[10, 9], [20, 19], [30, 29]], spread: 0.6 },
       vit: { gain: [[10, 4], [20, 8], [30, 12]], spread: 0.4 },
       agi: { gain: [[10, 12], [20, 26], [30, 40]], spread: 0.8 },
@@ -70,6 +71,7 @@ const PARAMS = {
     deathGoldLoss: 0.1,   // 倒れたとき、所持金から失う割合
     restDelay: 8,         // 最後に攻撃を受けてからこのターン数で「休息」状態になる
     restRegenRate: 0.03,  // 休息中に追加で回復する量 (最大HP比 / ターン)
+    restMpRegenRate: 0.02, // 休息中に追加で回復する MP (最大MP比 / ターン)
   },
 
   // 主人公のステータスのうち、ほかのステータスから計算するもの

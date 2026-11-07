@@ -13,9 +13,10 @@ function startGame(save) {
   for (const k in shopStocks) delete shopStocks[k];
   Object.assign(game, { state: 'play', paused: false, kills: 0, time: 0, shake: 0, saveT: P.save.interval });
   const start = WORLD.zones[WORLD.start].respawn;
-  const at = save ? applySave(save) : { zone: WORLD.start, tx: tileOf(start.x), ty: tileOf(start.y), hp: null };
+  const at = save ? applySave(save) : { zone: WORLD.start, tx: tileOf(start.x), ty: tileOf(start.y), hp: null, mp: null };
   player.stats = computeStats(player);
   player.hp = at.hp ? Math.min(at.hp, player.stats.maxHp) : player.stats.maxHp;
+  player.mp = Number.isFinite(at.mp) ? clamp(at.mp, 0, player.stats.maxMp) : player.stats.maxMp;
   player.next = game.time;
   enterZone(at.zone, at.tx, at.ty);
   if (!save) showMsg('冒険の始まり', zone.name);
