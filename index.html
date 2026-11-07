@@ -85,6 +85,26 @@
   .qgoal { font-size: 13px; color: #e6edf3; }
   .qreward { font-size: 13px; color: #ffd54f; margin-top: 2px; }
   .note { color: #69f0ae; margin: 0; font-size: 14px; }
+  /* 道具一覧 */
+  .panel.catalog-panel { max-width: 900px; }
+  .cat-tabs { display: flex; gap: 6px; }
+  .cat-tabs button { margin: 0; padding: 6px 14px; font-size: 14px; background: #30363d; }
+  .cat-tabs button.on { background: #1f6feb; }
+  .cat-body { margin-top: 14px; max-height: 68vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+  .cat-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; }
+  .cat-card .row { display: flex; justify-content: space-between; gap: 16px; margin-top: 4px; }
+  .cat-card .row span:first-child { color: #8b949e; white-space: nowrap; }
+  .cat-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .cat-head b { font-size: 16px; }
+  .cat-own { margin-left: auto; color: #ffd54f; }
+  .cat-table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+  .cat-table th { text-align: left; color: #8b949e; font-weight: normal; border-bottom: 1px solid #30363d; padding: 4px 6px; }
+  .cat-table td { padding: 4px 6px; border-bottom: 1px solid #21262d; vertical-align: top; }
+  .cat-table .num { text-align: right; white-space: nowrap; }
+  .cat-table tr.none td { opacity: 0.6; }
+  .cat-sub { color: #6e7681; font-size: 12px; margin-left: 6px; }
+  .dot { display: inline-block; width: 10px; height: 10px; transform: rotate(45deg); margin-right: 8px; }
+  .cat-total { text-align: right; color: #9da7b3; } .cat-total b { color: #ffd54f; }
   @media (max-width: 760px) { .menu-body { grid-template-columns: 1fr; } .list, #invList, #matList { max-height: 30vh; } }
 </style>
 </head>
@@ -103,6 +123,7 @@
       <b>1 / 2 / 3 / 4</b><span>スキルを構える → マウスで狙ってクリック（同じキー / Enter でも可。右クリック・Esc でやめる）</span>
       <b>R / T</b><span>回復薬 / 上回復薬を使う（上回復薬は森の隠れ里で買える）</span>
       <b>I</b><span>持ち物（装備の付け替え・捨てる）</span>
+      <b>L</b><span>道具一覧（回復薬・素材・装備の図鑑。落とす敵や売っている店が分かる）</span>
       <b>F</b><span>となりの人に話しかける（人のいるマスへ移動しても話しかける）</span>
       <b>Esc / P</b><span>一時停止（一時停止中に C でキャラクターの画面）</span>
       <b>マウスを敵に重ねる</b><span>敵のレベル・速度などを表示（名前の色: 赤＝格上、灰＝格下）</span>
@@ -154,9 +175,19 @@
   </div>
 </div>
 
+<div id="catalog" class="overlay">
+  <div class="panel menu catalog-panel">
+    <div class="menu-head">
+      <h2>道具一覧</h2><div id="catalogTabs" class="cat-tabs"></div>
+      <button class="x" data-act="close">閉じる（Esc）</button>
+    </div>
+    <div id="catalogBody" class="cat-body"></div>
+  </div>
+</div>
+
 <div id="pause" class="overlay">
   <div class="panel"><h2>一時停止</h2><p>Esc / P で再開</p>
-    <button data-act="resume">再開</button><button class="secondary" data-act="char">キャラクター（C）</button>
+    <button data-act="resume">再開</button><button class="secondary" data-act="char">キャラクター（C）</button><button class="secondary" data-act="catalog">道具一覧（L）</button>
     <p id="saveWhere"></p></div>
 </div>
 
@@ -180,6 +211,7 @@
 <script src="src/turn.js"></script>
 <script src="src/ui.js"></script>
 <script src="src/quests.js"></script>
+<script src="src/catalog.js"></script>
 <script src="src/render.js"></script>
 <script src="src/hud.js"></script>
 <script src="src/validate.js"></script>

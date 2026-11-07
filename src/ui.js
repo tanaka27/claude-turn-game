@@ -4,7 +4,8 @@
 'use strict';
 
 // ----- 持ち物・店の画面 -----
-// menu.mode: 'inv' (持ち物) / 'shop' (店) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る)
+// menu.mode: 'inv' (持ち物) / 'shop' (店) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る) /
+//   'quest' (クエスト。src/quests.js) / 'catalog' (道具一覧。src/catalog.js)
 // shop: 開いている店 (data/items.js の ITEMS.shops のキー) / sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
 const menu = { mode: 'inv', shop: null, sel: null };
 // 店ごとの品ぞろえ { 店のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
@@ -36,9 +37,10 @@ function openMenu(mode, shop) {
 function closeMenu() {
   $('menu').classList.remove('show');
   $('quest').classList.remove('show');
+  $('catalog').classList.remove('show');
   game.state = 'play';
-  // キャラクターの画面は一時停止のまま開いているので、一時停止の画面に戻す
-  if (menu.mode === 'char' && game.paused) showPause();
+  // キャラクター・道具一覧の画面は一時停止のまま開いていることがあるので、一時停止の画面に戻す
+  if ((menu.mode === 'char' || menu.mode === 'catalog') && game.paused) showPause();
   saveGame();
 }
 
@@ -239,4 +241,5 @@ $('pause').addEventListener('click', (e) => {
   if (!act || game.state !== 'play' || !game.paused) return;
   if (act.dataset.act === 'resume') togglePause();
   else if (act.dataset.act === 'char') openMenu('char');
+  else if (act.dataset.act === 'catalog') openCatalog();
 });
