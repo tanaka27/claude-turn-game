@@ -17,6 +17,10 @@ function bar(x, y, w, h, ratio, color, label) {
   }
 }
 
+// HUD の上のクリックできるボタン ({ id, x, y, w, h })。drawHUD が毎回作り直す
+const hudButtons = [];
+const hudButtonAt = (x, y) => hudButtons.find((b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) || null;
+
 function drawHUD() {
   if (!player) return;
   const p = player, st = p.stats;
@@ -55,14 +59,19 @@ function drawHUD() {
   // スキルバー
   const slots = SKILLS.map((s) => ({ label: s.label, name: s.name, cd: p.skillCd[s.key], max: skillCooldown(s), active: aiming === s,
       lock: p.level < s.unlockLevel ? s.unlockLevel : 0 }))
-    .concat(Object.entries(IT.potions).map(([id, po]) => ({ label: po.key.toUpperCase(), name: po.name, cd: 0, max: 1, count: p.potions[id] || 0 })));
+    .concat(Object.entries(IT.potions).map(([id, po]) => ({ label: po.key.toUpperCase(), name: po.name, cd: 0, max: 1, count: p.potions[id] || 0 })))
+    .concat([{ label: 'I', name: '道具', cd: 0, max: 1, button: 'items' }]);
+  hudButtons.length = 0;
   const sz = 62, gap = 12, total = slots.length * sz + (slots.length - 1) * gap;
   let sx = (W - total) / 2;
   const sy = H - sz - 34;
   for (const s of slots) {
-    ctx.fillStyle = s.active ? 'rgba(80,200,255,0.35)' : 'rgba(13,17,23,0.85)';
+    // ボタンの枠 (クリックで開く。マウスを重ねると明るくする)
+    const hover = s.button && mouse.x >= sx && mouse.x <= sx + sz && mouse.y >= sy && mouse.y <= sy + sz;
+    if (s.button) hudButtons.push({ id: s.button, x: sx, y: sy, w: sz, h: sz });
+    ctx.fillStyle = s.active ? 'rgba(80,200,255,0.35)' : hover ? 'rgba(48,80,110,0.95)' : s.button ? 'rgba(30,40,55,0.9)' : 'rgba(13,17,23,0.85)';
     roundRect(sx, sy, sz, sz, 10); ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = s.cd > 0 || s.lock ? '#30363d' : '#4fc3f7'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = s.button ? '#ffd54f' : s.cd > 0 || s.lock ? '#30363d' : '#4fc3f7'; ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = '#e6edf3'; ctx.font = 'bold 14px sans-serif';
     if (s.lock) {
       // まだ使えないスキルは名前を暗くし、使えるようになるレベルを出す

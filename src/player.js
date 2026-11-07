@@ -23,14 +23,13 @@ window.addEventListener('keydown', (e) => {
   if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
   if (game.state === 'menu') {
     if (!e.repeat && (k === 'escape' || (k === 'i' && menu.mode === 'inv') || (k === 'c' && menu.mode === 'char') ||
-      (k === 'l' && menu.mode === 'catalog') ||
       (k === 'f' && (menu.mode === 'shop' || menu.mode === 'quest')))) closeMenu();
     return;
   }
   if (game.state !== 'play') return;
   if (k === 'escape' && aiming) { aiming = null; return; }
   if (!e.repeat && (k === 'escape' || k === 'p')) { togglePause(); return; }
-  if (game.paused) { if (k === 'c') openMenu('char'); else if (k === 'l') openCatalog(); return; }
+  if (game.paused) { if (k === 'c') openMenu('char'); return; }
   if (!canAct()) return;
   // 押しっぱなしのときは、少し間をあけて次の行動をする
   if (e.repeat && game.rt - game.inputT < TN.repeatDelay) return;
@@ -45,7 +44,6 @@ window.addEventListener('keydown', (e) => {
   if (WAIT_KEYS.includes(k) || e.code === 'Numpad5') { act(waitTurn); return; }
   if (e.repeat) return;
   if (k === 'i') { openMenu('inv'); return; }
-  if (k === 'l') { openCatalog(); return; }
   if (k === 'f') { interact(); return; }
   const potion = potionByKey(k);
   if (potion) { act(() => usePotion(potion)); return; }
@@ -59,12 +57,18 @@ window.addEventListener('keydown', (e) => {
   }
 });
 window.addEventListener('blur', () => { aiming = null; });
-canvas.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+canvas.addEventListener('mousemove', (e) => {
+  mouse.x = e.clientX; mouse.y = e.clientY;
+  canvas.style.cursor = hudButtonAt(mouse.x, mouse.y) ? 'pointer' : '';
+});
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('mousedown', (e) => {
   if (!canAct()) return;
   if (e.button === 2) { aiming = null; player.travel = null; return; }
   if (e.button !== 0) return;
+  // HUD のボタン (画面下の「道具」) を押したら、マスへの操作はしない
+  const hb = hudButtonAt(e.clientX, e.clientY);
+  if (hb) { if (hb.id === 'items') openMenu('inv'); return; }
   updateMouseTile();
   if (aiming) { castSkill(aiming, mouse.tx, mouse.ty); return; }
   const { tx, ty } = mouse;

@@ -1,6 +1,6 @@
 # 装備・素材・お金・店
 
-素材とお金、落とし物、装備の生成とレア度、回復薬、持ち物・店・キャラクターの画面。装備・回復薬・素材の定義は `data/items.js`（`ITEMS`）、お金・持ち物の数値は `params.js` の `economy`。ステータスの表示名は `data/stats.js`。コードは `src/items.js`（装備・落とし物）と `src/ui.js`（持ち物・店の画面）。
+素材とお金、落とし物、装備の生成とレア度、回復薬。道具一覧・店・キャラクターの画面のしくみは [menu.md](menu.md)。装備・回復薬・素材の定義は `data/items.js`（`ITEMS`）、お金・持ち物の数値は `params.js` の `economy`。ステータスの表示名は `data/stats.js`。コードは `src/items.js`（装備・落とし物）と `src/ui.js`（店の品ぞろえ）。
 
 ## お金・持ち物（`economy`）
 
@@ -79,11 +79,7 @@
 
 - `makeItem(部位, レベル, レア度, ボスか)` が装備を作る。装備は `{ id, slot, name, rarity, level, stats }` の形で、そのまま保存する
 - 敵が倒れると `dropLoot` が素材（`kind: 'material'`）と装備（`kind: 'item'`）を `loots` に落とす。落とし物はマス（`tx`, `ty`）と、重ならないように少しずらして描く位置を持つ。主人公がマスに入ると `pickUpAt` が拾い、`updateLoots` が時間で消す。拾った素材は `player.materials`（`{ 素材のid: 数 }`）に足す
-- 持ち物・店・キャラクターの画面は HTML（`index.html` の `#menu`）。`openMenu('inv' | 'shop' | 'char', 店のキー)` で開き（店のときは `menu.shop` に店のキー）、`renderMenu` が中身を作る。ボタンの処理は `#menu` のクリックをまとめて受けて振り分ける
-  - 装備を選ぶと、同じ部位の装備中のものとの差を緑（上がる）・赤（下がる）で表示する
-  - 何も選んでいないときは「つよさ」（`strengthHtml`）を出す: 全ステータスと、装備で上がっている分（装備がないときとの差）
-  - キャラクターの画面（`'char'`）は一時停止画面の「キャラクター」ボタンか、一時停止中の C キーで開く。持ち物の画面と同じく装備の付け替え・外す・捨てるができ、左上に名前・レベル・HP・経験値（次のレベルまで）・撃破数・今いるゾーン（`profileHtml`）、装備を選んでいるときも詳細の下に「つよさ」を出す。閉じると（Esc / C / 閉じる）一時停止画面に戻る（`closeMenu` が `showPause` を呼ぶ）
 - NPC は `world.js` の `npcs`（NPC のマスは通れない）。`nearNpc` がとなりの NPC を探し、F キーの `interact`、または NPC のマスへの移動（`tryMove`）で `talkTo` が役割（`shop` / `quest`）に応じた画面を開く。店の NPC は `shop` に `ITEMS.shops` のキーを持つ
-- 持ち物の列の下に素材の一覧を出す（`renderMaterials`）。店では各素材に「1つ売る」「全部」、見出しに「全部売る」のボタンが付く（`sellMaterial`）
+- 画面（道具一覧・店・キャラクター）の作り方は [menu.md](menu.md)
 - 店の品ぞろえは店ごとに `shopStocks[店のキー]` に持ち、`refreshShop` が自分のレベルが変わったときだけ作り直す（セーブはしない）
 - 回復薬は `player.potions`（`{ 回復薬のキー: 数 }`）。`usePotion(キー)` で使う。キー入力は `potionByKey`（`src/player.js`）、HUD のスキル欄の右に回復薬の数だけ枠を出す

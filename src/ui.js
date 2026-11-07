@@ -1,11 +1,10 @@
 // =====================================================================
-//  画面 (持ち物と店・NPC・一時停止)
+//  画面 (道具一覧と店・NPC・一時停止)
 // =====================================================================
 'use strict';
 
-// ----- 持ち物・店の画面 -----
-// menu.mode: 'inv' (持ち物) / 'shop' (店) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る) /
-//   'quest' (クエスト。src/quests.js) / 'catalog' (道具一覧。src/catalog.js)
+// ----- 道具一覧・店の画面 -----
+// menu.mode: 'inv' (道具一覧。I キーか HUD の「道具」ボタンで開く) / 'shop' (店) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る)
 // shop: 開いている店 (data/items.js の ITEMS.shops のキー) / sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
 const menu = { mode: 'inv', shop: null, sel: null };
 // 店ごとの品ぞろえ { 店のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
@@ -37,10 +36,9 @@ function openMenu(mode, shop) {
 function closeMenu() {
   $('menu').classList.remove('show');
   $('quest').classList.remove('show');
-  $('catalog').classList.remove('show');
   game.state = 'play';
-  // キャラクター・道具一覧の画面は一時停止のまま開いていることがあるので、一時停止の画面に戻す
-  if ((menu.mode === 'char' || menu.mode === 'catalog') && game.paused) showPause();
+  // キャラクターの画面は一時停止のまま開いているので、一時停止の画面に戻す
+  if (menu.mode === 'char' && game.paused) showPause();
   saveGame();
 }
 
@@ -88,10 +86,10 @@ function detailHtml(it, from) {
 
 function renderMenu() {
   const p = player;
-  $('menuTitle').textContent = menu.mode === 'shop' ? shopDef().name : menu.mode === 'char' ? 'キャラクター' : '持ち物';
+  $('menuTitle').textContent = menu.mode === 'shop' ? shopDef().name : menu.mode === 'char' ? 'キャラクター' : '道具一覧';
   $('profile').innerHTML = menu.mode === 'char' ? profileHtml() : '';
-  $('menuGold').textContent = `所持金 ${p.gold} G　` +
-    Object.entries(IT.potions).map(([id, po]) => `${po.name} ${p.potions[id] || 0} / ${po.max}`).join('　');
+  $('menuGold').textContent = `所持金 ${p.gold} G`;
+  renderTools();
   $('equipList').innerHTML = Object.keys(IT.slots).map((slot) => {
     const it = p.equip[slot];
     return it ? itemChip(it, 'equip') : `<div class="item empty">${IT.slots[slot].label}: なし</div>`;
@@ -136,6 +134,27 @@ function strengthHtml() {
     return `<div class="row"><span>${STATS[k].label}</span><span>${fmtStat(k, st[k])} ${d}</span></div>`;
   }).join('');
   return `<div class="dname">つよさ</div><div class="dsub">Lv${p.level}　色の数字は装備で上がっている分</div><div class="stats">${rows}</div>`;
+}
+
+// ----- 道具 (使うもの。今は回復薬だけ) -----
+// 道具の種類を増やすときは toolEntries に足す。use() は 1 行動を返す関数 (act に渡す。行動したら true)
+function toolEntries() {
+  const p = player;
+  return Object.entries(IT.potions).map(([id, po]) => ({
+    id, name: po.name, count: p.potions[id] || 0, max: po.max, key: po.key,
+    desc: `最大HPの ${Math.round(po.heal * 100)}% 回復（今なら ${Math.round(p.stats.maxHp * po.heal)}）`,
+    usable: (p.potions[id] || 0) > 0 && p.hp < p.stats.maxHp,
+    use: () => usePotion(id),
+  }));
+}
+// 道具の一覧。道具一覧の画面 (inv) では「使う」で画面を閉じて使う (1 行動)
+function renderTools() {
+  const inv = menu.mode === 'inv';
+  $('toolList').innerHTML = toolEntries().map((t) => {
+    const btn = inv ? `<button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>使う</button>` : '';
+    return `<div class="item tool${t.count ? '' : ' none'}"><b>${t.name} ×${t.count}<small> / ${t.max}</small></b>
+      <span>${t.desc}・${t.key.toUpperCase()} キー</span>${btn}</div>`;
+  }).join('');
 }
 
 const canBuyPotion = (id) => player.gold >= IT.potions[id].price && (player.potions[id] || 0) < IT.potions[id].max;
@@ -183,18 +202,23 @@ function unequipItem(it) {
 $('menu').addEventListener('click', (e) => {
   if (game.state !== 'menu') return;
   const p = player;
-  const act = e.target.closest('[data-act]');
-  if (act && !act.disabled) {
-    const it = findSel(), a = act.dataset.act;
+  const btn = e.target.closest('[data-act]');
+  if (btn && !btn.disabled) {
+    const it = findSel(), a = btn.dataset.act;
     if (a === 'close') { closeMenu(); return; }
-    const pid = act.dataset.potion;
+    if (a === 'use' && menu.mode === 'inv') {
+      const t = toolEntries().find((x) => x.id === btn.dataset.tool);
+      if (t && t.usable) { closeMenu(); act(t.use); }
+      return;
+    }
+    const pid = btn.dataset.potion;
     if (a === 'potion' && menu.mode === 'shop' && shopDef().potions.includes(pid) && canBuyPotion(pid)) {
       p.gold -= IT.potions[pid].price;
       p.potions[pid] = (p.potions[pid] || 0) + 1;
     } else if (a === 'equip' && it) equipItem(it);
     else if (a === 'unequip' && it && p.inventory.length < EC.inventorySize) unequipItem(it);
     else if (a === 'drop' && it) { p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
-    else if (a === 'sellMat' && menu.mode === 'shop') sellMaterial(act.dataset.mat, !!act.dataset.all);
+    else if (a === 'sellMat' && menu.mode === 'shop') sellMaterial(btn.dataset.mat, !!btn.dataset.all);
     else if (a === 'sellAllMat' && menu.mode === 'shop') for (const id in p.materials) sellMaterial(id, true);
     else if (a === 'sell' && it) { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
     else if (a === 'buy' && it && p.gold >= itemValue(it) && p.inventory.length < EC.inventorySize) {
@@ -241,5 +265,4 @@ $('pause').addEventListener('click', (e) => {
   if (!act || game.state !== 'play' || !game.paused) return;
   if (act.dataset.act === 'resume') togglePause();
   else if (act.dataset.act === 'char') openMenu('char');
-  else if (act.dataset.act === 'catalog') openCatalog();
 });
