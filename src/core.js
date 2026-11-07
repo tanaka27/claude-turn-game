@@ -31,6 +31,7 @@ const FC = THEME.faction; // 陣営ごとの色 (FC.player / FC.enemy)
 // ===================================================================
 //  画面
 // ===================================================================
+const T = 40;  // 1 マスの大きさ (px)
 let W = 0, H = 0, DPR = 1, VIEW = 1;
 function resize() {
   DPR = window.devicePixelRatio || 1;
@@ -40,7 +41,8 @@ function resize() {
   canvas.height = Math.floor(H * DPR);
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
-  VIEW = clamp(Math.min(W / 1400, H / 860), 0.55, 1.2);
+  const [cols, rows] = PARAMS.field.viewTiles;
+  VIEW = Math.min(W / (cols * T), H / (rows * T));
 }
 window.addEventListener('resize', resize);
 resize();
