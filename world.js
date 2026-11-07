@@ -20,8 +20,8 @@
 //               spawn: この門から入ってきたときに立つ位置 (門の範囲の外に置く)
 //   camps     : 敵の湧き場所。name / 中心(x, y) / level: 敵レベル / respawn: 再出現までのターン数 /
 //               spread: 湧く範囲の半径(px) / members: 敵 (モンスター) の種類 (data/enemies.js の ENEMIES のキー)
-//   npcs      : 話しかけられる人 (NPC)。id / name / glyph: 体に書く字 / color / x, y / role: 'shop'(店) / 'quest'(クエスト)
-//               店は shop: data/items.js の ITEMS.shops のキー (町ごとに品ぞろえが違う)
+//   npcs      : 話しかけられる人 (NPC)。id / name / glyph: 体に書く字 / color / x, y / role: 'shop'(商人) / 'smith'(鍛冶屋) / 'quest'(クエスト)
+//               商人は shop: data/items.js の ITEMS.shops のキー、鍛冶屋は smith: ITEMS.smiths のキー (町ごとに品ぞろえが違う)
 //               NPC のマスは通れない。となりのマスから話しかける (NPC のマスへ移動しようとしても話しかける)
 //
 // 【地形の種類 (terrain)】
@@ -68,6 +68,7 @@ const WORLD = {
       camps: [],
       npcs: [
         { id: 'merchant', name: '商人', glyph: '商', color: '#ffb300', x: 560, y: 760, role: 'shop', shop: 'townGeneral' },
+        { id: 'townSmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 320, y: 760, role: 'smith', smith: 'townSmith' },
         { id: 'captain', name: '衛兵隊長', glyph: '衛', color: '#90a4ae', x: 1040, y: 760, role: 'quest' },
       ],
     },
@@ -142,7 +143,7 @@ const WORLD = {
     },
 
     // ------------------------------------------------------------------
-    // 草原の東にある宿場町。武具屋と道具屋がある
+    // 草原の東にある宿場町。鍛冶屋と道具屋がある
     waystation: {
       mapPos: [2, 2],
       name: '風見の宿場', w: 1600, h: 1200, safe: true,
@@ -162,7 +163,7 @@ const WORLD = {
       ],
       camps: [],
       npcs: [
-        { id: 'armorer', name: '武具屋', glyph: '武', color: '#ef9a9a', x: 560, y: 720, role: 'shop', shop: 'wayArms' },
+        { id: 'waySmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 560, y: 720, role: 'smith', smith: 'waySmith' },
         { id: 'grocer', name: '道具屋', glyph: '道', color: '#a5d6a7', x: 1040, y: 760, role: 'shop', shop: 'wayTools' },
       ],
     },
@@ -217,7 +218,7 @@ const WORLD = {
       camps: [],
       npcs: [
         { id: 'herbalist', name: '薬師', glyph: '薬', color: '#80cbc4', x: 440, y: 600, role: 'shop', shop: 'hamletHerbs' },
-        { id: 'artisan', name: '細工師', glyph: '細', color: '#ce93d8', x: 760, y: 600, role: 'shop', shop: 'hamletCraft' },
+        { id: 'hamletSmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 760, y: 600, role: 'smith', smith: 'hamletSmith' },
       ],
     },
 

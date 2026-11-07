@@ -4,19 +4,21 @@
 'use strict';
 
 // ----- 道具一覧・店の画面 -----
-// menu.mode: 'inv' (道具一覧。I キーか HUD の「道具」ボタンで開く) / 'shop' (店) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る)
-// shop: 開いている店 (data/items.js の ITEMS.shops のキー) / sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
+// menu.mode: 'inv' (道具一覧。I キーか HUD の「道具」ボタンで開く) / 'shop' (商人: 回復薬を買う・素材を売る) /
+//   'smith' (鍛冶屋: 装備を買う・売る) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る)
+// shop: 開いている店のキー (商人は data/items.js の ITEMS.shops、鍛冶屋は ITEMS.smiths) / sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
 const menu = { mode: 'inv', shop: null, sel: null };
-// 店ごとの品ぞろえ { 店のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
+// 鍛冶屋ごとの品ぞろえ { 鍛冶屋のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
 const shopStocks = {};
-const shopDef = () => IT.shops[menu.shop];
-const shopStock = () => (shopStocks[menu.shop] ? shopStocks[menu.shop].items : []);
+const shopDef = () => (menu.mode === 'smith' ? IT.smiths : IT.shops)[menu.shop];
+const shopStock = () => (menu.mode === 'smith' && shopStocks[menu.shop] ? shopStocks[menu.shop].items : []);
+const isStore = () => menu.mode === 'shop' || menu.mode === 'smith';
 
-// 店の品ぞろえ: その店の gear を 1 つずつ。自分のレベルが変わったら入れ替える
-function refreshShop(id) {
+// 鍛冶屋の品ぞろえ: その鍛冶屋の gear を 1 つずつ。自分のレベルが変わったら入れ替える
+function refreshSmith(id) {
   const st = shopStocks[id];
   if (st && st.level === player.level) return;
-  const d = IT.shops[id];
+  const d = IT.smiths[id];
   const lv = clamp(player.level + (d.levelOffset || 0), 1, d.maxLevel || PG.maxLevel);
   shopStocks[id] = { level: player.level, items: d.gear.map(([slot, r]) => makeItem(slot, lv, r)) };
 }
@@ -26,9 +28,9 @@ function openMenu(mode, shop) {
   aiming = null;
   player.travel = null;
   menu.mode = mode;
-  menu.shop = mode === 'shop' ? shop : null;
+  menu.shop = mode === 'shop' || mode === 'smith' ? shop : null;
   menu.sel = null;
-  if (mode === 'shop') refreshShop(shop);
+  if (mode === 'smith') refreshSmith(shop);
   if (mode === 'char') $('pause').classList.remove('show');
   renderMenu();
   $('menu').classList.add('show');
@@ -76,7 +78,7 @@ function detailHtml(it, from) {
   else if (from === 'shop') btns = btn('buy', `買う（${itemValue(it)} G）`, p.gold >= itemValue(it) && !full);
   else {
     btns = btn('equip', '装備する');
-    btns += menu.mode === 'shop' ? btn('sell', `売る（${sellPrice(it)} G）`) : btn('drop', '捨てる');
+    btns += menu.mode === 'smith' ? btn('sell', `売る（${sellPrice(it)} G）`) : btn('drop', '捨てる');
   }
   return `<div class="dname" style="color:${r.color}">${it.name}</div>
     <div class="dsub">${r.name}・${IT.slots[it.slot].label}・Lv${it.level}</div>
@@ -86,7 +88,7 @@ function detailHtml(it, from) {
 
 function renderMenu() {
   const p = player;
-  $('menuTitle').textContent = menu.mode === 'shop' ? shopDef().name : menu.mode === 'char' ? 'キャラクター' : '道具一覧';
+  $('menuTitle').textContent = isStore() ? shopDef().name : menu.mode === 'char' ? 'キャラクター' : '道具一覧';
   $('profile').innerHTML = menu.mode === 'char' ? profileHtml() : '';
   $('menuGold').textContent = `所持金 ${p.gold} G`;
   renderTools();
@@ -96,16 +98,17 @@ function renderMenu() {
   }).join('');
   $('invCount').textContent = `${p.inventory.length} / ${EC.inventorySize}`;
   $('invList').innerHTML = p.inventory.map((it) => itemChip(it, 'inv')).join('') || '<p class="hint">何も持っていない</p>';
-  $('shopCol').style.display = menu.mode === 'shop' ? '' : 'none';
+  $('shopCol').style.display = isStore() ? '' : 'none';
   if (menu.mode === 'shop') {
-    const d = shopDef(), items = shopStock();
-    const potions = d.potions.map((id) => {
+    $('shopList').innerHTML = shopDef().potions.map((id) => {
       const po = IT.potions[id], ok = canBuyPotion(id);
       return `<div class="item potion" style="--rc:${rarityOf(po.rarity).color}"><b>${po.name}</b><span>${rarityOf(po.rarity).name}・最大HPの ${Math.round(po.heal * 100)}% 回復（${po.key.toUpperCase()} で使う）</span>
         <button data-act="potion" data-potion="${id}"${ok ? '' : ' disabled'}>買う（${po.price} G）</button></div>`;
-    }).join('');
-    $('shopList').innerHTML = potions + items.map((it) => itemChip(it, 'shop')).join('') +
-      (!items.length && d.gear.length ? '<p class="hint">装備は売り切れ（レベルが上がると入れ替わる）</p>' : '');
+    }).join('') || '<p class="hint">売り物はない</p>';
+  } else if (menu.mode === 'smith') {
+    const items = shopStock();
+    $('shopList').innerHTML = items.map((it) => itemChip(it, 'shop')).join('') ||
+      '<p class="hint">装備は売り切れ（レベルが上がると入れ替わる）</p>';
   }
   renderMaterials();
   const it = findSel();
@@ -225,8 +228,8 @@ $('menu').addEventListener('click', (e) => {
     else if (a === 'drop' && it) { p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
     else if (a === 'sellMat' && menu.mode === 'shop') sellMaterial(btn.dataset.mat, !!btn.dataset.all);
     else if (a === 'sellAllMat' && menu.mode === 'shop') for (const id in p.materials) sellMaterial(id, true);
-    else if (a === 'sell' && it) { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
-    else if (a === 'buy' && it && p.gold >= itemValue(it) && p.inventory.length < EC.inventorySize) {
+    else if (a === 'sell' && it && menu.mode === 'smith' && menu.sel.from === 'inv') { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
+    else if (a === 'buy' && it && menu.mode === 'smith' && p.gold >= itemValue(it) && p.inventory.length < EC.inventorySize) {
       p.gold -= itemValue(it);
       shopStocks[menu.shop].items = shopStock().filter((x) => x !== it);
       p.inventory.push(it);
@@ -246,6 +249,7 @@ function nearNpc() {
 }
 function talkTo(n) {
   if (n.role === 'shop') openMenu('shop', n.shop);
+  else if (n.role === 'smith') openMenu('smith', n.smith);
   else if (n.role === 'quest') openQuest(n);
 }
 function interact() {

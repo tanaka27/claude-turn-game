@@ -23,7 +23,7 @@ window.addEventListener('keydown', (e) => {
   if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
   if (game.state === 'menu') {
     if (!e.repeat && (k === 'escape' || (k === 'i' && menu.mode === 'inv') || (k === 'c' && menu.mode === 'char') ||
-      (k === 'f' && (menu.mode === 'shop' || menu.mode === 'quest')))) closeMenu();
+      (k === 'f' && (menu.mode === 'shop' || menu.mode === 'smith' || menu.mode === 'quest')))) closeMenu();
     return;
   }
   if (game.state !== 'play') return;

@@ -37,19 +37,23 @@ const ITEMS = {
     potion: { name: '回復薬', rarity: 'common', key: 'r', price: 25, heal: 0.4, max: 20, start: 3 },
     hiPotion: { name: '上回復薬', rarity: 'rare', key: 't', price: 80, heal: 0.8, max: 10, start: 0 },
   },
-  // 店。world.js の NPC (role: 'shop') の shop にキーを書く
-  //   name: 画面の見出し / potions: 売る回復薬 / gear: 売る装備 [部位, レア度] (1 つずつ並ぶ)
-  //   levelOffset: 装備レベル = 自分のレベル + levelOffset / maxLevel: 装備レベルの上限 (なければ上限なし)
-  //   自分のレベルが変わると、次に店を開いたときに品ぞろえが入れ替わる。素材と装備はどの店でも売れる
+  // 商人の店。world.js の NPC (role: 'shop') の shop にキーを書く
+  //   name: 画面の見出し / potions: 売る回復薬。素材はどの商人でも売れる (装備の売買は鍛冶屋)
   shops: {
-    townGeneral: { name: '始まりの町の商店', potions: ['potion'], levelOffset: 0, maxLevel: 4,
+    townGeneral: { name: '始まりの町の商店', potions: ['potion'] },
+    wayTools: { name: '宿場の道具屋', potions: ['potion'] },
+    hamletHerbs: { name: '隠れ里の薬師', potions: ['potion', 'hiPotion'] },
+  },
+  // 鍛冶屋。world.js の NPC (role: 'smith') の smith にキーを書く。装備を買う・売る (町ごとに品ぞろえが違う)
+  //   name: 画面の見出し / gear: 売る装備 [部位, レア度] (1 つずつ並ぶ)
+  //   levelOffset: 装備レベル = 自分のレベル + levelOffset / maxLevel: 装備レベルの上限 (なければ上限なし)
+  //   自分のレベルが変わると、次に鍛冶屋を開いたときに品ぞろえが入れ替わる。持っている装備はどの鍛冶屋でも売れる
+  smiths: {
+    townSmith: { name: '始まりの町の鍛冶屋', levelOffset: 0, maxLevel: 4,
       gear: [['weapon', 'common'], ['armor', 'common'], ['accessory', 'common']] },
-    wayArms: { name: '宿場の武具屋', potions: [], levelOffset: 0, maxLevel: 8,
-      gear: [['weapon', 'common'], ['weapon', 'rare'], ['armor', 'common'], ['armor', 'rare']] },
-    wayTools: { name: '宿場の道具屋', potions: ['potion'], levelOffset: 0, maxLevel: 8,
-      gear: [['accessory', 'common'], ['accessory', 'rare']] },
-    hamletHerbs: { name: '隠れ里の薬師', potions: ['potion', 'hiPotion'], gear: [] },
-    hamletCraft: { name: '隠れ里の細工師', potions: [], levelOffset: 1,
+    waySmith: { name: '宿場の鍛冶屋', levelOffset: 0, maxLevel: 8,
+      gear: [['weapon', 'common'], ['weapon', 'rare'], ['armor', 'common'], ['armor', 'rare'], ['accessory', 'common'], ['accessory', 'rare']] },
+    hamletSmith: { name: '隠れ里の鍛冶屋', levelOffset: 1,
       gear: [['weapon', 'rare'], ['weapon', 'epic'], ['armor', 'rare'], ['armor', 'epic'], ['accessory', 'rare'], ['accessory', 'epic']] },
   },
   // 素材 (敵が落とす。店で売るとお金になる。今後は装備を作る材料にする予定)

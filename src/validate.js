@@ -32,6 +32,7 @@ function validateData() {
     for (const n of z.npcs || []) {
       npcIds.push(n.id);
       check(n.role !== 'shop' || ITEMS.shops[n.shop], `world.js ${zid} の NPC '${n.id}': 店 '${n.shop}' が data/items.js の shops にない`);
+      check(n.role !== 'smith' || ITEMS.smiths[n.smith], `world.js ${zid} の NPC '${n.id}': 鍛冶屋 '${n.smith}' が data/items.js の smiths にない`);
     }
   }
   check(WORLD.zones[WORLD.start] && WORLD.zones[WORLD.start].respawn, `world.js: start のゾーン '${WORLD.start}' に respawn がない`);
@@ -112,8 +113,10 @@ function validateData() {
   }
   for (const k in ITEMS.affixes) check(STATS[k], `data/items.js: 追加性能 '${k}' が data/stats.js にない`);
   for (const [id, sh] of Object.entries(ITEMS.shops)) {
-    for (const [slot, r] of sh.gear) check(ITEMS.slots[slot] && rarityIds.includes(r), `data/items.js shops.${id}: 部位 '${slot}' かレア度 '${r}' がない`);
     for (const po of sh.potions) check(ITEMS.potions[po], `data/items.js shops.${id}: 回復薬 '${po}' が potions にない`);
+  }
+  for (const [id, sm] of Object.entries(ITEMS.smiths)) {
+    for (const [slot, r] of sm.gear) check(ITEMS.slots[slot] && rarityIds.includes(r), `data/items.js smiths.${id}: 部位 '${slot}' かレア度 '${r}' がない`);
   }
   for (const [id, po] of Object.entries(ITEMS.potions)) check(rarityIds.includes(po.rarity), `data/items.js potions.${id}: レア度 '${po.rarity}' がない`);
   for (const [id, m] of Object.entries(ITEMS.materials)) check(rarityIds.includes(m.rarity), `data/items.js materials.${id}: レア度 '${m.rarity}' がない`);
