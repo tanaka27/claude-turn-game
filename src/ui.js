@@ -5,7 +5,8 @@
 
 // ----- 道具一覧・店の画面 -----
 // menu.mode: 'inv' (道具一覧。I キーか HUD の「道具」ボタンで開く) / 'shop' (商人: 回復薬を買う・素材を売る) /
-//   'smith' (鍛冶屋: 装備を買う・売る) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る)
+//   'smith' (鍛冶屋: 装備を買う・売る) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る) /
+//   'quest' (クエスト。src/quests.js) / 'talk' (話すだけの NPC との会話)
 // shop: 開いている店のキー (商人は data/items.js の ITEMS.shops、鍛冶屋は ITEMS.smiths) / sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
 const menu = { mode: 'inv', shop: null, sel: null };
 // 鍛冶屋ごとの品ぞろえ { 鍛冶屋のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
@@ -38,6 +39,7 @@ function openMenu(mode, shop) {
 function closeMenu() {
   $('menu').classList.remove('show');
   $('quest').classList.remove('show');
+  $('talk').classList.remove('show');
   game.state = 'play';
   // キャラクターの画面は一時停止のまま開いているので、一時停止の画面に戻す
   if (menu.mode === 'char' && game.paused) showPause();
@@ -251,7 +253,37 @@ function talkTo(n) {
   if (n.role === 'shop') openMenu('shop', n.shop);
   else if (n.role === 'smith') openMenu('smith', n.smith);
   else if (n.role === 'quest') openQuest(n);
+  else if (n.role === 'talk') openTalk(n);
 }
+
+// ----- 会話 (role: 'talk' の NPC。world.js の lines を 1 つずつ出す) -----
+const talk = { npc: null, line: 0 };
+function openTalk(n) {
+  game.state = 'menu';
+  aiming = null;
+  player.travel = null;
+  menu.mode = 'talk';
+  talk.npc = n; talk.line = 0;
+  renderTalk();
+  $('talk').classList.add('show');
+}
+function renderTalk() {
+  const n = talk.npc, last = talk.line >= n.lines.length - 1;
+  $('talkName').textContent = n.name;
+  $('talkName').style.color = n.color;
+  $('talkText').textContent = n.lines[talk.line];
+  $('talkNext').textContent = last ? '閉じる（F）' : `次へ（F）　${talk.line + 1} / ${n.lines.length}`;
+}
+function nextTalk() {
+  if (talk.line >= talk.npc.lines.length - 1) { closeMenu(); return; }
+  talk.line++;
+  renderTalk();
+}
+$('talk').addEventListener('click', (e) => {
+  if (game.state !== 'menu' || menu.mode !== 'talk') return;
+  if (e.target.closest('[data-act="close"]')) closeMenu();
+  else nextTalk();
+});
 function interact() {
   const n = nearNpc();
   if (n) talkTo(n);

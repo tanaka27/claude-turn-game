@@ -23,6 +23,7 @@
 - 敵を足す: `data/enemies.js` に 1 つ足し、`world.js` の湧き場所の `members` にキーを書く。新しい素材を落とすなら `data/items.js` の `materials` にも足す
 - 装備の名前・性能を変える: `data/items.js` の `slots` / `affixes`
 - 店を足す: 商人は `data/items.js` の `shops` に 1 つ足し、`world.js` の NPC に `role: 'shop', shop: '店のキー'` を書く。鍛冶屋は `smiths` に足し、NPC に `role: 'smith', smith: '鍛冶屋のキー'` を書く
+- 入れる建物を足す・話すだけの NPC を足す: [buildings.md](buildings.md)
 - クエストを足す: `data/quests.js` に 1 つ足す（`giver` は `world.js` の NPC の `id`）
 - ステータスを足す: `data/stats.js` に 1 行足し、`data/player.js` の `stats` に Lv1 の値を書く。レベルで上げるなら `params.js` の `progression.growth`、ほかのステータスから計算するなら `params.js` の `derivedStats` に書く（このときは `stats` に書かない）。それ以外の効き目は `src/` に書く
 - 地形を足す: [world.md](world.md) の「ゾーンと障害物」を見る
@@ -34,7 +35,7 @@
 - 全ゾーンに世界地図の位置 `mapPos` があり、重なっていないか（`world.js`）
 - 敵の落とす素材が `data/items.js` の `materials` にあるか（`data/enemies.js`）。同じ敵の素材どうしで、レア度が高いほうが確率が低く（同じまで）売値が高いか
 - 回復薬・素材のレア度が `rarities` にあるか
-- 湧き場所の敵、地形の種類、門の行き先、`start` / `respawnZone` の復活地点、店の NPC の `shop` / 鍛冶屋の NPC の `smith`、門をたどって全部のゾーンに行けるか（`world.js`）
+- 湧き場所の敵、地形の種類、門の行き先、`start` / `respawnZone` の復活地点、店の NPC の `shop` / 鍛冶屋の NPC の `smith`、話すだけの NPC の `lines`、建物の中のゾーンの `parent` と入口、門をたどって全部のゾーンに行けるか（`world.js`）
 - 最初の装備の部位とレア度、スキルのキーの重なり、スキルのキーが移動・画面のキーと重なっていないか、`maxMp` / `mpRegen` があるか、スキルの `mp` が 0 以上で Lv1 の `maxMp` 以下か（`data/player.js`）
 - 敵の速度と int / mdef があるか、技の `cooldown` が 1 以上か（`data/enemies.js`）
 - 技の `kind` が physical か magic か、物理の技に `power`、術に `base` があるか（主人公と敵）

@@ -20,7 +20,7 @@ function startGame(save) {
   player.next = game.time;
   enterZone(at.zone, at.tx, at.ty);
   if (!save) showMsg('冒険の始まり', zone.name);
-  for (const id of ['title', 'pause', 'menu', 'quest']) $(id).classList.remove('show');
+  for (const id of ['title', 'pause', 'menu', 'quest', 'talk']) $(id).classList.remove('show');
   saveGame();
 }
 

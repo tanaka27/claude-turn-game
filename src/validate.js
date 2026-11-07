@@ -13,9 +13,16 @@ function validateData() {
 
   const mapCells = {};
   for (const [zid, z] of Object.entries(WORLD.zones)) {
-    const okPos = Array.isArray(z.mapPos) && z.mapPos.length === 2 && z.mapPos.every((v) => Number.isInteger(v) && v >= 0);
+    if (z.parent) {
+      // 建物の中: 世界地図には出さない。外のゾーンから入口 (door) の門でつながっている
+      check(WORLD.zones[z.parent] && !WORLD.zones[z.parent].parent, `world.js ${zid}: parent '${z.parent}' が外のゾーンにない`);
+      check(!z.mapPos, `world.js ${zid}: 建物の中 (parent あり) には mapPos を書かない`);
+      check(!WORLD.zones[z.parent] || WORLD.zones[z.parent].gates.some((g) => g.to === zid && g.door),
+        `world.js ${zid}: parent '${z.parent}' にこの建物への入口 (door: true の門) がない`);
+    }
+    const okPos = z.parent || (Array.isArray(z.mapPos) && z.mapPos.length === 2 && z.mapPos.every((v) => Number.isInteger(v) && v >= 0));
     check(okPos, `world.js ${zid}: 世界地図の位置 mapPos [列, 行] がない`);
-    if (okPos) {
+    if (okPos && !z.parent) {
       const key = z.mapPos.join(',');
       check(!mapCells[key], `world.js ${zid}: 世界地図の位置 mapPos が '${mapCells[key]}' と重なっている`);
       mapCells[key] = zid;
@@ -32,6 +39,7 @@ function validateData() {
     for (const n of z.npcs || []) {
       npcIds.push(n.id);
       check(n.role !== 'shop' || ITEMS.shops[n.shop], `world.js ${zid} の NPC '${n.id}': 店 '${n.shop}' が data/items.js の shops にない`);
+      check(n.role !== 'talk' || (Array.isArray(n.lines) && n.lines.length > 0), `world.js ${zid} の NPC '${n.id}': 話す言葉 lines がない`);
       check(n.role !== 'smith' || ITEMS.smiths[n.smith], `world.js ${zid} の NPC '${n.id}': 鍛冶屋 '${n.smith}' が data/items.js の smiths にない`);
     }
   }

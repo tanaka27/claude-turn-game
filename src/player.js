@@ -22,6 +22,8 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
   if (game.state === 'menu') {
+    // 会話: F / Enter / スペースで次の言葉へ (最後なら閉じる)
+    if (menu.mode === 'talk' && !e.repeat && (k === 'f' || k === 'enter' || k === ' ')) { nextTalk(); return; }
     if (!e.repeat && (k === 'escape' || (k === 'i' && menu.mode === 'inv') || (k === 'c' && menu.mode === 'char') ||
       (k === 'f' && (menu.mode === 'shop' || menu.mode === 'smith' || menu.mode === 'quest')))) closeMenu();
     return;

@@ -13,14 +13,17 @@
 //   w, h      : 大きさ(px)。40 の倍数にする。外周の壁 (厚さ 1 マス) は自動で付く
 //   safe      : true ならゾーン全体が安全地帯 (敵は追ってこない)
 //   mapPos    : 世界地図での位置 [列, 行] (0 から。門でつながるゾーンは門の向きにとなり合わせる)
+//   parent    : 建物の中のゾーンだけに書く。外のゾーンの id。mapPos は書かない (世界地図では外のゾーンにいることにする)
 //   respawn   : 復活地点 (かがり火)。倒れたら WORLD.respawnZone のこの地点に戻る
 //   theme     : 地面の色 (ground: 下地 / tile: 市松模様 / decor: 小石の色 2 つ)
 //   obstacles : [種類, x, y, 幅, 高さ]。種類は下の terrain のキー
 //   gates     : 別のゾーンへの門。id / 範囲(x, y, w, h) / to: 行き先のゾーン / toGate: 行き先の門の id
 //               spawn: この門から入ってきたときに立つ位置 (門の範囲の外に置く)
+//               door: true なら建物の入口 (家の下の辺のまん中の 1 マスに置く。家の中でも通れるようになる。名前だけを小さく出す)
 //   camps     : 敵の湧き場所。name / 中心(x, y) / level: 敵レベル / respawn: 再出現までのターン数 /
 //               spread: 湧く範囲の半径(px) / members: 敵 (モンスター) の種類 (data/enemies.js の ENEMIES のキー)
-//   npcs      : 話しかけられる人 (NPC)。id / name / glyph: 体に書く字 / color / x, y / role: 'shop'(商人) / 'smith'(鍛冶屋) / 'quest'(クエスト)
+//   npcs      : 話しかけられる人 (NPC)。id / name / glyph: 体に書く字 / color / x, y / role: 'shop'(商人) / 'smith'(鍛冶屋) / 'quest'(クエスト) / 'talk'(話すだけ)
+//               話すだけの NPC は lines: 話す言葉の配列 (1 つずつ順に出す)
 //               商人は shop: data/items.js の ITEMS.shops のキー、鍛冶屋は smith: ITEMS.smiths のキー (町ごとに品ぞろえが違う)
 //               NPC のマスは通れない。となりのマスから話しかける (NPC のマスへ移動しようとしても話しかける)
 //
@@ -44,6 +47,7 @@ const WORLD = {
     house: { name: '家', blocksShots: true, minimap: '#5a6272',
       colors: { wall: '#4a3f35', roof: '#7b3f32', door: '#2b231d', window: '#ffcc80', edge: '#1b1f27' } },
     water: { name: '水場', blocksShots: false, minimap: '#1d4f73', colors: { base: '#1d4f73', edge: '#2f6f99', wave: 'rgba(160,220,255,0.25)' } },
+    table: { name: '机', blocksShots: false, minimap: '#6d4c33', colors: { top: '#8a6142', edge: '#4e3423', shine: 'rgba(255,220,170,0.18)' } },
     fence: { name: '柵', blocksShots: false, minimap: '#7a5640', colors: { rail: '#5d4030', post: '#7a5640' } },
   },
 
@@ -64,12 +68,37 @@ const WORLD = {
       ],
       gates: [
         { id: 'east', x: 1500, y: 520, w: 60, h: 160, to: 'plains', toGate: 'south', spawn: { x: 1430, y: 600 } },
+        // 右下の家 (宿屋) の入口
+        { id: 'inn', x: 1280, y: 1000, w: 40, h: 40, door: true, to: 'townInn', toGate: 'exit', spawn: { x: 1300, y: 1060 } },
       ],
       camps: [],
       npcs: [
         { id: 'merchant', name: '商人', glyph: '商', color: '#ffb300', x: 560, y: 760, role: 'shop', shop: 'townGeneral' },
         { id: 'townSmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 320, y: 760, role: 'smith', smith: 'townSmith' },
         { id: 'captain', name: '衛兵隊長', glyph: '衛', color: '#90a4ae', x: 1040, y: 760, role: 'quest' },
+      ],
+    },
+
+    // ------------------------------------------------------------------
+    // 始まりの町の右下の家の中 (宿屋)
+    townInn: {
+      parent: 'town',
+      name: '旅人の宿', w: 520, h: 400, safe: true,
+      theme: { ground: '#33271c', tile: '#382b1f', decor: ['#45362a', '#2a2018'] },
+      obstacles: [
+        ['table', 160, 80, 200, 40], // 受付の机
+        ['table', 80, 240, 80, 40], ['table', 360, 240, 80, 40],
+      ],
+      gates: [
+        { id: 'exit', x: 240, y: 360, w: 40, h: 40, to: 'town', toGate: 'inn', spawn: { x: 260, y: 320 } },
+      ],
+      camps: [],
+      npcs: [
+        { id: 'innkeeper', name: '宿の主人', glyph: '宿', color: '#bcaaa4', x: 260, y: 140, role: 'talk',
+          lines: ['いらっしゃい。ここは旅人の宿だよ。', '東の門を出ると風の草原だ。草むらのウルフは群れで来るから、囲まれないように気をつけな。',
+            '倒れても町のかがり火で目を覚ませる。無理はしないことだね。'] },
+        { id: 'traveler', name: '旅人', glyph: '旅', color: '#9fa8da', x: 420, y: 220, role: 'talk',
+          lines: ['草原の北の丘には、狼の王がいるらしい。', 'ひとりで行くなら、しっかり鍛えてからにしたほうがいいよ。'] },
       ],
     },
 

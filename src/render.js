@@ -68,6 +68,10 @@ function drawObstacle(o) {
     ctx.fillStyle = c.door; ctx.fillRect(o.x + o.w / 2 - 12, o.y + o.h - 34, 24, 34);
     ctx.fillStyle = c.window; ctx.fillRect(o.x + 20, o.y + o.h * 0.7, 18, 14); ctx.fillRect(o.x + o.w - 38, o.y + o.h * 0.7, 18, 14);
     ctx.strokeStyle = c.edge; ctx.lineWidth = 2; ctx.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
+  } else if (o.kind === 'table') {
+    ctx.fillStyle = c.edge; roundRect(o.x + 3, o.y + 5, o.w - 6, o.h - 6, 5); ctx.fill();
+    ctx.fillStyle = c.top; roundRect(o.x + 3, o.y + 3, o.w - 6, o.h - 12, 5); ctx.fill();
+    ctx.fillStyle = c.shine; ctx.fillRect(o.x + 8, o.y + 7, o.w - 16, 4);
   } else { // fence
     ctx.fillStyle = c.rail;
     ctx.fillRect(o.x, o.y + o.h * 0.3, o.w, 5); ctx.fillRect(o.x, o.y + o.h * 0.65, o.w, 5);
@@ -218,11 +222,24 @@ function levelColor(lv) {
 function drawGate(g) {
   const pulse = 0.5 + 0.5 * Math.sin(game.rt * 3);
   const x = g.tx * T, y = g.ty * T, w = g.tw * T, h = g.th * T;
+  if (g.door) {
+    // 建物の入口: 家の扉の下を少し光らせるだけ
+    ctx.fillStyle = `rgba(255,204,128,${0.25 + 0.25 * pulse})`; ctx.fillRect(x + w / 2 - 14, y + h - 6, 28, 6);
+    return;
+  }
   ctx.fillStyle = `rgba(100,220,255,${0.15 + 0.15 * pulse})`; ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = 'rgba(100,220,255,0.85)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
 }
 function drawGateLabel(g) {
   const dest = WORLD.zones[g.to];
+  if (g.door) {
+    // 建物の入口は名前だけを家の扉の上に小さく出す
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 12px sans-serif';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#000';
+    const lx = (g.tx + g.tw / 2) * T, ly = g.ty * T - 4;
+    ctx.strokeText(dest.name, lx, ly); ctx.fillStyle = '#ffe0b2'; ctx.fillText(dest.name, lx, ly);
+    return;
+  }
   const lx = ((g.tx + g.tw / 2) * T + center(g.sx)) / 2, ly = ((g.ty + g.th / 2) * T + center(g.sy)) / 2;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 14px sans-serif';
   ctx.lineWidth = 4; ctx.strokeStyle = '#000';
@@ -285,7 +302,7 @@ function drawNpc(n, near) {
 function drawWorld() {
   ctx.fillStyle = zone.theme.ground; ctx.fillRect(0, 0, MAP_W, MAP_H);
   ctx.fillStyle = zone.theme.tile;
-  for (let y = 0; y < MAP_H; y += 80) for (let x = (y / 80) % 2 ? 80 : 0; x < MAP_W; x += 160) ctx.fillRect(x, y, 80, 80);
+  for (let y = 0; y < MAP_H; y += 80) for (let x = (y / 80) % 2 ? 80 : 0; x < MAP_W; x += 160) ctx.fillRect(x, y, Math.min(80, MAP_W - x), Math.min(80, MAP_H - y));
   for (const d of decor) { ctx.fillStyle = d.c; ctx.fillRect(d.x, d.y, d.s, d.s); }
   // マス目の線
   ctx.strokeStyle = 'rgba(255,255,255,0.045)'; ctx.lineWidth = 1;

@@ -197,8 +197,12 @@ function drawMinimap() {
 
 // 世界地図: 全ゾーンを world.js の mapPos に並べ、地形・門・かがり火・NPC と、門どうしのつながりを描く。
 // 今いるゾーンは枠を明るくし、主人公の位置を出す。ゾーンの大きさは実際の比率 (fullW が枠の幅いっぱい)
+// 建物の中 (parent のあるゾーン) は描かず、外のゾーンの入口にいることにする
 function drawWorldMap() {
-  const M = WORLD.worldMap, zones = Object.entries(WORLD.zones);
+  const M = WORLD.worldMap, zones = Object.entries(WORLD.zones).filter(([, z]) => !z.parent);
+  const hereId = zone.parent || zone.id;
+  const door = zone.parent && WORLD.zones[hereId].gates.find((g) => g.to === zone.id);
+  const here = door ? { x: door.x + door.w / 2, y: door.y + door.h / 2 } : player;
   const cols = Math.max(...zones.map(([, z]) => z.mapPos[0])) + 1, rows = Math.max(...zones.map(([, z]) => z.mapPos[1])) + 1;
   const pad = 8, labelH = 26, margin = 13;
   // 枠の大きさ: スキル欄の右と、右上のステータス (statsBottom) の下に収まるように縮める (文字は縮めない)
@@ -225,14 +229,14 @@ function drawWorldMap() {
   // 門どうしのつながり (同じ組を 2 回描かないよう、id の小さいほうからだけ)
   ctx.strokeStyle = 'rgba(128,222,234,0.55)'; ctx.lineWidth = 2;
   for (const [id, z] of zones) for (const g of z.gates) {
-    if (id > g.to) continue;
+    if (id > g.to || !pos[g.to]) continue;
     const dest = WORLD.zones[g.to].gates.find((t) => t.id === g.toGate);
     if (!dest) continue;
     const a = gateAt(id, g), b = gateAt(g.to, dest);
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
   for (const [id, z] of zones) {
-    const p = pos[id], here = id === zone.id;
+    const p = pos[id], isHere = id === hereId;
     ctx.fillStyle = z.theme.ground; ctx.fillRect(p.x, p.y, z.w * zs, z.h * zs);
     for (const [kind, x, y, w, h] of z.obstacles) {
       ctx.fillStyle = WORLD.terrain[kind].minimap;
@@ -243,13 +247,13 @@ function drawWorldMap() {
     if (z.respawn) { ctx.fillStyle = '#ff9800'; pathCircle(p.x + z.respawn.x * zs, p.y + z.respawn.y * zs, 2.5); ctx.fill(); }
     ctx.fillStyle = '#ffe082';
     for (const n of z.npcs || []) { pathCircle(p.x + n.x * zs, p.y + n.y * zs, 2); ctx.fill(); }
-    ctx.strokeStyle = here ? '#4fc3f7' : 'rgba(255,255,255,0.25)'; ctx.lineWidth = here ? 2 : 1;
+    ctx.strokeStyle = isHere ? '#4fc3f7' : 'rgba(255,255,255,0.25)'; ctx.lineWidth = isHere ? 2 : 1;
     ctx.strokeRect(p.x, p.y, z.w * zs, z.h * zs);
-    if (here) { ctx.fillStyle = '#4fc3f7'; pathCircle(p.x + player.x * zs, p.y + player.y * zs, 3.5); ctx.fill(); }
+    if (isHere) { ctx.fillStyle = '#4fc3f7'; pathCircle(p.x + here.x * zs, p.y + here.y * zs, 3.5); ctx.fill(); }
     // 名前と敵レベル (町は「安全」)
     const lx = p.cx + cellW / 2, ly = p.cy + cellH + 11;
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = here ? '#4fc3f7' : '#e6edf3'; ctx.fillText(z.name, lx, ly);
+    ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = isHere ? '#4fc3f7' : '#e6edf3'; ctx.fillText(z.name, lx, ly);
     ctx.font = '10px sans-serif'; ctx.fillStyle = z.safe ? '#a5d6a7' : '#9da7b3'; ctx.fillText(zoneLevelText(z), lx, ly + 12);
   }
 }

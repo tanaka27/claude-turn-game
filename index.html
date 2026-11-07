@@ -90,6 +90,14 @@
   .qgoal { font-size: 13px; color: #e6edf3; }
   .qreward { font-size: 13px; color: #ffd54f; margin-top: 2px; }
   .note { color: #69f0ae; margin: 0; font-size: 14px; }
+  /* 会話 (画面の下に出す) */
+  #talk { align-items: flex-end; background: transparent; }
+  .panel.talk-panel { width: min(720px, calc(100vw - 32px)); margin-bottom: 120px; text-align: left; padding: 16px 22px; cursor: pointer; }
+  .talk-head { display: flex; align-items: center; }
+  .talk-head b { font-size: 16px; }
+  .talk-head .x { margin: 0 0 0 auto; padding: 4px 12px; font-size: 13px; }
+  #talkText { margin: 10px 0 8px; font-size: 16px; line-height: 1.6; color: #e6edf3; min-height: 3.2em; }
+  #talkNext { text-align: right; font-size: 13px; color: #8b949e; }
   @media (max-width: 760px) { .menu-body { grid-template-columns: 1fr; } .list, #invList, #matList { max-height: 30vh; } }
 </style>
 </head>
@@ -158,6 +166,14 @@
       <button class="x" data-act="close">閉じる（Esc）</button>
     </div>
     <div id="questList" class="qlist"></div>
+  </div>
+</div>
+
+<div id="talk" class="overlay">
+  <div class="panel talk-panel">
+    <div class="talk-head"><b id="talkName"></b><button class="x" data-act="close">閉じる（Esc）</button></div>
+    <p id="talkText"></p>
+    <div id="talkNext"></div>
   </div>
 </div>
 
