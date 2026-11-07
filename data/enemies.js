@@ -58,7 +58,7 @@ const ENEMIES = {
   // ゾーンボス (風の草原)
   wolfKing: {
     name: '狼王', glyph: '牙', radius: 24, color: '#607d8b', exp: 250, itemRate: 1, itemCount: 1, ai: 'melee', isBoss: true,
-    drops: [{ id: 'kingPelt', rate: 1 }, { id: 'kingFang', rate: 1 }],
+    drops: [{ id: 'kingPelt', rate: 1 }, { id: 'kingFang', rate: 0.5 }],
     stats: { maxHp: 128, atk: 6.1, def: 10, int: 2, mdef: 8, speed: 110, critRate: 0.08, critMult: 1.5 },
     attacks: [
       { name: '突進', type: 'melee', shape: 'line', range: 5, width: 1, charge: 1, cooldown: 5, power: 1.6 },
@@ -70,7 +70,7 @@ const ENEMIES = {
   // ゾーンボス (黒き森)
   treant: {
     name: '森の主', glyph: '樹', radius: 26, color: '#558b2f', exp: 350, itemRate: 1, itemCount: 2, ai: 'melee', isBoss: true,
-    drops: [{ id: 'ancientBranch', rate: 1 }, { id: 'treantFruit', rate: 1 }],
+    drops: [{ id: 'ancientBranch', rate: 1 }, { id: 'treantFruit', rate: 0.5 }],
     stats: { maxHp: 156, atk: 6.5, def: 14, int: 4, mdef: 16, speed: 80, critRate: 0.05, critMult: 1.5 },
     attacks: [
       { name: '根の衝撃', type: 'melee', shape: 'circle', range: 3.3, charge: 1, cooldown: 4, power: 1.6 },
@@ -82,7 +82,7 @@ const ENEMIES = {
   // 最後のボス (魔竜の遺跡)
   dragon: {
     name: '魔竜', glyph: '竜', radius: 27, color: '#ef5350', exp: 400, itemRate: 1, itemCount: 2, ai: 'melee', isBoss: true,
-    drops: [{ id: 'dragonScale', rate: 1, count: 2 }, { id: 'dragonHeart', rate: 1 }],
+    drops: [{ id: 'dragonScale', rate: 1, count: 2 }, { id: 'dragonHeart', rate: 0.5 }],
     stats: { maxHp: 168, atk: 7.3, def: 18, int: 4.5, mdef: 20, speed: 100, critRate: 0.1, critMult: 1.5 },
     attacks: [
       { name: '尾の薙ぎ払い', type: 'melee', shape: 'fan', range: 2.5, angle: 160, charge: 1, cooldown: 3, power: 1.6 },

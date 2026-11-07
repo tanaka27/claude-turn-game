@@ -101,7 +101,7 @@ function renderMenu() {
     const d = shopDef(), items = shopStock();
     const potions = d.potions.map((id) => {
       const po = IT.potions[id], ok = canBuyPotion(id);
-      return `<div class="item potion"><b>${po.name}</b><span>最大HPの ${Math.round(po.heal * 100)}% 回復（${po.key.toUpperCase()} で使う）</span>
+      return `<div class="item potion" style="--rc:${rarityOf(po.rarity).color}"><b>${po.name}</b><span>${rarityOf(po.rarity).name}・最大HPの ${Math.round(po.heal * 100)}% 回復（${po.key.toUpperCase()} で使う）</span>
         <button data-act="potion" data-potion="${id}"${ok ? '' : ' disabled'}>買う（${po.price} G）</button></div>`;
     }).join('');
     $('shopList').innerHTML = potions + items.map((it) => itemChip(it, 'shop')).join('') +
@@ -137,11 +137,11 @@ function strengthHtml() {
 }
 
 // ----- 道具 (使うもの。今は回復薬だけ) -----
-// 道具の種類を増やすときは toolEntries に足す。use() は 1 行動を返す関数 (act に渡す。行動したら true)
+// 道具の種類を増やすときは toolEntries に足す (rarity: data/items.js のレア度)。use() は 1 行動を返す関数 (act に渡す。行動したら true)
 function toolEntries() {
   const p = player;
   return Object.entries(IT.potions).map(([id, po]) => ({
-    id, name: po.name, count: p.potions[id] || 0, max: po.max, key: po.key,
+    id, name: po.name, rarity: po.rarity, count: p.potions[id] || 0, max: po.max, key: po.key,
     desc: `最大HPの ${Math.round(po.heal * 100)}% 回復（今なら ${Math.round(p.stats.maxHp * po.heal)}）`,
     usable: (p.potions[id] || 0) > 0 && p.hp < p.stats.maxHp,
     use: () => usePotion(id),
@@ -152,8 +152,9 @@ function renderTools() {
   const inv = menu.mode === 'inv';
   $('toolList').innerHTML = toolEntries().map((t) => {
     const btn = inv ? `<button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>使う</button>` : '';
-    return `<div class="item tool${t.count ? '' : ' none'}"><b>${t.name} ×${t.count}<small> / ${t.max}</small></b>
-      <span>${t.desc}・${t.key.toUpperCase()} キー</span>${btn}</div>`;
+    const r = rarityOf(t.rarity);
+    return `<div class="item tool${t.count ? '' : ' none'}" style="--rc:${r.color}"><b>${t.name} ×${t.count}<small> / ${t.max}</small></b>
+      <span>${r.name}・${t.desc}・${t.key.toUpperCase()} キー</span>${btn}</div>`;
   }).join('');
 }
 
@@ -168,7 +169,8 @@ function renderMaterials() {
     const m = IT.materials[id], n = p.materials[id];
     const btns = shop ? `<div class="btns"><button data-act="sellMat" data-mat="${id}">1つ売る</button>
       <button data-act="sellMat" data-mat="${id}" data-all="1">全部（${m.price * n} G）</button></div>` : '';
-    return `<div class="item mat" style="--rc:${m.color}"><b>${m.name} ×${n}</b><span>売値 ${m.price} G</span>${btns}</div>`;
+    const r = rarityOf(m.rarity);
+    return `<div class="item mat" style="--rc:${r.color}"><b><i class="swatch" style="background:${m.color}"></i>${m.name} ×${n}</b><span>${r.name}・売値 ${m.price} G</span>${btns}</div>`;
   }).join('') || '<p class="hint">素材は魔物を倒すと手に入る</p>';
   $('matSellAll').innerHTML = shop && ids.length ? `<button data-act="sellAllMat">全部売る（${materialTotal()} G）</button>` : '';
 }

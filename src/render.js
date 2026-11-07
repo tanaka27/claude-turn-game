@@ -235,8 +235,13 @@ function drawLoot(l) {
   const x = center(l.tx) + l.ox, y = center(l.ty) + l.oy + Math.sin(game.rt * 4 + l.ox) * 1.5;
   ctx.globalAlpha = fade;
   if (l.kind === 'material') {
-    // 素材: 色付きのひし形
+    // 素材: 色付きのひし形。ノーマルより上はレア度の色で光る
     const m = IT.materials[l.id];
+    if (m.rarity !== 'common') {
+      ctx.fillStyle = rarityOf(m.rarity).color; ctx.globalAlpha = fade * (0.25 + 0.15 * Math.sin(game.rt * 5));
+      pathCircle(x, y, 11); ctx.fill();
+      ctx.globalAlpha = fade;
+    }
     ctx.beginPath(); ctx.moveTo(x, y - 7); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 7); ctx.lineTo(x - 6, y); ctx.closePath();
     ctx.fillStyle = m.color; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.stroke();
   } else {

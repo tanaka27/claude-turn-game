@@ -8,8 +8,9 @@
 //   名前は nameTierEvery レベルごとに次のものになる
 const ITEMS = {
   nameTierEvery: 2,
-  // レア度。weight: 敵が落とすときの出やすさ / bossWeight: ボスが落とすときの出やすさ /
-  // mult: 基本性能の倍率 / affixes: 追加性能の数 / value: 価値の倍率
+  // レア度 (装備・回復薬・素材で共通。並びが低い順)。名前と色は回復薬・素材にも使う
+  //   以下は装備だけに使う: weight: 敵が落とすときの出やすさ / bossWeight: ボスが落とすときの出やすさ /
+  //   mult: 基本性能の倍率 / affixes: 追加性能の数 / value: 価値の倍率
   rarities: [
     { id: 'common', name: 'ノーマル', color: '#e6edf3', weight: 70, bossWeight: 0, mult: 1.0, affixes: 0, value: 1 },
     { id: 'rare', name: 'レア', color: '#64b5f6', weight: 25, bossWeight: 60, mult: 1.2, affixes: 1, value: 2.5 },
@@ -30,11 +31,11 @@ const ITEMS = {
     agi: [4, 0.4], int: [10, 2], hpRegen: [0.05, 0.015],
   },
   value: [10, 8],       // 価値 (= 店の買値) [Lv1 の値, 1 レベルごとの増加] × レア度の value
-  // 回復薬。key: 使うキー / heal: 最大HP比 / max: 持てる数 / start: 最初の数。使うと 1 行動
+  // 回復薬。rarity: レア度 / key: 使うキー / heal: 最大HP比 / max: 持てる数 / start: 最初の数。使うと 1 行動
   //   クエストの報酬の potions は先頭の回復薬 (potion) でもらう
   potions: {
-    potion: { name: '回復薬', key: 'r', price: 25, heal: 0.4, max: 20, start: 3 },
-    hiPotion: { name: '上回復薬', key: 't', price: 80, heal: 0.8, max: 10, start: 0 },
+    potion: { name: '回復薬', rarity: 'common', key: 'r', price: 25, heal: 0.4, max: 20, start: 3 },
+    hiPotion: { name: '上回復薬', rarity: 'rare', key: 't', price: 80, heal: 0.8, max: 10, start: 0 },
   },
   // 店。world.js の NPC (role: 'shop') の shop にキーを書く
   //   name: 画面の見出し / potions: 売る回復薬 / gear: 売る装備 [部位, レア度] (1 つずつ並ぶ)
@@ -51,24 +52,26 @@ const ITEMS = {
     hamletCraft: { name: '隠れ里の細工師', potions: [], levelOffset: 1,
       gear: [['weapon', 'rare'], ['weapon', 'epic'], ['armor', 'rare'], ['armor', 'epic'], ['accessory', 'rare'], ['accessory', 'epic']] },
   },
-  // 素材 (敵が落とす。店で売るとお金になる)。price: 1 つの売値 / color: 落とし物と画面での色
-  //   どの敵が何を落とすかは data/enemies.js の drops
+  // 素材 (敵が落とす。店で売るとお金になる。今後は装備を作る材料にする予定)
+  //   rarity: レア度 (素材ごとに 1 つ) / price: 1 つの売値 / color: マップに落ちているときの色
+  //   どの敵が何を落とすかは data/enemies.js の drops。同じ敵が落とす素材どうしでは、
+  //   レア度が高いほど落とす確率を低く・売値を高くする (起動時のデータの確認で調べる)
   materials: {
-    wolfPelt: { name: '狼の毛皮', price: 3, color: '#b0bec5' },
-    wolfFang: { name: '狼の牙', price: 8, color: '#eceff1' },
-    boarHorn: { name: 'ボアの角', price: 5, color: '#d7ccc8' },
-    boarMeat: { name: 'ボアの肉', price: 6, color: '#ef9a9a' },
-    beeStinger: { name: '蜂の毒針', price: 4, color: '#dce775' },
-    honey: { name: '蜂蜜', price: 8, color: '#ffca28' },
-    fireScale: { name: '火トカゲの鱗', price: 6, color: '#ff8a65' },
-    flameSac: { name: '火炎袋', price: 12, color: '#ff5722' },
-    stoneShard: { name: '岩の欠片', price: 10, color: '#bcaaa4' },
-    manaCore: { name: '魔力の核', price: 30, color: '#4dd0e1' },
-    kingPelt: { name: '狼王の毛皮', price: 60, color: '#90a4ae' },
-    kingFang: { name: '狼王の大牙', price: 40, color: '#ffffff' },
-    ancientBranch: { name: '古木の枝', price: 50, color: '#8d6e63' },
-    treantFruit: { name: '森の主の実', price: 100, color: '#aed581' },
-    dragonScale: { name: '竜の鱗', price: 40, color: '#e57373' },
-    dragonHeart: { name: '竜の心臓', price: 120, color: '#d50000' },
+    wolfPelt: { name: '狼の毛皮', rarity: 'common', price: 3, color: '#b0bec5' },
+    wolfFang: { name: '狼の牙', rarity: 'rare', price: 8, color: '#eceff1' },
+    boarHorn: { name: 'ボアの角', rarity: 'common', price: 5, color: '#d7ccc8' },
+    boarMeat: { name: 'ボアの肉', rarity: 'rare', price: 6, color: '#ef9a9a' },
+    beeStinger: { name: '蜂の毒針', rarity: 'common', price: 4, color: '#dce775' },
+    honey: { name: '蜂蜜', rarity: 'rare', price: 8, color: '#ffca28' },
+    fireScale: { name: '火トカゲの鱗', rarity: 'common', price: 6, color: '#ff8a65' },
+    flameSac: { name: '火炎袋', rarity: 'rare', price: 12, color: '#ff5722' },
+    stoneShard: { name: '岩の欠片', rarity: 'common', price: 10, color: '#bcaaa4' },
+    manaCore: { name: '魔力の核', rarity: 'rare', price: 30, color: '#4dd0e1' },
+    kingPelt: { name: '狼王の毛皮', rarity: 'rare', price: 40, color: '#90a4ae' },
+    kingFang: { name: '狼王の大牙', rarity: 'epic', price: 120, color: '#ffffff' },
+    ancientBranch: { name: '古木の枝', rarity: 'rare', price: 50, color: '#8d6e63' },
+    treantFruit: { name: '森の主の実', rarity: 'epic', price: 200, color: '#aed581' },
+    dragonScale: { name: '竜の鱗', rarity: 'rare', price: 40, color: '#e57373' },
+    dragonHeart: { name: '竜の心臓', rarity: 'epic', price: 240, color: '#d50000' },
   },
 };

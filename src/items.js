@@ -76,10 +76,10 @@ function pickUpAt(tx, ty) {
   for (const l of loots) {
     if (l.tx !== tx || l.ty !== ty) continue;
     if (l.kind === 'material') {
-      const m = materialOf(l.id);
+      const m = materialOf(l.id), rc = rarityOf(m.rarity).color;
       p.materials[l.id] = (p.materials[l.id] || 0) + l.amount;
-      floatText(p.x, p.y - 30, `${m.name} ×${l.amount}`, m.color, 14);
-      log(`${m.name}を ${l.amount} つ拾った。`, m.color);
+      floatText(p.x, p.y - 30, `${m.name} ×${l.amount}`, rc, 14);
+      log(`${m.name}を ${l.amount} つ拾った。`, rc);
       l.taken = true;
     } else if (p.inventory.length >= EC.inventorySize) {
       log(`持ち物がいっぱいで${l.item.name}を拾えない。`, '#ff8a80');

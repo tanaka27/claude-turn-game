@@ -101,8 +101,18 @@ function validateData() {
     for (const [slot, r] of sh.gear) check(ITEMS.slots[slot] && rarityIds.includes(r), `data/items.js shops.${id}: 部位 '${slot}' かレア度 '${r}' がない`);
     for (const po of sh.potions) check(ITEMS.potions[po], `data/items.js shops.${id}: 回復薬 '${po}' が potions にない`);
   }
+  for (const [id, po] of Object.entries(ITEMS.potions)) check(rarityIds.includes(po.rarity), `data/items.js potions.${id}: レア度 '${po.rarity}' がない`);
+  for (const [id, m] of Object.entries(ITEMS.materials)) check(rarityIds.includes(m.rarity), `data/items.js materials.${id}: レア度 '${m.rarity}' がない`);
   for (const [type, d] of Object.entries(ENEMIES)) {
+    const drops = (d.drops || []).filter((m) => ITEMS.materials[m.id]);
     for (const m of d.drops || []) check(ITEMS.materials[m.id], `data/enemies.js ${type}: 素材 '${m.id}' が data/items.js の materials にない`);
+    // 同じ敵が落とす素材どうしでは、レア度が高いほど確率が低く (同じでもよい)、売値が高い
+    for (const a of drops) for (const b of drops) {
+      const ma = ITEMS.materials[a.id], mb = ITEMS.materials[b.id];
+      if (rarityIds.indexOf(ma.rarity) <= rarityIds.indexOf(mb.rarity)) continue;
+      check(a.rate <= b.rate && ma.price > mb.price,
+        `data/enemies.js ${type}: レア度の高い素材 '${a.id}' は '${b.id}' より確率を低く (同じまで)、売値を高くする`);
+    }
   }
 
   const questIds = QUESTS.map((q) => q.id);
