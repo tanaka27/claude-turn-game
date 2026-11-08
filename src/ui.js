@@ -62,17 +62,24 @@ function itemChip(it, from) {
     <b>${it.name}</b><span>${IT.slots[it.slot].label} Lv${it.level}</span>${price}</div>`;
 }
 
-// 選んだ装備の詳細。同じ部位の装備中のものとの差を出す
+// 選んだ装備の詳細。部位で決まる基本性能と、ランダムに付いた追加性能を分けて出し、
+// 同じ部位の装備中のものとの差を出す
 function detailHtml(it, from) {
   const p = player, r = rarityOf(it.rarity);
   const cur = from === 'equip' ? null : p.equip[it.slot];
-  const keys = [...new Set([...Object.keys(it.stats), ...(cur ? Object.keys(cur.stats) : [])])];
-  const rows = keys.map((k) => {
+  const row = (k) => {
     const v = it.stats[k] || 0, diff = v - (cur ? cur.stats[k] || 0 : 0);
     const d = from === 'equip' || Math.abs(diff) < 1e-9 ? '' :
       `<span class="${diff > 0 ? 'up' : 'down'}">${fmtStat(k, diff, true)}</span>`;
-    return `<div class="row"><span>${STATS[k].label}</span><span>${v ? fmtStat(k, v, true) : '-'} ${d}</span></div>`;
-  }).join('');
+    return `<div class="row${v ? '' : ' lost'}"><span>${STATS[k].label}</span><span>${v ? fmtStat(k, v, true) : '-'} ${d}</span></div>`;
+  };
+  const baseKeys = Object.keys(IT.slots[it.slot].base);
+  const own = Object.keys(it.stats).filter((k) => !baseKeys.includes(k));
+  const lost = cur ? Object.keys(cur.stats).filter((k) => !baseKeys.includes(k) && !own.includes(k)) : [];
+  const section = (title, keys, empty) => `<div class="shead">${title}</div>
+    <div class="stats">${keys.length ? keys.map(row).join('') : `<div class="row none">${empty}</div>`}</div>`;
+  const rows = section('基本性能', baseKeys, 'なし') +
+    section(`追加性能（${own.length}）`, [...own, ...lost], 'なし');
   const btn = (act, label, ok = true) => `<button data-act="${act}"${ok ? '' : ' disabled'}>${label}</button>`;
   const full = p.inventory.length >= EC.inventorySize;
   let btns = '';
@@ -85,7 +92,7 @@ function detailHtml(it, from) {
   return `<div class="dname" style="color:${r.color}">${it.name}</div>
     <div class="dsub">${r.name}・${IT.slots[it.slot].label}・Lv${it.level}</div>
     ${cur ? `<div class="dsub">差は装備中の「${cur.name}」と比べたもの</div>` : ''}
-    <div class="stats">${rows}</div><div class="btns">${btns}</div>`;
+    ${rows}<div class="btns">${btns}</div>`;
 }
 
 function renderMenu() {
