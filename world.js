@@ -68,8 +68,8 @@ const WORLD = {
       ],
       gates: [
         { id: 'east', x: 1500, y: 520, w: 60, h: 160, to: 'plains', toGate: 'south', spawn: { x: 1430, y: 600 } },
-        // 右下の家 (宿屋) の入口
-        { id: 'inn', x: 1280, y: 1000, w: 40, h: 40, door: true, to: 'townInn', toGate: 'exit', spawn: { x: 1300, y: 1060 } },
+        // 右下の家 (冒険者ギルド) の入口
+        { id: 'guild', x: 1280, y: 1000, w: 40, h: 40, door: true, to: 'townGuild', toGate: 'exit', spawn: { x: 1300, y: 1060 } },
       ],
       camps: [],
       npcs: [
@@ -80,25 +80,24 @@ const WORLD = {
     },
 
     // ------------------------------------------------------------------
-    // 始まりの町の右下の家の中 (宿屋)
-    townInn: {
+    // 始まりの町の右下の家の中 (冒険者ギルド)。受付で討伐の依頼を受けられる (data/quests.js の giver: 'guildClerk')
+    townGuild: {
       parent: 'town',
-      name: '旅人の宿', w: 520, h: 400, safe: true,
+      name: '冒険者ギルド', w: 520, h: 400, safe: true,
       theme: { ground: '#33271c', tile: '#382b1f', decor: ['#45362a', '#2a2018'] },
       obstacles: [
         ['table', 160, 80, 200, 40], // 受付の机
         ['table', 80, 240, 80, 40], ['table', 360, 240, 80, 40],
       ],
       gates: [
-        { id: 'exit', x: 240, y: 360, w: 40, h: 40, to: 'town', toGate: 'inn', spawn: { x: 260, y: 320 } },
+        { id: 'exit', x: 240, y: 360, w: 40, h: 40, to: 'town', toGate: 'guild', spawn: { x: 260, y: 320 } },
       ],
       camps: [],
       npcs: [
-        { id: 'innkeeper', name: '宿の主人', glyph: '宿', color: '#bcaaa4', x: 260, y: 140, role: 'talk',
-          lines: ['いらっしゃい。ここは旅人の宿だよ。', '東の門を出ると風の草原だ。草むらのウルフは群れで来るから、囲まれないように気をつけな。',
-            '倒れても町のかがり火で目を覚ませる。無理はしないことだね。'] },
-        { id: 'traveler', name: '旅人', glyph: '旅', color: '#9fa8da', x: 420, y: 220, role: 'talk',
-          lines: ['草原の北の丘には、狼の王がいるらしい。', 'ひとりで行くなら、しっかり鍛えてからにしたほうがいいよ。'] },
+        { id: 'guildClerk', name: 'ギルド受付', glyph: '受', color: '#f48fb1', x: 260, y: 140, role: 'quest' },
+        { id: 'adventurer', name: '冒険者', glyph: '冒', color: '#9fa8da', x: 420, y: 220, role: 'talk',
+          lines: ['ギルドの依頼は、何度でも受けられるものが多い。腕を磨きながら稼ぐにはちょうどいいぞ。',
+            '草原の北の丘には、狼の王がいるらしい。ひとりで行くなら、しっかり鍛えてからにしたほうがいい。'] },
       ],
     },
 

@@ -24,7 +24,7 @@
 - 装備の名前・性能を変える: `data/items.js` の `slots` / `affixes`
 - 店を足す: 商人は `data/items.js` の `shops` に 1 つ足し、`world.js` の NPC に `role: 'shop', shop: '店のキー'` を書く。鍛冶屋は `smiths` に足し、NPC に `role: 'smith', smith: '鍛冶屋のキー'` を書く
 - 入れる建物を足す・話すだけの NPC を足す: [buildings.md](buildings.md)
-- クエストを足す: `data/quests.js` に 1 つ足す（`giver` は `world.js` の NPC の `id`）
+- クエストを足す: `data/quests.js` に 1 つ足す（`giver` は `world.js` の NPC の `id`。くり返し受けられるものは `repeatable: true`）
 - ステータスを足す: `data/stats.js` に 1 行足し、`data/player.js` の `stats` に Lv1 の値を書く。レベルで上げるなら `params.js` の `progression.growth`、ほかのステータスから計算するなら `params.js` の `derivedStats` に書く（このときは `stats` に書かない）。それ以外の効き目は `src/` に書く
 - 地形を足す: [world.md](world.md) の「ゾーンと障害物」を見る
 

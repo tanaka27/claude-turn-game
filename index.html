@@ -75,21 +75,27 @@
   .profile .bar i { display: block; height: 100%; background: var(--bc); }
   .detail .sep { border-top: 1px solid #30363d; margin: 14px 0 10px; }
   /* クエスト */
-  .panel.quest-panel { max-width: 640px; }
-  .qlist { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; max-height: 64vh; overflow-y: auto; }
-  .quest { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; }
-  .quest p { margin: 6px 0; color: #c9d1d9; font-size: 14px; }
-  .qhead { display: flex; align-items: center; gap: 10px; }
-  .qhead b { font-size: 16px; }
-  .qhead button { margin: 0 0 0 auto; padding: 6px 16px; font-size: 14px; }
-  .qtag { font-size: 12px; color: #8b949e; }
-  .q-available .qtag, .q-available b { color: #ffd54f; }
-  .q-ready .qtag, .q-ready b { color: #69f0ae; }
-  .q-claimed { opacity: 0.55; padding: 6px 14px; }
-  .q-lowLevel { opacity: 0.7; }
-  .qgoal { font-size: 13px; color: #e6edf3; }
-  .qreward { font-size: 13px; color: #ffd54f; margin-top: 2px; }
-  .note { color: #69f0ae; margin: 0; font-size: 14px; }
+  .panel.quest-panel { max-width: 820px; }
+  .qbody { display: grid; grid-template-columns: 260px 1fr; gap: 16px; margin-top: 8px; }
+  .qlist { display: flex; flex-direction: column; gap: 6px; max-height: 56vh; overflow-y: auto; }
+  .qitem { background: #0d1117; border: 1px solid #30363d; border-left: 4px solid #30363d; border-radius: 6px;
+    padding: 7px 10px; cursor: pointer; }
+  .qitem b { font-size: 14px; }
+  .qitem span { display: block; font-size: 12px; color: #8b949e; }
+  .qitem .qrep { font-style: normal; font-size: 11px; color: #80deea; margin-left: 6px; }
+  .qitem.sel { border-color: #4fc3f7; background: #10233a; }
+  .q-available { border-left-color: #ffd54f; } .q-available b, .q-available span { color: #ffd54f; }
+  .q-ready { border-left-color: #69f0ae; } .q-ready b, .q-ready span { color: #69f0ae; }
+  .q-active { border-left-color: #4fc3f7; }
+  .q-claimed, .q-lowLevel { opacity: 0.6; }
+  .qdetail { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px 16px; min-height: 220px; }
+  .qdetail h3 { margin: 0 0 6px; }
+  .qdetail p { margin: 6px 0; color: #c9d1d9; font-size: 14px; }
+  .qdetail dl { display: grid; grid-template-columns: 48px 1fr; gap: 4px 10px; margin: 10px 0; font-size: 13px; }
+  .qdetail dt { color: #8b949e; } .qdetail dd { margin: 0; color: #e6edf3; }
+  .qdetail button { margin: 6px 0 0; padding: 8px 18px; font-size: 14px; }
+  .qreward { color: #ffd54f !important; }
+  .note { color: #69f0ae; margin: 6px 0 0; font-size: 14px; min-height: 1.2em; }
   /* 会話 (画面の下に出す) */
   #talk { align-items: flex-end; background: transparent; }
   .panel.talk-panel { width: min(720px, calc(100vw - 32px)); margin-bottom: 120px; text-align: left; padding: 16px 22px; cursor: pointer; }
@@ -98,7 +104,7 @@
   .talk-head .x { margin: 0 0 0 auto; padding: 4px 12px; font-size: 13px; }
   #talkText { margin: 10px 0 8px; font-size: 16px; line-height: 1.6; color: #e6edf3; min-height: 3.2em; }
   #talkNext { text-align: right; font-size: 13px; color: #8b949e; }
-  @media (max-width: 760px) { .menu-body { grid-template-columns: 1fr; } .list, #invList, #matList { max-height: 30vh; } }
+  @media (max-width: 760px) { .menu-body, .qbody { grid-template-columns: 1fr; } .list, #invList, #matList { max-height: 30vh; } }
 </style>
 </head>
 <body>
@@ -165,7 +171,12 @@
       <h2 id="questTitle">クエスト</h2>
       <button class="x" data-act="close">閉じる（Esc）</button>
     </div>
-    <div id="questList" class="qlist"></div>
+    <p id="questNote" class="note"></p>
+    <div class="qbody">
+      <div id="questList" class="qlist"></div>
+      <div id="questDetail" class="qdetail"></div>
+    </div>
+    <p class="hint">↑↓ / クリックで選ぶ　Enter で受ける・報告する</p>
   </div>
 </div>
 

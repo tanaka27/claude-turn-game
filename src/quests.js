@@ -5,6 +5,7 @@
 
 // ----- クエスト -----
 // player.quests[id] = { state: 'active' (受けている) | 'ready' (報告できる) | 'claimed' (報告済み), count }
+//   くり返し受けられるクエスト (repeatable) は、報告すると記録を消す (また 'available' になる)
 const questById = (id) => QUESTS.find((q) => q.id === id);
 const npcById = (id) => Object.values(WORLD.zones).flatMap((z) => z.npcs || []).find((n) => n.id === id);
 const enemyName = (type) => ENEMIES[type].name;
@@ -17,11 +18,12 @@ function questStatus(q) {
   return player.level < q.minLevel ? 'lowLevel' : 'available';
 }
 
-// NPC の頭上の印: 報告できるクエストがあれば '?'、受けられるクエストがあれば '!'
+// NPC の頭上の印: 報告できるクエストがあれば '?'、まだ受けたことのない (くり返しでない) クエストを受けられれば '!'
 function npcMark(n) {
   if (n.role !== 'quest' || !player) return '';
-  const st = QUESTS.filter((q) => q.giver === n.id).map(questStatus);
-  return st.includes('ready') ? '?' : st.includes('available') ? '!' : '';
+  const qs = QUESTS.filter((q) => q.giver === n.id);
+  if (qs.some((q) => questStatus(q) === 'ready')) return '?';
+  return qs.some((q) => !q.repeatable && questStatus(q) === 'available') ? '!' : '';
 }
 
 function questKill(u) {
@@ -48,7 +50,8 @@ function rewardText(r) {
 function claimQuest(q) {
   const p = player, r = q.reward;
   if (r.item && p.inventory.length >= EC.inventorySize) { questNote = '持ち物がいっぱいで受け取れない'; return; }
-  player.quests[q.id].state = 'claimed';
+  if (q.repeatable) delete player.quests[q.id];
+  else player.quests[q.id].state = 'claimed';
   p.gold += r.gold || 0;
   p.potions.potion = Math.min(IT.potions.potion.max, (p.potions.potion || 0) + (r.potions || 0));
   if (r.item) p.inventory.push(makeItem(r.item.slot, p.level, r.item.rarity));
@@ -56,49 +59,87 @@ function claimQuest(q) {
   if (r.exp) gainExp(r.exp, p.x, p.y); // レベルアップの表示が最後に出るように
 }
 
-let questNpc = null, questNote = '';
+// ----- クエストの画面 (依頼の一覧から選び、右で内容を見て受ける・報告する) -----
+// questSel: 選んでいるクエストの id
+let questNpc = null, questNote = '', questSel = null;
 function openQuest(n) {
   game.state = 'menu';
   aiming = null;
+  player.travel = null;
   menu.mode = 'quest';
   questNpc = n;
   questNote = '';
+  questSel = null;
   renderQuest();
   $('quest').classList.add('show');
 }
 
-function renderQuest() {
-  const tag = { available: '受けられる', active: '受けている', ready: '報告できる', claimed: '報告済み', lowLevel: '' };
-  $('questTitle').textContent = questNpc.name;
-  const list = QUESTS.filter((q) => q.giver === questNpc.id).map((q) => ({ q, st: questStatus(q) }))
-    .filter(({ st }) => st !== 'locked');
-  // 報告できる → 受けている → 受けられる → レベル不足 → 報告済み の順
+const QUEST_TAG = { available: '受けられる', active: '受けている', ready: '報告できる', claimed: '報告済み' };
+// 一覧に出すクエスト (前のクエストがまだのものは出さない)。報告できる → 受けている → 受けられる → レベル不足 → 報告済み の順
+function questEntries() {
   const order = ['ready', 'active', 'available', 'lowLevel', 'claimed'];
-  list.sort((a, b) => order.indexOf(a.st) - order.indexOf(b.st));
-  $('questList').innerHTML = (questNote ? `<p class="note">${questNote}</p>` : '') + (list.map(({ q, st }) => {
+  return QUESTS.filter((q) => q.giver === questNpc.id).map((q) => ({ q, st: questStatus(q) }))
+    .filter(({ st }) => st !== 'locked')
+    .sort((a, b) => order.indexOf(a.st) - order.indexOf(b.st));
+}
+
+function renderQuest() {
+  $('questTitle').textContent = questNpc.name;
+  const list = questEntries();
+  if (!list.some(({ q }) => q.id === questSel)) questSel = list.length ? list[0].q.id : null;
+  $('questNote').textContent = questNote;
+  $('questList').innerHTML = list.map(({ q, st }) => {
     const prog = player.quests[q.id];
-    const goal = `${enemyName(q.target)}を ${q.count} 体倒す（${q.where}）` + (prog && st !== 'claimed' ? `　${Math.min(prog.count, q.count)} / ${q.count}` : '');
-    const btn = st === 'available' ? `<button data-act="accept" data-id="${q.id}">受ける</button>` :
-      st === 'ready' ? `<button data-act="claim" data-id="${q.id}">報告する</button>` : '';
-    const label = st === 'lowLevel' ? `Lv${q.minLevel} から` : tag[st];
-    return `<div class="quest q-${st}"><div class="qhead"><b>${q.name}</b><span class="qtag">${label}</span>${btn}</div>
-      ${st === 'claimed' ? '' : `<p>${q.desc}</p><div class="qgoal">${goal}</div><div class="qreward">報酬: ${rewardText(q.reward)}</div>`}</div>`;
-  }).join('') || '<p class="hint">今は頼みたいことはない。</p>');
+    const sub = st === 'lowLevel' ? `Lv${q.minLevel} から` :
+      st === 'active' ? `${QUEST_TAG[st]}　${Math.min(prog.count, q.count)} / ${q.count}` : QUEST_TAG[st];
+    return `<div class="qitem q-${st}${q.id === questSel ? ' sel' : ''}" data-qid="${q.id}">
+      <b>${q.name}</b>${q.repeatable ? '<i class="qrep">くり返し</i>' : ''}<span>${sub}</span></div>`;
+  }).join('') || '<p class="hint">今は頼みたいことはない。</p>';
+  const cur = list.find(({ q }) => q.id === questSel);
+  if (!cur) { $('questDetail').innerHTML = ''; return; }
+  const { q, st } = cur, prog = player.quests[q.id];
+  const goal = `${enemyName(q.target)}を ${q.count} 体倒す` + (prog && st !== 'claimed' ? `　${Math.min(prog.count, q.count)} / ${q.count}` : '');
+  const btn = st === 'available' ? `<button data-act="accept" data-id="${q.id}">この依頼を受ける（Enter）</button>` :
+    st === 'ready' ? `<button data-act="claim" data-id="${q.id}">報告する（Enter）</button>` :
+    st === 'lowLevel' ? `<p class="hint">Lv${q.minLevel} になると受けられる</p>` :
+    st === 'active' ? '<p class="hint">受けている（倒した数は受けたあとから数える）</p>' : '<p class="hint">報告済み</p>';
+  $('questDetail').innerHTML = `<h3>${q.name}</h3><p>${q.desc}</p>
+    <dl><dt>内容</dt><dd>${goal}</dd><dt>場所</dt><dd>${q.where}</dd><dt>報酬</dt><dd class="qreward">${rewardText(q.reward)}</dd>
+    ${q.repeatable ? '<dt>種類</dt><dd>くり返し受けられる</dd>' : ''}</dl>${btn}`;
+}
+
+// 選んでいるクエストを受ける・報告する
+function questAction(q) {
+  if (!q) return;
+  const st = questStatus(q);
+  if (st === 'available') {
+    player.quests[q.id] = { state: 'active', count: 0 };
+    questNote = `「${q.name}」を受けた`;
+  } else if (st === 'ready') claimQuest(q);
+  else return;
+  renderQuest();
+  saveGame();
+}
+
+// ↑↓ で一覧の選択を動かす
+function moveQuestSel(d) {
+  const list = questEntries();
+  if (!list.length) return;
+  const i = list.findIndex(({ q }) => q.id === questSel);
+  questSel = list[clamp(i + d, 0, list.length - 1)].q.id;
+  renderQuest();
+  const el = document.querySelector('#questList .sel');
+  if (el) el.scrollIntoView({ block: 'nearest' });
 }
 
 $('quest').addEventListener('click', (e) => {
   if (game.state !== 'menu' || menu.mode !== 'quest') return;
   const act = e.target.closest('[data-act]');
-  if (!act) return;
-  if (act.dataset.act === 'close') { closeMenu(); return; }
-  const q = questById(act.dataset.id);
-  if (!q) return;
-  if (act.dataset.act === 'accept' && questStatus(q) === 'available') {
-    player.quests[q.id] = { state: 'active', count: 0 };
-    questNote = `「${q.name}」を受けた`;
-  } else if (act.dataset.act === 'claim' && questStatus(q) === 'ready') {
-    claimQuest(q);
+  if (act) {
+    if (act.dataset.act === 'close') closeMenu();
+    else questAction(questById(act.dataset.id));
+    return;
   }
-  renderQuest();
-  saveGame();
+  const item = e.target.closest('[data-qid]');
+  if (item) { questSel = item.dataset.qid; renderQuest(); }
 });

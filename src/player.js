@@ -24,6 +24,9 @@ window.addEventListener('keydown', (e) => {
   if (game.state === 'menu') {
     // 会話: F / Enter / スペースで次の言葉へ (最後なら閉じる)
     if (menu.mode === 'talk' && !e.repeat && (k === 'f' || k === 'enter' || k === ' ')) { nextTalk(); return; }
+    // クエストの画面: ↑↓ で選び、Enter で受ける・報告する
+    if (menu.mode === 'quest' && (k === 'arrowup' || k === 'arrowdown')) { moveQuestSel(k === 'arrowup' ? -1 : 1); return; }
+    if (menu.mode === 'quest' && k === 'enter' && !e.repeat) { questAction(questById(questSel)); return; }
     if (!e.repeat && (k === 'escape' || (k === 'i' && menu.mode === 'inv') || (k === 'c' && menu.mode === 'char') ||
       (k === 'f' && (menu.mode === 'shop' || menu.mode === 'smith' || menu.mode === 'quest')))) closeMenu();
     return;

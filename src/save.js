@@ -39,7 +39,12 @@ function buildSave() {
 // 読めないセーブは null
 function migrateSave(d) {
   if (!d || typeof d !== 'object') return null;
-  if (d.v !== SAVE_VERSION || !d.player || !d.progress || !d.location || !WORLD.zones[d.location.zone]) return null;
+  if (d.v !== SAVE_VERSION || !d.player || !d.progress || !d.location) return null;
+  // 今はないゾーン (名前を変えた建物など) にいたセーブは、倒れたときに戻る町のかがり火から始める
+  if (!WORLD.zones[d.location.zone]) {
+    const home = WORLD.zones[d.home] && WORLD.zones[d.home].respawn ? d.home : WORLD.respawnZone, r = WORLD.zones[home].respawn;
+    d.location = { ...d.location, zone: home, tx: tileOf(r.x), ty: tileOf(r.y) };
+  }
   return d;
 }
 

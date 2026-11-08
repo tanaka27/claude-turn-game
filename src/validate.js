@@ -145,6 +145,7 @@ function validateData() {
     check(ENEMIES[q.target], `data/quests.js '${q.id}': 敵 '${q.target}' が data/enemies.js にない`);
     check(npcIds.includes(q.giver), `data/quests.js '${q.id}': NPC '${q.giver}' が world.js にない`);
     check(!q.requires || questIds.includes(q.requires), `data/quests.js '${q.id}': requires '${q.requires}' のクエストがない`);
+    check(!q.requires || !(questById(q.requires) || {}).repeatable, `data/quests.js '${q.id}': requires '${q.requires}' はくり返しのクエストなので使えない`);
     const it = q.reward.item;
     check(!it || (ITEMS.slots[it.slot] && rarityIds.includes(it.rarity)), `data/quests.js '${q.id}': 報酬の装備の部位かレア度がない`);
   }
