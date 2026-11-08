@@ -26,6 +26,7 @@
 //               話すだけの NPC は lines: 話す言葉の配列 (1 つずつ順に出す)
 //               商人は shop: data/items.js の ITEMS.shops のキー、鍛冶屋は smith: ITEMS.smiths のキー (町ごとに品ぞろえが違う)
 //               NPC のマスは通れない。となりのマスから話しかける (NPC のマスへ移動しようとしても話しかける)
+//               kind: ステータスの種類 (data/npcs.js の NPC_KINDS のキー)。今は NPC に攻撃は当たらない
 //
 // 【地形の種類 (terrain)】
 //   blocksShots : true なら移動も攻撃も遮る。false なら移動だけを遮る
@@ -73,9 +74,9 @@ const WORLD = {
       ],
       camps: [],
       npcs: [
-        { id: 'merchant', name: '商人', glyph: '商', color: '#ffb300', x: 560, y: 760, role: 'shop', shop: 'townGeneral' },
-        { id: 'townSmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 320, y: 760, role: 'smith', smith: 'townSmith' },
-        { id: 'captain', name: '衛兵隊長', glyph: '衛', color: '#90a4ae', x: 1040, y: 760, role: 'quest' },
+        { id: 'merchant', name: '商人', glyph: '商', color: '#ffb300', x: 560, y: 760, kind: 'merchant', role: 'shop', shop: 'townGeneral' },
+        { id: 'townSmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 320, y: 760, kind: 'smith', role: 'smith', smith: 'townSmith' },
+        { id: 'captain', name: '衛兵隊長', glyph: '衛', color: '#90a4ae', x: 1040, y: 760, kind: 'guard', role: 'quest' },
       ],
     },
 
@@ -94,8 +95,8 @@ const WORLD = {
       ],
       camps: [],
       npcs: [
-        { id: 'guildClerk', name: 'ギルド受付', glyph: '受', color: '#f48fb1', x: 260, y: 140, role: 'quest' },
-        { id: 'adventurer', name: '冒険者', glyph: '冒', color: '#9fa8da', x: 420, y: 220, role: 'talk',
+        { id: 'guildClerk', name: 'ギルド受付', glyph: '受', color: '#f48fb1', x: 260, y: 140, kind: 'clerk', role: 'quest' },
+        { id: 'adventurer', name: '冒険者', glyph: '冒', color: '#9fa8da', x: 420, y: 220, kind: 'adventurer', role: 'talk',
           lines: ['ギルドの依頼は、何度でも受けられるものが多い。腕を磨きながら稼ぐにはちょうどいいぞ。',
             '草原の北の丘には、狼の王がいるらしい。ひとりで行くなら、しっかり鍛えてからにしたほうがいい。'] },
       ],
@@ -191,8 +192,8 @@ const WORLD = {
       ],
       camps: [],
       npcs: [
-        { id: 'waySmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 560, y: 720, role: 'smith', smith: 'waySmith' },
-        { id: 'grocer', name: '道具屋', glyph: '道', color: '#a5d6a7', x: 1040, y: 760, role: 'shop', shop: 'wayTools' },
+        { id: 'waySmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 560, y: 720, kind: 'smith', role: 'smith', smith: 'waySmith' },
+        { id: 'grocer', name: '道具屋', glyph: '道', color: '#a5d6a7', x: 1040, y: 760, kind: 'merchant', role: 'shop', shop: 'wayTools' },
       ],
     },
 
@@ -245,8 +246,8 @@ const WORLD = {
       ],
       camps: [],
       npcs: [
-        { id: 'herbalist', name: '薬師', glyph: '薬', color: '#80cbc4', x: 440, y: 600, role: 'shop', shop: 'hamletHerbs' },
-        { id: 'hamletSmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 760, y: 600, role: 'smith', smith: 'hamletSmith' },
+        { id: 'herbalist', name: '薬師', glyph: '薬', color: '#80cbc4', x: 440, y: 600, kind: 'merchant', role: 'shop', shop: 'hamletHerbs' },
+        { id: 'hamletSmith', name: '鍛冶屋', glyph: '鍛', color: '#ff8a65', x: 760, y: 600, kind: 'smith', role: 'smith', smith: 'hamletSmith' },
       ],
     },
 

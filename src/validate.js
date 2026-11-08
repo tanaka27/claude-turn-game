@@ -37,6 +37,7 @@ function validateData() {
       check(!to || to.gates.some((t) => t.id === g.toGate), `world.js ${zid} の門 '${g.id}': 行き先の門 '${g.toGate}' がない`);
     }
     for (const n of z.npcs || []) {
+      check(NPC_KINDS[n.kind], `world.js ${zid} の NPC '${n.id}': kind '${n.kind}' が data/npcs.js にない`);
       npcIds.push(n.id);
       check(n.role !== 'shop' || ITEMS.shops[n.shop], `world.js ${zid} の NPC '${n.id}': 店 '${n.shop}' が data/items.js の shops にない`);
       check(n.role !== 'talk' || (Array.isArray(n.lines) && n.lines.length > 0), `world.js ${zid} の NPC '${n.id}': 話す言葉 lines がない`);
@@ -93,6 +94,12 @@ function validateData() {
   check(new Set(potionKeys).size === potionKeys.length, 'data/items.js potions: 回復薬のキーが重なっている');
   for (const k of potionKeys) check(!reserved.includes(k) && !keys.includes(k), `data/items.js potions: キー '${k}' は移動・画面・スキルのキーと重なっている`);
   check(ITEMS.potions.potion, 'data/items.js potions: クエストの報酬に使う potion がない');
+  // NPC の種類も主人公と同じステータスを持つ (計算で決まるものは書かない)
+  for (const [kind, k] of Object.entries(NPC_KINDS)) {
+    for (const st in PLAYER.stats) check(Number.isFinite(k.stats[st]) && k.stats[st] >= 0, `data/npcs.js ${kind}: stats に ${st} がない`);
+    for (const st in k.stats) check(st in PLAYER.stats, `data/npcs.js ${kind}: stats の ${st} は主人公にないステータス (計算で決まるものは書かない)`);
+    for (const st in k.gear || {}) check(STATS[st], `data/npcs.js ${kind}: gear の ${st} が data/stats.js にない`);
+  }
   for (const k in SITUATIONS) check(P.field.ai.situations[k], `params.js field.ai.situations: '${k}' の数値がない (src/ai.js の SITUATIONS にはある)`);
   for (const [type, d] of Object.entries(ENEMIES)) {
     // 敵も主人公と同じステータスを持つ (計算で決まるものは書かない)

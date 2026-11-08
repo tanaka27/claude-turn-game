@@ -260,7 +260,7 @@ function drawWorldMap() {
 
 function drawTooltip() {
   const e = enemies.find((u) => u.tx === mouse.tx && u.ty === mouse.ty);
-  if (!e) return;
+  if (!e) { drawNpcTooltip(); return; }
   const st = e.stats;
   const lines = [
     `HP ${Math.ceil(e.hp)} / ${st.maxHp}　MP ${Math.floor(e.mp)} / ${st.maxMp}`, `${STATS.atk.label} ${st.atk.toFixed(0)}  ${STATS.def.label} ${st.def.toFixed(0)}  ${STATS.int.label} ${st.int.toFixed(0)}  ${STATS.mdef.label} ${st.mdef.toFixed(0)}`,
@@ -277,6 +277,29 @@ function drawTooltip() {
   ctx.strokeStyle = e.color; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.textAlign = 'left';
   ctx.fillStyle = levelColor(e.level); ctx.font = 'bold 14px sans-serif'; ctx.fillText(`Lv${e.level} ${e.name}`, x + 10, y + 20);
+  ctx.fillStyle = '#e6edf3'; ctx.font = '13px sans-serif';
+  lines.forEach((l, i) => ctx.fillText(l, x + 10, y + 40 + i * 18));
+}
+
+// NPC にマウスを乗せたとき: 種類とステータス (今は NPC に攻撃は当たらない)
+function drawNpcTooltip() {
+  const n = (zone.npcs || []).find((u) => u.tx === mouse.tx && u.ty === mouse.ty);
+  if (!n) return;
+  const st = n.stats;
+  const lines = [
+    `HP ${Math.ceil(n.hp)} / ${st.maxHp}　MP ${Math.floor(n.mp)} / ${st.maxMp}`,
+    `${STATS.atk.label} ${st.atk.toFixed(0)}  ${STATS.def.label} ${st.def.toFixed(0)}  ${STATS.int.label} ${st.int.toFixed(0)}  ${STATS.mdef.label} ${st.mdef.toFixed(0)}`,
+    `${STATS.speed.label} ${Math.round(st.speed)}  ${STATS.critRate.label} ${Math.round(st.critRate * 100)}%`,
+    '攻撃は当たらない',
+  ];
+  ctx.font = '13px sans-serif';
+  const w = Math.max(...lines.map((l) => ctx.measureText(l).width), 100) + 20;
+  const h = 30 + lines.length * 18;
+  const x = clamp(mouse.x + 16, 0, W - w), y = clamp(mouse.y + 16, 0, H - h);
+  ctx.fillStyle = 'rgba(13,17,23,0.92)'; roundRect(x, y, w, h, 8); ctx.fill();
+  ctx.strokeStyle = n.color; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.textAlign = 'left';
+  ctx.fillStyle = n.color; ctx.font = 'bold 14px sans-serif'; ctx.fillText(`${n.name}（${n.kindLabel}）`, x + 10, y + 20);
   ctx.fillStyle = '#e6edf3'; ctx.font = '13px sans-serif';
   lines.forEach((l, i) => ctx.fillText(l, x + 10, y + 40 + i * 18));
 }

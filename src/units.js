@@ -55,6 +55,15 @@ function createEnemy(type, tx, ty, camp, slot) {
   return e;
 }
 
+// NPC: world.js の配置 + data/npcs.js の種類のステータス (主人公・敵と同じ式で計算する)
+// NPC はどの陣営にも入っていないので、攻撃は当たらない (opponents に出てこない)
+function createNpc(n) {
+  // kind がない・まちがっているときは主人公の Lv1 の値で作る (データの確認で [データの確認] に出る)
+  const k = NPC_KINDS[n.kind] || { label: '?', stats: PLAYER.stats };
+  const st = deriveStats({ ...k.stats }, [k.gear]);
+  return { ...n, faction: 'npc', kindLabel: k.label, tx: tileOf(n.x), ty: tileOf(n.y), stats: st, hp: st.maxHp, mp: st.maxMp };
+}
+
 // ----- マスの上の位置 -----
 // x, y は描く位置 (px)。マスを移ると、描く位置が少し遅れて追いつく (src/main.js の updateFx)
 function placeUnit(u, tx, ty) {

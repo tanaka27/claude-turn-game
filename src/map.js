@@ -184,7 +184,7 @@ function loadZone(id) {
     }
     return { ...g, ...r, sx: tileOf(g.spawn.x), sy: tileOf(g.spawn.y) };
   });
-  zone.npcs = (z.npcs || []).map((n) => ({ ...n, tx: tileOf(n.x), ty: tileOf(n.y) }));
+  zone.npcs = (z.npcs || []).map((n) => createNpc(n));
   for (const n of zone.npcs) blocked[idx(n.tx, n.ty)] = 1;
   zone.respawn = z.respawn ? { tx: tileOf(z.respawn.x), ty: tileOf(z.respawn.y) } : null;
   // 地面の装飾 (ゾーンごとに固定の乱数)
