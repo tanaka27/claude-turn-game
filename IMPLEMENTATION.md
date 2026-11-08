@@ -54,7 +54,7 @@
 | `.claude/launch.json` | 確認用ローカルサーバーの設定（`python server.py`） |
 | `tools/codex_image.py` | Codex CLI で画像素材を作り、大きさと透明背景を整えて `assets/` に保存する（ゲームの実行には使わない）。詳しくは [docs/image-assets.md](docs/image-assets.md) |
 | `.claude/skills/game-image/` | Claude Code 用のスキル（画像素材の作り方の手順） |
-| `assets/` | 画像素材（まだゲームからは読み込んでいない）。`assets/_raw/` は生成した元の大きさの画像で git に入れない |
+| `assets/` | 画像素材（敵の絵 `assets/sprites/enemies/` を `src/render.js` の `getSprite` で読み込む）。`assets/_raw/` は生成した元の大きさの画像で git に入れない |
 
 ### 起動方法
 

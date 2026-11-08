@@ -5,6 +5,46 @@
 
 function pathCircle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, Math.max(0, r), 0, TAU); }
 
+// 絵 (PNG) の読み込み。最初に使うときに読み込みを始め、読み込み終わるまでは null を返す (そのあいだは図形で描く)
+// 当たったときの白い光り用に、同じ形の白い絵 (flash) も作っておく
+const sprites = {};
+function getSprite(src) {
+  if (!src) return null;
+  let s = sprites[src];
+  if (!s) {
+    s = sprites[src] = { img: new Image(), flash: null, ready: false };
+    s.img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = s.img.naturalWidth; c.height = s.img.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(s.img, 0, 0);
+      g.globalCompositeOperation = 'source-in'; g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+      s.flash = c; s.ready = true;
+    };
+    s.img.onerror = () => console.error('[データの確認]', `絵を読み込めない: ${src} (図形で描く)`);
+    s.img.src = src;
+  }
+  return s.ready ? s : null;
+}
+
+// 敵の絵を描き、絵の上端の y を返す (HP バーをその上に出すため)。絵がまだなければ null
+function drawEnemySprite(u) {
+  const s = getSprite(u.def.sprite);
+  if (!s) return null;
+  // 右向きの絵。向きの左右成分で反転する (真上・真下に近いときは前の向きのまま)
+  const c = Math.cos(u.facing);
+  if (c > ENEMY_SPRITE.turnDeadZone) u.spriteFlip = false;
+  else if (c < -ENEMY_SPRITE.turnDeadZone) u.spriteFlip = true;
+  const h = u.r * ENEMY_SPRITE.scale, w = h * s.img.naturalWidth / s.img.naturalHeight;
+  const foot = u.y + u.r * 0.7;   // 影の中心
+  ctx.save();
+  ctx.translate(u.x, foot);
+  if (u.spriteFlip) ctx.scale(-1, 1);
+  ctx.drawImage(u.hitFlash > 0 ? s.flash : s.img, -w / 2, -h, w, h);
+  ctx.restore();
+  return foot - h;
+}
+
 // マスの集まりを塗る。col: 'r,g,b' / fill・line: 透明度
 function fillTiles(tiles, col, fill, line) {
   ctx.fillStyle = `rgba(${col},${fill})`;
@@ -85,7 +125,15 @@ function drawUnit(u) {
   ctx.beginPath(); ctx.ellipse(u.x, u.y + u.r * 0.7, u.r, u.r * 0.45, 0, 0, TAU); ctx.fill();
   ctx.globalAlpha = u.invuln ? 0.5 : 1;
   const c = Math.cos(u.facing), s = Math.sin(u.facing);
-  if (u.isPlayer) {
+  // 敵は絵があれば絵で描く (ボスは足元に金の輪)。なければ下の図形で描く
+  if (u.isBoss && !u.isPlayer && getSprite(u.def.sprite)) {
+    ctx.lineWidth = 3; ctx.strokeStyle = '#ffd54f';
+    ctx.beginPath(); ctx.ellipse(u.x, u.y + u.r * 0.7, u.r + 6, (u.r + 6) * 0.45, 0, 0, TAU); ctx.stroke();
+  }
+  const spriteTop = u.isPlayer ? null : drawEnemySprite(u);
+  if (spriteTop !== null) {
+    // 絵で描いた。体・耳・目・字は描かない
+  } else if (u.isPlayer) {
     // 武器
     ctx.strokeStyle = '#e0f7fa'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(u.x + c * u.r * 0.6, u.y + s * u.r * 0.6);
@@ -103,25 +151,31 @@ function drawUnit(u) {
       ctx.closePath(); ctx.fill(); ctx.stroke();
     }
   }
-  // 体
-  pathCircle(u.x, u.y, u.r);
-  ctx.fillStyle = u.hitFlash > 0 ? '#ffffff' : u.color; ctx.fill();
-  ctx.lineWidth = 2.5; ctx.strokeStyle = u.isPlayer ? '#e1f5fe' : 'rgba(0,0,0,0.6)'; ctx.stroke();
-  if (!u.isPlayer) {
-    // 目 (向いている方向に 2 つ)
-    ctx.fillStyle = u.isBoss ? '#ffeb3b' : '#fff';
-    for (const side of [-1, 1]) {
-      const a = u.facing + side * 0.45;
-      pathCircle(u.x + Math.cos(a) * u.r * 0.62, u.y + Math.sin(a) * u.r * 0.62, Math.max(2, u.r * 0.14)); ctx.fill();
+  if (spriteTop === null) {
+    // 体
+    pathCircle(u.x, u.y, u.r);
+    ctx.fillStyle = u.hitFlash > 0 ? '#ffffff' : u.color; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = u.isPlayer ? '#e1f5fe' : 'rgba(0,0,0,0.6)'; ctx.stroke();
+    if (!u.isPlayer) {
+      // 目 (向いている方向に 2 つ)
+      ctx.fillStyle = u.isBoss ? '#ffeb3b' : '#fff';
+      for (const side of [-1, 1]) {
+        const a = u.facing + side * 0.45;
+        pathCircle(u.x + Math.cos(a) * u.r * 0.62, u.y + Math.sin(a) * u.r * 0.62, Math.max(2, u.r * 0.14)); ctx.fill();
+      }
+    }
+    if (u.isBoss) { ctx.lineWidth = 3; ctx.strokeStyle = '#ffd54f'; pathCircle(u.x, u.y, u.r + 4); ctx.stroke(); }
+    if (!u.isPlayer) {
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.font = `bold ${Math.round(u.r * 1.0)}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(u.def.glyph, u.x, u.y + 1);
     }
   }
-  if (u.isBoss) { ctx.lineWidth = 3; ctx.strokeStyle = '#ffd54f'; pathCircle(u.x, u.y, u.r + 4); ctx.stroke(); }
   if (!u.isPlayer) {
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.font = `bold ${Math.round(u.r * 1.0)}px sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(u.def.glyph, u.x, u.y + 1);
-    const w = Math.max(30, u.r * 2.2), y = u.y - u.r - 9;
+    // 頭上の HP バーとレベル (絵のときは絵の上端の上)
+    ctx.textBaseline = 'middle';
+    const w = Math.max(30, u.r * 2.2), y = spriteTop !== null ? spriteTop - 4 : u.y - u.r - 9;
     ctx.fillStyle = '#000a'; ctx.fillRect(u.x - w / 2 - 1, y - 1, w + 2, 6);
     ctx.fillStyle = u.state === 'return' ? '#8b949e' : '#ef5350'; ctx.fillRect(u.x - w / 2, y, w * u.hp / u.stats.maxHp, 4);
     ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'right';

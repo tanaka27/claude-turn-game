@@ -1,7 +1,7 @@
 # 画像素材（Codex CLI で作る）
 
 ゲーム素材の画像（敵・主人公のスプライト、道具のアイコン、地面のタイル、技の演出、顔絵、背景）を、Codex CLI の組み込み画像生成（`image_gen`）で作る方法。
-いまのゲームは画像を使わず図形で描いている。ここで作った画像は `assets/` に置き、使うときに `src/render.js` などから読み込む（読み込みのしくみはまだない）。
+作った画像は `assets/` に置く。ゲームから読み込むのは `src/render.js` の `getSprite(パス)`（最初に使うときに読み込む）。
 
 ## 必要なもの
 
@@ -42,7 +42,7 @@ python tools/codex_image.py --name slime --kind sprite --pixel --size 64 --subje
 
 | `--kind` | 保存先 | 背景 | 置き方 | 目安の `--size` |
 |---|---|---|---|---|
-| `sprite` | `assets/sprites/` | 透明 | 下ぞろえ・中央 | 64（1 マス = 40px） |
+| `sprite` | `assets/sprites/` | 透明 | 下ぞろえ・中央 | 128（描くときに縮める。1 マス = 40px） |
 | `icon` | `assets/icons/` | 透明 | 中央 | 48〜64 |
 | `tile` | `assets/tiles/` | 不透明（中央を切り抜く） | — | 40 か 80 |
 | `effect` | `assets/effects/` | 透明 | 中央 | 64〜128 |
@@ -50,6 +50,20 @@ python tools/codex_image.py --name slime --kind sprite --pixel --size 64 --subje
 | `background` | `assets/backgrounds/` | 不透明 | — | 画面の大きさ |
 
 `assets/_raw/`（元の大きさの画像）は git に入れない（`.gitignore`）。大きさを変えて作り直したいときは、同じ元画像からもう一度後処理すればよい。
+
+## 絵柄（既定）
+
+- `--pixel` なし: **フラットなアニメ調**（JRPG のモンスター絵、セル塗りで影は 2 段まで、はっきりした暗い輪郭線、ベタ塗り）。3D・CG・リアル・厚塗り・エアブラシのグラデーション・つやの強い光・毛並みの描き込みは `Avoid` に入れる（`SMOOTH_STYLE` / `SMOOTH_AVOID`）
+- `--pixel`: ドット絵
+- `sprite` は**右向きの 3/4 視点**で作る。ゲームは左を向くとき左右反転して描く
+
+## ゲームで使っている素材
+
+| ファイル | 使うところ | 作り方 |
+|---|---|---|
+| `assets/sprites/enemies/<キー>.png` | 敵の絵（`data/enemies.js` の `sprite`。[enemies.md](enemies.md)） | `--kind sprite --size 128 --out-dir assets/sprites/enemies`。まずウルフを作り、ほかは `--ref assets/sprites/enemies/wolf.png` で絵柄をそろえた |
+
+新しい敵の絵を足すときは、同じ引数でキーの名前にして作り、`data/enemies.js` のその敵に `sprite` を書く。
 
 ## うまく作るこつ
 

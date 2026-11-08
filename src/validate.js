@@ -112,6 +112,8 @@ function validateData() {
     for (const a of d.attacks) check(a.weight === undefined || a.weight > 0, `data/enemies.js ${type} の技「${a.name}」: weight は 0 より大きくする`);
     for (const a of d.attacks) for (const k of a.situations || []) check(P.field.ai.situations[k] && SITUATIONS[k], `data/enemies.js ${type} の技「${a.name}」: situations の '${k}' が params.js の field.ai.situations にない`);
     check(d.surround === undefined || typeof d.surround === 'boolean', `data/enemies.js ${type}: surround は true か false にする`);
+    check(d.sprite === undefined || (typeof d.sprite === 'string' && /\.(png|webp)$/i.test(d.sprite)), `data/enemies.js ${type}: sprite は PNG か WebP のパスにする (読み込めないときは描くときに出る)`);
+    if (d.sprite) getSprite(d.sprite); // 起動時に読み込みを始める (なければここでエラーが出る)
     for (const a of d.attacks) {
       check(a.cooldown >= 1, `data/enemies.js ${type} の技「${a.name}」: cooldown は 1 以上にする`);
       check(a.mp === undefined || a.mp >= 0, `data/enemies.js ${type} の技「${a.name}」: mp は 0 以上にする`);

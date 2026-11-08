@@ -25,7 +25,8 @@ RAW_DIR = os.path.join(REPO, 'assets', '_raw')
 KINDS = {
     'sprite': dict(dir='sprites', transparent=True, anchor='bottom',
                    asset='2D top-down RPG character/enemy sprite for a browser game (Canvas 2D, 1 tile = 40px)',
-                   framing='single character centered, full body, nothing cropped, facing the viewer'),
+                   framing='single character centered, full body, nothing cropped, three-quarter view '
+                           'with the body and face turned to the RIGHT side of the image (the game mirrors it for left)'),
     'icon': dict(dir='icons', transparent=True, anchor='center',
                  asset='inventory/item icon for a browser RPG UI',
                  framing='single object centered, fills most of the canvas, nothing cropped'),
@@ -44,7 +45,11 @@ KINDS = {
 }
 
 PIXEL_STYLE = 'clean pixel art, crisp pixel clusters, limited palette, no anti-aliased blur'
-SMOOTH_STYLE = 'clean 2D game art, flat shading with soft highlights, bold readable silhouette'
+SMOOTH_STYLE = ('flat 2D anime-style game illustration (JRPG monster/character art), cel shading with at most '
+                'two flat tone steps, clean bold dark outlines, solid flat colors, simple readable shapes and silhouette')
+# 絵柄を 3D・リアル寄りにしないための「入れないもの」（--pixel でないときに足す）
+SMOOTH_AVOID = ('3D render, CGI, realistic, photorealistic, painterly brush texture, soft airbrush gradients, '
+                'glossy specular highlights, rim light glow, depth of field, detailed fur rendering')
 
 
 def find_codex():
@@ -79,6 +84,8 @@ def build_prompt(args, kind, raw_rel, refs):
         lines.append('Input images: the attached image(s) are STYLE REFERENCES only '
                      '(match their art style, palette, line weight and proportions; do not copy the subject)')
     avoid = 'text, letters, labels, UI frames, watermark, signature, scenery, ground shadow, border'
+    if not args.pixel and not args.style:
+        avoid += ', ' + SMOOTH_AVOID
     if args.avoid:
         avoid += ', ' + args.avoid
     lines.append(f'Avoid: {avoid}')
