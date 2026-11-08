@@ -6,7 +6,7 @@
 
 ## ステータス
 
-主人公はドラクエ風（成長は [progression.md](progression.md)）。敵は atk / def / int / mdef / speed / critRate を直接持つ。
+主人公はドラクエ風（成長は [progression.md](progression.md)）。敵も同じステータス（さいだいHP・さいだいMP・ちから・みのまもり・すばやさ・かしこさ・うんのよさ・会心倍率・HP再生・MP再生）を持ち、計算で決まるものは同じ式で出す。敵は装備のかわりに `gear` を足す（[enemies.md](enemies.md)）。
 
 | ステータス | 意味 |
 |---|---|
@@ -25,7 +25,7 @@
 | スキル加速（skillHaste） | (かしこさ − 10) × 0.5。スキルの再使用 = 基本 × 100 / (100 + スキル加速) 行動 |
 | 会心率（critRate） | うんのよさ × 0.5% |
 
-計算で決まるものの式は `params.js` の `derivedStats`。
+計算で決まるものの式は `params.js` の `derivedStats`（主人公も敵も `deriveStats`、`src/units.js`）。
 
 ## 技の種類（物理と術）
 

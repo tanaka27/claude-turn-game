@@ -31,17 +31,20 @@ function createPlayer() {
 function createEnemy(type, tx, ty, camp, slot) {
   const d = ENEMIES[type];
   const g = camp.level - 1, EL = P.enemyLevel;
-  const st = { ...d.stats };
-  st.maxHp = Math.round(st.maxHp * (1 + EL.hpGrowth * g));
-  st.atk = st.atk * (1 + EL.atkGrowth * g);
-  st.def = st.def + EL.defGrowth * g;
-  st.int = st.int * (1 + EL.intGrowth * g);
-  st.mdef = st.mdef + EL.mdefGrowth * g;
-  st.speed = st.speed + EL.speedGrowth * g;
+  // 主人公と同じステータスをレベルで補正し、主人公と同じ式で計算する (gear は装備のかわり)
+  const b = { ...d.stats };
+  b.maxHp = Math.round(b.maxHp * (1 + EL.hpGrowth * g));
+  b.maxMp = Math.round(b.maxMp * (1 + EL.mpGrowth * g));
+  b.str *= 1 + EL.strGrowth * g;
+  b.int *= 1 + EL.intGrowth * g;
+  b.vit += EL.vitGrowth * g;
+  b.agi += EL.agiGrowth * g;
+  const gear = { ...d.gear, mdef: ((d.gear && d.gear.mdef) || 0) + EL.mdefGrowth * g };
+  const st = deriveStats(b, [gear]);
   const e = {
     type, def: d, faction: 'enemy', name: d.name, isBoss: !!d.isBoss, tx, ty, x: 0, y: 0, r: d.radius, color: d.color,
     level: camp.level, exp: Math.round(d.exp * (1 + EL.expGrowth * g)), camp, slot, home: { tx, ty },
-    state: 'idle', stats: st, hp: st.maxHp, facing: rand(0, TAU),
+    state: 'idle', stats: st, hp: st.maxHp, mp: st.maxMp, facing: rand(0, TAU),
     cd: d.attacks.map(() => randInt(...AI.firstAttackDelay)), charging: null,
     invuln: false, hitFlash: 0, dead: false, returnT: 0,
   };
@@ -75,6 +78,8 @@ const actionCost = (u) => TN.baseSpeed / Math.max(TN.minSpeed, u.stats.speed);
 const opponents = (faction) => (faction === 'player' ? enemies : (player && !player.dead ? [player] : []));
 const skillCooldown = (sk) => sk.cooldown * 100 / (100 + player.stats.skillHaste);
 const skillMp = (sk) => sk.mp || 0;
+// 敵の技の再使用待ち (その敵の行動回数)。主人公と同じくスキル加速で変わる。四捨五入、最低 1
+const enemyCooldown = (e, a) => Math.max(1, Math.round(a.cooldown * 100 / (100 + e.stats.skillHaste)));
 
 // ----- 成長 -----
 const DS = P.derivedStats;
@@ -95,14 +100,11 @@ function growthBase(lv) {
   return base;
 }
 
-// ステータス = Lv1 の値 (成長するものは p.base) + 装備 → 計算で決まるものを計算
-function computeStats(p) {
-  const st = { ...PLAYER.stats, ...p.base };
+// ステータスを計算する (主人公も敵も同じ): もとのステータス + 装備 (gears の各 stats) → 計算で決まるものを計算
+function deriveStats(base, gears) {
+  const st = { ...base };
   for (const k in DS) st[k] = 0;
-  for (const slot in p.equip) {
-    const it = p.equip[slot];
-    if (it) for (const k in it.stats) st[k] = (st[k] || 0) + it.stats[k];
-  }
+  for (const gs of gears) if (gs) for (const k in gs) st[k] = (st[k] || 0) + gs[k];
   for (const k in DS) {
     const d = DS[k];
     st[k] += d.start + (st[d.from] - d.base) * d.per;
@@ -110,6 +112,8 @@ function computeStats(p) {
   for (const k in DS) if (DS[k].max !== undefined) st[k] = Math.min(DS[k].max, st[k]);
   return st;
 }
+// 主人公のステータス = Lv1 の値 (成長するものは p.base) + 装備
+const computeStats = (p) => deriveStats({ ...PLAYER.stats, ...p.base }, Object.values(p.equip).map((it) => it && it.stats));
 
 function gainExp(n, x, y) {
   const p = player;

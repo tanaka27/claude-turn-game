@@ -94,9 +94,15 @@ function validateData() {
   for (const k of potionKeys) check(!reserved.includes(k) && !keys.includes(k), `data/items.js potions: キー '${k}' は移動・画面・スキルのキーと重なっている`);
   check(ITEMS.potions.potion, 'data/items.js potions: クエストの報酬に使う potion がない');
   for (const [type, d] of Object.entries(ENEMIES)) {
-    check(d.stats.speed > 0, `data/enemies.js ${type}: speed がない`);
-    for (const a of d.attacks) check(a.cooldown >= 1, `data/enemies.js ${type} の技「${a.name}」: cooldown は 1 以上にする`);
-    check(d.stats.int >= 0 && d.stats.mdef >= 0, `data/enemies.js ${type}: int か mdef がない`);
+    // 敵も主人公と同じステータスを持つ (計算で決まるものは書かない)
+    for (const k in PLAYER.stats) check(Number.isFinite(d.stats[k]) && d.stats[k] >= 0, `data/enemies.js ${type}: stats に ${k} がない`);
+    for (const k in d.stats) check(k in PLAYER.stats, `data/enemies.js ${type}: stats の ${k} は主人公にないステータス (計算で決まるものは書かない)`);
+    for (const k in d.gear || {}) check(STATS[k], `data/enemies.js ${type}: gear の ${k} が data/stats.js にない`);
+    for (const a of d.attacks) {
+      check(a.cooldown >= 1, `data/enemies.js ${type} の技「${a.name}」: cooldown は 1 以上にする`);
+      check(a.mp === undefined || a.mp >= 0, `data/enemies.js ${type} の技「${a.name}」: mp は 0 以上にする`);
+      check(!(a.mp > d.stats.maxMp), `data/enemies.js ${type} の技「${a.name}」: mp ${a.mp} が Lv1 の maxMp ${d.stats.maxMp} より大きい`);
+    }
   }
 
   // 復活地点・門から入ったときの位置・NPC・湧き場所の中心が、通れるマスにあるか (world.js)

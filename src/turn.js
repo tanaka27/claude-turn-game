@@ -39,6 +39,12 @@ function advanceTime(t) {
     p.hp = Math.min(p.stats.maxHp, p.hp + (p.stats.hpRegen + (resting ? p.stats.maxHp * PG.restRegenRate : 0)) * dt);
     p.mp = Math.min(p.stats.maxMp, p.mp + (p.stats.mpRegen + (resting ? p.stats.maxMp * PG.restMpRegenRate : 0)) * dt);
   }
+  // 敵も主人公と同じく HP再生・MP再生で回復する (休息はない。今は敵の HP再生はどれも 0)
+  for (const e of enemies) {
+    if (e.dead) continue;
+    e.hp = Math.min(e.stats.maxHp, e.hp + e.stats.hpRegen * dt);
+    e.mp = Math.min(e.stats.maxMp, e.mp + e.stats.mpRegen * dt);
+  }
   updateCamps(dt);
   updateLoots(dt);
 }

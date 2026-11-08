@@ -16,7 +16,7 @@
 | 誰 | 速度 |
 |---|---|
 | 主人公 | 100 + (すばやさ − 20) × 2（`params.js` の `derivedStats.speed`）。Lv1 で 100、Lv10 で約 124、Lv30 で約 180。装備のすばやさでも上がる |
-| 敵 | 種類ごとの `speed`（[enemies.md](enemies.md)）＋ 敵レベル 1 ごとに +2（`enemyLevel.speedGrowth`） |
+| 敵 | 主人公と同じく、種類ごとの すばやさ（[enemies.md](enemies.md)）から計算する（すばやさ 20 で 100、1 につき +2）。すばやさは敵レベル 1 ごとに +1（`enemyLevel.agiGrowth`） |
 
 速度の下限は 20（`turn.minSpeed`）。
 

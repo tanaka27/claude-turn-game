@@ -84,7 +84,7 @@ function enemyAct(e) {
     const home = e.home;
     if ((e.tx === home.tx && e.ty === home.ty) || (e.returnT <= 0 && isFree(home.tx, home.ty))) {
       if (e.tx !== home.tx || e.ty !== home.ty) placeUnit(e, home.tx, home.ty);
-      Object.assign(e, { state: 'idle', invuln: false, hp: e.stats.maxHp });
+      Object.assign(e, { state: 'idle', invuln: false, hp: e.stats.maxHp, mp: e.stats.maxMp });
       return;
     }
     const s = stepDownhill(e, e.camp.field);
@@ -92,15 +92,16 @@ function enemyAct(e) {
     return;
   }
 
-  // 攻撃: 上から順に、使えて相手が範囲に入る技を使う
+  // 攻撃: 上から順に、使えて (再使用待ちでなく MP が足りる) 相手が範囲に入る技を使う
   if (canSee) {
     const atks = e.def.attacks;
     for (let i = 0; i < atks.length; i++) {
       const a = atks[i];
-      if (e.cd[i] > 0 || d > attackReach(a) + 0.01) continue;
+      if (e.cd[i] > 0 || e.mp + 1e-9 < skillMp(a) || d > attackReach(a) + 0.01) continue;
       const h = planAttack(e, a, player.tx, player.ty);
       if (!h.keys.has(tileKey(player.tx, player.ty))) continue;
-      e.cd[i] = a.cooldown;
+      e.cd[i] = enemyCooldown(e, a);
+      e.mp -= skillMp(a);
       e.facing = h.dir;
       if (a.charge) {
         startCharge(e, h);

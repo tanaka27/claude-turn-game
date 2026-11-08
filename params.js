@@ -74,7 +74,7 @@ const PARAMS = {
     restMpRegenRate: 0.02, // 休息中に追加で回復する MP (最大MP比 / ターン)
   },
 
-  // 主人公のステータスのうち、ほかのステータスから計算するもの
+  // ほかのステータスから計算するステータス (主人公も敵も同じ式)
   //   値 = start + (from のステータス − base) × per (+ 装備でそのステータスに直接足す分)。max があればそれ以下
   derivedStats: {
     atk: { from: 'str', base: 0, per: 1, start: 0 },              // こうげき力 = ちから + 武器
@@ -86,13 +86,15 @@ const PARAMS = {
   },
 
   // 敵のレベル補正 (レベル1を基準に、1レベルごとに加算)
+  //   敵のステータスは主人公と同じもの (data/enemies.js)。補正したあと derivedStats で計算する
   enemyLevel: {
-    hpGrowth: 0.15,       // HP +15%
-    atkGrowth: 0.17,      // 攻撃力 +17%
+    hpGrowth: 0.15,       // さいだいHP +15%
+    mpGrowth: 0.1,        // さいだいMP +10%
+    strGrowth: 0.17,      // ちから +17% (こうげき力 +17%)
     intGrowth: 0.17,      // かしこさ +17%
-    defGrowth: 0.8,       // 防御力 +0.8
-    mdefGrowth: 0.8,      // 術防御 +0.8
-    speedGrowth: 2,       // 速度 +2
+    vitGrowth: 0.8,       // みのまもり +0.8 (しゅび力 +0.8)
+    mdefGrowth: 0.8,      // 術防御 +0.8 (敵の gear の術防御に足す)
+    agiGrowth: 1,         // すばやさ +1 (速度 +2)
     expGrowth: 0.25,      // 獲得経験値 +25%
     grayDiff: 5,          // プレイヤーよりこのレベル以上低い敵は…
     grayExpMult: 0.2,     // …獲得経験値がこの倍率になる

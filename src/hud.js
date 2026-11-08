@@ -263,9 +263,9 @@ function drawTooltip() {
   if (!e) return;
   const st = e.stats;
   const lines = [
-    `HP ${Math.ceil(e.hp)} / ${st.maxHp}`, `${STATS.atk.label} ${st.atk.toFixed(0)}  ${STATS.def.label} ${st.def.toFixed(0)}  ${STATS.int.label} ${st.int.toFixed(0)}  ${STATS.mdef.label} ${st.mdef.toFixed(0)}`,
+    `HP ${Math.ceil(e.hp)} / ${st.maxHp}　MP ${Math.floor(e.mp)} / ${st.maxMp}`, `${STATS.atk.label} ${st.atk.toFixed(0)}  ${STATS.def.label} ${st.def.toFixed(0)}  ${STATS.int.label} ${st.int.toFixed(0)}  ${STATS.mdef.label} ${st.mdef.toFixed(0)}`,
     `速度 ${Math.round(st.speed)}（あなたの ${(st.speed / player.stats.speed).toFixed(2)} 倍）`,
-    `技: ${e.def.attacks.map((a) => a.name + (a.kind === 'magic' ? '（術）' : '')).join(' / ')}`,
+    `技: ${e.def.attacks.map((a) => a.name + (a.kind === 'magic' ? '（術）' : '') + (a.mp ? ` MP${a.mp}` : '')).join(' / ')}`,
     `素材: ${(e.def.drops || []).map((m) => IT.materials[m.id].name).join(' / ')}`,
     `経験値 ${e.exp}　${e.camp.name}`,
   ];
