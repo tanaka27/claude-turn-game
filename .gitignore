@@ -1,3 +1,4 @@
 .playwright-mcp/
 saves/
 __pycache__/
+assets/_raw/

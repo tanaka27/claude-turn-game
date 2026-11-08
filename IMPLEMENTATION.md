@@ -25,6 +25,7 @@
 | [docs/menu.md](docs/menu.md) | 道具一覧・店（商人・鍛冶屋）・キャラクターの画面（開き方、道具を使う、装備の付け替え、素材を売る） | 画面の中身・道具の種類を変える |
 | [docs/save.md](docs/save.md) | セーブの中身と保存先（ブラウザ・サーバー）、`server.py` の API | 保存する項目を増やす・変える、サーバーを直す |
 | [docs/ui.md](docs/ui.md) | HUD と描画 | 画面の表示を変える |
+| [docs/image-assets.md](docs/image-assets.md) | 画像素材を Codex CLI（`image_gen`）で作る方法、`tools/codex_image.py` の使い方、`assets/` の置き場所 | 画像素材を作る・足す |
 | [docs/history.md](docs/history.md) | 修正履歴（追記専用） | 変更を記録するとき。過去の経緯を調べるとき |
 
 ## ファイル構成
@@ -51,6 +52,9 @@
 | `start.bat` | ダブルクリックで `server.py` を起動し、ブラウザでゲームを開く（Windows 用。ポートは中の `PORT`。8766 が使われていると止まって知らせる） |
 | `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする）。詳しくは [docs/save.md](docs/save.md) |
 | `.claude/launch.json` | 確認用ローカルサーバーの設定（`python server.py`） |
+| `tools/codex_image.py` | Codex CLI で画像素材を作り、大きさと透明背景を整えて `assets/` に保存する（ゲームの実行には使わない）。詳しくは [docs/image-assets.md](docs/image-assets.md) |
+| `.claude/skills/game-image/` | Claude Code 用のスキル（画像素材の作り方の手順） |
+| `assets/` | 画像素材（まだゲームからは読み込んでいない）。`assets/_raw/` は生成した元の大きさの画像で git に入れない |
 
 ### 起動方法
 
