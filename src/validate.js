@@ -93,6 +93,7 @@ function validateData() {
   check(new Set(potionKeys).size === potionKeys.length, 'data/items.js potions: 回復薬のキーが重なっている');
   for (const k of potionKeys) check(!reserved.includes(k) && !keys.includes(k), `data/items.js potions: キー '${k}' は移動・画面・スキルのキーと重なっている`);
   check(ITEMS.potions.potion, 'data/items.js potions: クエストの報酬に使う potion がない');
+  for (const k in SITUATIONS) check(P.field.ai.situations[k], `params.js field.ai.situations: '${k}' の数値がない (src/ai.js の SITUATIONS にはある)`);
   for (const [type, d] of Object.entries(ENEMIES)) {
     // 敵も主人公と同じステータスを持つ (計算で決まるものは書かない)
     for (const k in PLAYER.stats) check(Number.isFinite(d.stats[k]) && d.stats[k] >= 0, `data/enemies.js ${type}: stats に ${k} がない`);
@@ -102,6 +103,8 @@ function validateData() {
     check(d.skillChance === undefined || (d.skillChance >= 0 && d.skillChance <= 1), `data/enemies.js ${type}: skillChance は 0〜1 にする`);
     check(d.keepDistance === undefined || d.keepDistance > 0, `data/enemies.js ${type}: keepDistance は 0 より大きくする`);
     for (const a of d.attacks) check(a.weight === undefined || a.weight > 0, `data/enemies.js ${type} の技「${a.name}」: weight は 0 より大きくする`);
+    for (const a of d.attacks) for (const k of a.situations || []) check(P.field.ai.situations[k] && SITUATIONS[k], `data/enemies.js ${type} の技「${a.name}」: situations の '${k}' が params.js の field.ai.situations にない`);
+    check(d.surround === undefined || typeof d.surround === 'boolean', `data/enemies.js ${type}: surround は true か false にする`);
     for (const a of d.attacks) {
       check(a.cooldown >= 1, `data/enemies.js ${type} の技「${a.name}」: cooldown は 1 以上にする`);
       check(a.mp === undefined || a.mp >= 0, `data/enemies.js ${type} の技「${a.name}」: mp は 0 以上にする`);

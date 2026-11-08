@@ -17,7 +17,7 @@
 | [docs/damage.md](docs/damage.md) | ステータスの意味、技の種類（物理と術）、ダメージ計算 | ステータス・ダメージ・物理と術を変える |
 | [docs/combat.md](docs/combat.md) | 技の定義形式（マス・行動回数）、主人公の技、敵の技の予告、判定の仕組み | 技・攻撃を変える |
 | [docs/enemies.md](docs/enemies.md) | 敵の種類と数値（主人公と同じステータス）、敵の MP、敵のレベル補正 | 敵を足す・変える |
-| [docs/enemy-ai.md](docs/enemy-ai.md) | 敵の AI（狙う技のくじ、遠くから撃つ敵の間合い）、経路探索 | 敵の動きを変える・直す |
+| [docs/enemy-ai.md](docs/enemy-ai.md) | 敵の AI（狙う技のくじ、状況による重み、遠くから撃つ敵の間合い、群れで取り囲む）、経路探索 | 敵の動きを変える・直す |
 | [docs/world.md](docs/world.md) | ゾーン・門・湧き場所・NPC の配置、マス目、視線、ゾーンの読み込みと切り替え | マップ・ゾーン・湧き場所を変える |
 | [docs/buildings.md](docs/buildings.md) | 入れる建物（建物の中のゾーン・入口）、話すだけの NPC（会話） | 建物を足す・入れるようにする、会話を変える |
 | [docs/progression.md](docs/progression.md) | 経験値とレベル、ステータスの成長（成長曲線）、クエスト、スキル解放 | 成長・クエストを変える |

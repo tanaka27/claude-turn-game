@@ -132,6 +132,15 @@ const PARAMS = {
       // 技の選び方: 次に狙う技を決めるとき、使える技 (基本の技以外) があれば この確率で技を狙う (外れたら基本の技)。
       // 敵ごとに data/enemies.js の skillChance で変えられる。技どうしは weight (省略時 1) の重みのくじで選ぶ
       skillChance: 0.5,
+      // 状況ごとの重みの倍率 (src/ai.js の SITUATIONS)。技の形から自動で見る状況が決まる
+      //   (data/enemies.js の技に situations: ['aligned', ...] を書けばそちらを使う)
+      situations: {
+        reachNow: { mult: 1.5 },           // 今の位置から届く技 (どの技も)
+        aligned: { mult: 2.5 },            // 主人公が縦・横・斜めの直線上で届く (直線の技・弾)
+        cornered: { mult: 2, maxFree: 4 }, // 主人公のまわりの空きマスが maxFree 以下 (範囲技: 円・投げる・大きい扇)
+        telegraph: { exp: 1, min: 0.4 },   // 予告ありの技: 倍率 = (敵の速度 / 主人公の速度) ^ exp。min〜1 に収める
+      },
+      surroundRange: 5,     // 主人公までの歩数がこれ以下になったら、となりの空いているマスを分け合って回り込む
       intentTimeout: 4,     // 狙った技を出せないまま この行動回数たったら選び直す
       meleeReach: 1.5,      // これより遠くまで届く技を「遠くから撃つ技」とみなす (keepDistance を持つ敵は間合いを取って撃つ)
       // 遠くから撃つ技を狙っている敵: keepDistance × retreatRatio より近いと下がり、× approachRatio より遠いと近づく

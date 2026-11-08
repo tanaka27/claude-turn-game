@@ -37,7 +37,7 @@
 - 回復薬・素材のレア度が `rarities` にあるか
 - 湧き場所の敵、地形の種類、門の行き先、`start` / `respawnZone` の復活地点、店の NPC の `shop` / 鍛冶屋の NPC の `smith`、話すだけの NPC の `lines`、建物の中のゾーンの `parent` と入口、門をたどって全部のゾーンに行けるか（`world.js`）
 - 最初の装備の部位とレア度、スキルのキーの重なり、スキルのキーが移動・画面のキーと重なっていないか、`maxMp` / `mpRegen` があるか、スキルの `mp` が 0 以上で Lv1 の `maxMp` 以下か（`data/player.js`）
-- 敵のステータスが主人公と同じものだけそろっているか（計算で決まるものを書いていないか）、`gear` のステータスが `data/stats.js` にあるか、技の `cooldown` が 1 以上か、技の `mp` が 0 以上で Lv1 の `maxMp` 以下か、MP を使わない基本の技があるか、`skillChance` が 0〜1・`keepDistance` と技の `weight` が 0 より大きいか（`data/enemies.js`）
+- 敵のステータスが主人公と同じものだけそろっているか（計算で決まるものを書いていないか）、`gear` のステータスが `data/stats.js` にあるか、技の `cooldown` が 1 以上か、技の `mp` が 0 以上で Lv1 の `maxMp` 以下か、MP を使わない基本の技があるか、`skillChance` が 0〜1・`keepDistance` と技の `weight` が 0 より大きいか、技の `situations` が `params.js` にあるか、`surround` が true / false か（`data/enemies.js`）。`src/ai.js` の `SITUATIONS` の数値が `params.js` にあるか
 - 技の `kind` が physical か magic か、物理の技に `power`、術に `base` があるか（主人公と敵）
 - 復活地点・門の `spawn`・湧き場所の中心が通れるマスにあるか、NPC のとなりに通れるマスがあるか（`world.js`。ゾーンを 1 つずつ読み込んで調べる）
 - 装備の性能・追加性能のステータスが `data/stats.js` にあるか、商人の回復薬・鍛冶屋の部位とレア度があるか、回復薬のキーが重なっていないか（移動・画面・スキルのキーとも）
