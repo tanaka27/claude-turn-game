@@ -98,6 +98,10 @@ function validateData() {
     for (const k in PLAYER.stats) check(Number.isFinite(d.stats[k]) && d.stats[k] >= 0, `data/enemies.js ${type}: stats に ${k} がない`);
     for (const k in d.stats) check(k in PLAYER.stats, `data/enemies.js ${type}: stats の ${k} は主人公にないステータス (計算で決まるものは書かない)`);
     for (const k in d.gear || {}) check(STATS[k], `data/enemies.js ${type}: gear の ${k} が data/stats.js にない`);
+    check(d.attacks.some((a) => !a.mp), `data/enemies.js ${type}: MP を使わない基本の技がない (MP が尽きると攻撃できなくなる)`);
+    check(d.skillChance === undefined || (d.skillChance >= 0 && d.skillChance <= 1), `data/enemies.js ${type}: skillChance は 0〜1 にする`);
+    check(d.keepDistance === undefined || d.keepDistance > 0, `data/enemies.js ${type}: keepDistance は 0 より大きくする`);
+    for (const a of d.attacks) check(a.weight === undefined || a.weight > 0, `data/enemies.js ${type} の技「${a.name}」: weight は 0 より大きくする`);
     for (const a of d.attacks) {
       check(a.cooldown >= 1, `data/enemies.js ${type} の技「${a.name}」: cooldown は 1 以上にする`);
       check(a.mp === undefined || a.mp >= 0, `data/enemies.js ${type} の技「${a.name}」: mp は 0 以上にする`);

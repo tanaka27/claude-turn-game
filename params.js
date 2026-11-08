@@ -129,7 +129,12 @@ const PARAMS = {
       wanderChance: 0.3,    // 待機中、自分の番に 1 マスうろつく確率
       returnTimeout: 30,    // 戻る途中で引っかかったとき、湧いた位置へ移すまでの行動回数
       firstAttackDelay: [0, 2], // 湧いてから最初に技を使えるまでの行動回数
-      // ranged の敵: keepDistance × retreatRatio より近いと下がり、× approachRatio より遠いと近づく
+      // 技の選び方: 次に狙う技を決めるとき、使える技 (基本の技以外) があれば この確率で技を狙う (外れたら基本の技)。
+      // 敵ごとに data/enemies.js の skillChance で変えられる。技どうしは weight (省略時 1) の重みのくじで選ぶ
+      skillChance: 0.5,
+      intentTimeout: 4,     // 狙った技を出せないまま この行動回数たったら選び直す
+      meleeReach: 1.5,      // これより遠くまで届く技を「遠くから撃つ技」とみなす (keepDistance を持つ敵は間合いを取って撃つ)
+      // 遠くから撃つ技を狙っている敵: keepDistance × retreatRatio より近いと下がり、× approachRatio より遠いと近づく
       retreatRatio: 0.6,
       approachRatio: 1.1,
     },

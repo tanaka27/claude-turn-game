@@ -84,7 +84,7 @@ function enemyAct(e) {
     const home = e.home;
     if ((e.tx === home.tx && e.ty === home.ty) || (e.returnT <= 0 && isFree(home.tx, home.ty))) {
       if (e.tx !== home.tx || e.ty !== home.ty) placeUnit(e, home.tx, home.ty);
-      Object.assign(e, { state: 'idle', invuln: false, hp: e.stats.maxHp, mp: e.stats.maxMp });
+      Object.assign(e, { state: 'idle', invuln: false, hp: e.stats.maxHp, mp: e.stats.maxMp, intent: null });
       return;
     }
     const s = stepDownhill(e, e.camp.field);
@@ -92,34 +92,67 @@ function enemyAct(e) {
     return;
   }
 
-  // 攻撃: 上から順に、使えて (再使用待ちでなく MP が足りる) 相手が範囲に入る技を使う
-  if (canSee) {
-    const atks = e.def.attacks;
-    for (let i = 0; i < atks.length; i++) {
-      const a = atks[i];
-      if (e.cd[i] > 0 || e.mp + 1e-9 < skillMp(a) || d > attackReach(a) + 0.01) continue;
-      const h = planAttack(e, a, player.tx, player.ty);
-      if (!h.keys.has(tileKey(player.tx, player.ty))) continue;
-      e.cd[i] = enemyCooldown(e, a);
-      e.mp -= skillMp(a);
-      e.facing = h.dir;
-      if (a.charge) {
-        startCharge(e, h);
-        log(`${e.name}は${a.name}の構えをとった。`, '#ffab40');
-      } else resolveAttack(h);
+  if (!e.intent || e.intentT <= 0) chooseIntent(e);
+  e.intentT--;
+  const a = e.def.attacks[e.intent.i];
+
+  // 遠くから撃つつもりで近すぎるときは、まず下がる (下がれなければその場で撃つ)
+  const kd = e.def.keepDistance;
+  if (e.intent.far && canSee && d < kd * AI.retreatRatio &&
+    stepBest(e, (x, y) => dist(x, y, player.tx, player.ty))) return;
+  // 狙っている技が使えて、相手が範囲に入っていれば使う
+  if (canSee && e.cd[e.intent.i] <= 0 && e.mp + 1e-9 >= skillMp(a) && d <= attackReach(a) + 0.01) {
+    const h = planAttack(e, a, player.tx, player.ty);
+    if (h.keys.has(tileKey(player.tx, player.ty))) {
+      useEnemyAttack(e, e.intent.i, h);
+      e.intent = null;
       return;
     }
   }
+  // 技を待っている (近づく) 間でも、となりにいれば基本の技で攻撃する。遠くから撃つつもりのときは殴らない
+  if (canSee && !e.intent.far && e.intent.i !== e.basic && e.basic >= 0 && e.cd[e.basic] <= 0) {
+    const h = planAttack(e, e.def.attacks[e.basic], player.tx, player.ty);
+    if (h.keys.has(tileKey(player.tx, player.ty))) { useEnemyAttack(e, e.basic, h); return; }
+  }
 
-  // 移動
-  if (e.def.ai === 'ranged') {
-    const kd = e.def.keepDistance;
-    if (canSee && d < kd * AI.retreatRatio) stepBest(e, (x, y) => dist(x, y, player.tx, player.ty));
-    else if (!canSee || d > kd * AI.approachRatio) approach(e);
+  // 移動: 遠くから撃つつもりなら間合いを取り、そうでなければ近づく
+  if (e.intent.far) {
+    if (!canSee || d > kd * AI.approachRatio) approach(e);
   } else if (steps(e.tx, e.ty, player.tx, player.ty) > 1) {
     approach(e);
   }
   if (steps(e.tx, e.ty, player.tx, player.ty) <= 1) e.facing = Math.atan2(player.ty - e.ty, player.tx - e.tx);
+}
+
+// 次に狙う技を決める: 再使用待ちでなく MP が足りる技 (基本の技以外) から、skillChance の確率で 1 つをくじで選ぶ。
+// 外れたら (選べる技がなければ) 基本の技 (MP を使わない技) で攻撃しに行く
+// far: keepDistance を持つ敵が、となりより遠くまで届く技を狙うとき。間合いを取ったまま撃つ
+function chooseIntent(e) {
+  const atks = e.def.attacks;
+  const opts = [];
+  atks.forEach((a, i) => { if (i !== e.basic && e.cd[i] <= 0 && e.mp + 1e-9 >= skillMp(a)) opts.push(i); });
+  const chance = e.def.skillChance ?? AI.skillChance;
+  let i = e.basic;
+  if (opts.length && (i < 0 || Math.random() < chance)) {
+    const w = opts.map((k) => atks[k].weight ?? 1);
+    let r = Math.random() * w.reduce((x, y) => x + y, 0);
+    i = opts.find((k, n) => (r -= w[n]) < 0) ?? opts[opts.length - 1];
+  }
+  if (i < 0) i = 0; // 基本の技がなく、使える技もない: いちばん上の技を待つ
+  e.intent = { i, far: !!e.def.keepDistance && attackReach(atks[i]) > AI.meleeReach };
+  e.intentT = AI.intentTimeout;
+}
+
+// 技を出す (予告ありなら構える)。再使用待ちと MP を減らす
+function useEnemyAttack(e, i, h) {
+  const a = e.def.attacks[i];
+  e.cd[i] = enemyCooldown(e, a);
+  e.mp -= skillMp(a);
+  e.facing = h.dir;
+  if (a.charge) {
+    startCharge(e, h);
+    log(`${e.name}は${a.name}の構えをとった。`, '#ffab40');
+  } else resolveAttack(h);
 }
 
 // ----- 湧き場所 -----

@@ -46,6 +46,8 @@ function createEnemy(type, tx, ty, camp, slot) {
     level: camp.level, exp: Math.round(d.exp * (1 + EL.expGrowth * g)), camp, slot, home: { tx, ty },
     state: 'idle', stats: st, hp: st.maxHp, mp: st.maxMp, facing: rand(0, TAU),
     cd: d.attacks.map(() => randInt(...AI.firstAttackDelay)), charging: null,
+    // 基本の技 (MP を使わない技のうち下のもの。なければ -1) と、次に狙う技 (src/ai.js の chooseIntent)
+    basic: d.attacks.map((a) => !skillMp(a)).lastIndexOf(true), intent: null, intentT: 0,
     invuln: false, hitFlash: 0, dead: false, returnT: 0,
   };
   // 湧いてすぐ動き出さないように、次の行動は 0〜1 回分あと

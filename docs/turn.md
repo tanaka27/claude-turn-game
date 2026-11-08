@@ -38,7 +38,7 @@
 ## 仕組み
 
 - `endPlayerAction`: 主人公が行動したあとに呼ぶ。`next` を進め、スキルの再使用までの行動回数を 1 減らし、主人公までの経路（`flow`）を作り直してから `runUntilPlayer`
-- `runUntilPlayer`: `next` が一番早い敵を選び、主人公より早ければ時間をそこまで進めて `enemyAct`（[enemies.md](enemies.md)）、`next` を進める。主人公の番が来たら時間を主人公の `next` まで進めて止まる
+- `runUntilPlayer`: `next` が一番早い敵を選び、主人公より早ければ時間をそこまで進めて `enemyAct`（[enemy-ai.md](enemy-ai.md)）、`next` を進める。主人公の番が来たら時間を主人公の `next` まで進めて止まる
 - `turnOrder(n)`: HUD の「行動順」。主人公と、画面に入っているか追ってきている敵の `next` を写して、早い順に n 回ぶん並べる（`turn.orderCount` = 8）
 - `actionsBefore(u)`: 敵 u が次に行動するまでに主人公が何回動けるか（予告の「あと N」）
 - キャラの位置はマス（`tx`, `ty`）。描く位置（`x`, `y`、px）は毎フレーム、いるマスへ少し遅れて追いつく（`updateFx`。`turn.animTime`）
