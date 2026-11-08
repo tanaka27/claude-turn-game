@@ -8,7 +8,7 @@
 // skillChance: 技を狙う確率の基準 (省略時は params.js の field.ai.skillChance)。外れると基本の技で攻撃しに行く
 //   状況に合った技 (下の situations) ほど、この確率より選ばれやすくなる
 // surround: false にすると、群れで取り囲む動き (となりの空いているマスへ回り込む) をしない。省略時はする
-// radius: 描くときの大きさ (px。1 マスは 40px。当たり判定はどの敵も 1 マス)。絵の高さは radius × ENEMY_SPRITE.scale
+// radius: 描くときの大きさ (px。1 マスは 40px。当たり判定はどの敵も 1 マス)。絵の高さは radius × UNIT_SPRITE.scale
 // sprite: 敵の絵 (右向きの透明 PNG。左を向くと左右反転して描く)。省略するか読み込めないと図形 (丸・耳・glyph の字) で描く
 //   絵の作り方は docs/image-assets.md (tools/codex_image.py --kind sprite --size 128 --ref assets/sprites/enemies/wolf.png)
 // glyph: 行動順の欄に出す 1 文字 (絵がないときは体の上にも出す)
@@ -29,12 +29,6 @@
 //   再使用待ちは主人公と同じくスキル加速で変わる (四捨五入、最低 1 回)
 // exp: 経験値 (レベル 1 の値。敵レベルで増える) / itemRate: 装備を落とす確率 / itemCount: 落とす装備の数 (省略時 1)
 // drops: 落とす素材 [{ id: data/items.js の materials のキー, rate: 落とす確率, count: 数 (省略時 1。敵レベルで増える) }]
-// 敵の絵の描き方
-const ENEMY_SPRITE = {
-  scale: 3.8,     // 絵の高さ (と幅) = radius × これ。足元は影の中心にそろえる
-  turnDeadZone: 0.15, // 向きの左右成分 (cos) がこれより小さいときは反転を変えない (上下に動くたびにちらつかないように)
-};
-
 const ENEMIES = {
   wolf: {
     name: 'ウルフ', glyph: '狼', sprite: 'assets/sprites/enemies/wolf.png', radius: 14, color: '#90a4ae', exp: 12, itemRate: 0.08,

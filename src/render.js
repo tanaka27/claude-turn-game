@@ -27,15 +27,18 @@ function getSprite(src) {
   return s.ready ? s : null;
 }
 
-// 敵の絵を描き、絵の上端の y を返す (HP バーをその上に出すため)。絵がまだなければ null
-function drawEnemySprite(u) {
-  const s = getSprite(u.def.sprite);
+// 主人公・敵の絵 (data/player.js・data/enemies.js の sprite)
+function unitSprite(u) { return getSprite(u.isPlayer ? PLAYER.sprite : u.def.sprite); }
+
+// 主人公・敵の絵を描き、絵の上端の y を返す (HP バーをその上に出すため)。絵がまだなければ null
+function drawUnitSprite(u) {
+  const s = unitSprite(u);
   if (!s) return null;
   // 右向きの絵。向きの左右成分で反転する (真上・真下に近いときは前の向きのまま)
   const c = Math.cos(u.facing);
-  if (c > ENEMY_SPRITE.turnDeadZone) u.spriteFlip = false;
-  else if (c < -ENEMY_SPRITE.turnDeadZone) u.spriteFlip = true;
-  const h = u.r * ENEMY_SPRITE.scale, w = h * s.img.naturalWidth / s.img.naturalHeight;
+  if (c > UNIT_SPRITE.turnDeadZone) u.spriteFlip = false;
+  else if (c < -UNIT_SPRITE.turnDeadZone) u.spriteFlip = true;
+  const h = u.r * UNIT_SPRITE.scale, w = h * s.img.naturalWidth / s.img.naturalHeight;
   const foot = u.y + u.r * 0.7;   // 影の中心
   ctx.save();
   ctx.translate(u.x, foot);
@@ -125,14 +128,14 @@ function drawUnit(u) {
   ctx.beginPath(); ctx.ellipse(u.x, u.y + u.r * 0.7, u.r, u.r * 0.45, 0, 0, TAU); ctx.fill();
   ctx.globalAlpha = u.invuln ? 0.5 : 1;
   const c = Math.cos(u.facing), s = Math.sin(u.facing);
-  // 敵は絵があれば絵で描く (ボスは足元に金の輪)。なければ下の図形で描く
-  if (u.isBoss && !u.isPlayer && getSprite(u.def.sprite)) {
-    ctx.lineWidth = 3; ctx.strokeStyle = '#ffd54f';
+  // 絵があれば絵で描く (主人公は足元に水色の輪、ボスは金の輪)。なければ下の図形で描く
+  if ((u.isPlayer || u.isBoss) && unitSprite(u)) {
+    ctx.lineWidth = u.isPlayer ? 2.5 : 3; ctx.strokeStyle = u.isPlayer ? u.color : '#ffd54f';
     ctx.beginPath(); ctx.ellipse(u.x, u.y + u.r * 0.7, u.r + 6, (u.r + 6) * 0.45, 0, 0, TAU); ctx.stroke();
   }
-  const spriteTop = u.isPlayer ? null : drawEnemySprite(u);
+  const spriteTop = drawUnitSprite(u);
   if (spriteTop !== null) {
-    // 絵で描いた。体・耳・目・字は描かない
+    // 絵で描いた。体・耳・目・字・剣の線は描かない
   } else if (u.isPlayer) {
     // 武器
     ctx.strokeStyle = '#e0f7fa'; ctx.lineWidth = 3;

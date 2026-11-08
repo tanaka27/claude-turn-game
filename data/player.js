@@ -48,6 +48,8 @@
 
 const PLAYER = {
   name: '剣士',
+  // 絵 (右向きの透明 PNG。左を向くと左右反転。高さは radius × data/theme.js の UNIT_SPRITE.scale)。読み込めないと丸と剣の線で描く
+  sprite: 'assets/sprites/player.png',
   radius: 15,
   color: '#4fc3f7',
   // Lv1 の値

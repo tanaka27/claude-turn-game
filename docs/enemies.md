@@ -33,8 +33,8 @@ HP・ちから・みのまもりは、ドラクエ式のダメージ計算（[da
 
 ## 敵の見た目（絵）
 
-- 敵は `data/enemies.js` の `sprite`（`assets/sprites/enemies/<キー>.png`、128×128 の右向きの透明 PNG）で描く。左を向いているときは左右反転する（向きの左右成分が `ENEMY_SPRITE.turnDeadZone` より小さいときは前の向きのまま）
-- 絵の高さ（と幅）は `radius × ENEMY_SPRITE.scale`（3.8。ウルフ 14 → 約 53px、魔竜 27 → 約 103px。1 マスは 40px なので少しはみ出す）。足元を影の中心にそろえる
+- 敵は `data/enemies.js` の `sprite`（`assets/sprites/enemies/<キー>.png`、128×128 の右向きの透明 PNG）で描く。左を向いているときは左右反転する（向きの左右成分が `UNIT_SPRITE.turnDeadZone` より小さいときは前の向きのまま）
+- 絵の大きさ・反転のしきい値は `data/theme.js` の `UNIT_SPRITE`（主人公と共通）。絵の高さ（と幅）は `radius × UNIT_SPRITE.scale`（3.8。ウルフ 14 → 約 53px、魔竜 27 → 約 103px。1 マスは 40px なので少しはみ出す）。足元を影の中心にそろえる
 - 絵がない・読み込めない敵は、もとの図形（丸い体・耳・目・`glyph` の字）で描く。`glyph` は行動順の欄にも使う
 - 絵はフラットなアニメ調で、ウルフを基準に `--ref` で絵柄をそろえて Codex で作った（[image-assets.md](image-assets.md)）
 

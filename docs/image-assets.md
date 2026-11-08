@@ -61,6 +61,7 @@ python tools/codex_image.py --name slime --kind sprite --pixel --size 64 --subje
 
 | ファイル | 使うところ | 作り方 |
 |---|---|---|
+| `assets/sprites/player.png` | 主人公の絵（`data/player.js` の `sprite`） | `--kind sprite --size 128 --out-dir assets/sprites --ref assets/sprites/enemies/wolf.png`。空色の服の剣士 |
 | `assets/sprites/enemies/<キー>.png` | 敵の絵（`data/enemies.js` の `sprite`。[enemies.md](enemies.md)） | `--kind sprite --size 128 --out-dir assets/sprites/enemies`。まずウルフを作り、ほかは `--ref assets/sprites/enemies/wolf.png` で絵柄をそろえた |
 
 新しい敵の絵を足すときは、同じ引数でキーの名前にして作り、`data/enemies.js` のその敵に `sprite` を書く。
