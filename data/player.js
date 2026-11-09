@@ -29,6 +29,7 @@
 //            'projectile' … まっすぐ飛ぶ弾 (壁で止まる。pierce でなければ最初に当たった相手で止まる)
 //            'lob'        … 指定したマスへ投げ、着弾したマスのまわりに範囲判定 (壁を越える)
 //            'dash'       … 移動スキル
+//            'buff'       … 自分を強化する (狙わずにキーを押したらすぐ使う)。buff: data/buffs.js の強化 / duration: 続く行動回数
 //   shape  : melee の判定形状 'fan'(扇形) / 'circle'(自分中心の円) / 'line'(直線)
 //   range  : 射程(マス)。fan/circle は半径、line/projectile は長さ。となりのマスだけなら 1.5 (斜めを含む)
 //   angle  : fan の角度(度)
@@ -87,6 +88,10 @@ const PLAYER = {
     {
       key: '4', label: '4', name: 'ダッシュ', type: 'dash', unlockLevel: 1,
       distance: 4, cooldown: 6, mp: 2,
+    },
+    {
+      key: '5', label: '5', name: '闘気', type: 'buff', unlockLevel: 1,
+      buff: 'atkUp', duration: 6, cooldown: 12, mp: 4,
     },
   ],
   // はじめから遊ぶときの装備 (部位: { level, rarity }。null は何も付けない)

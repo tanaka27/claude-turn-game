@@ -151,13 +151,13 @@ function profileHtml() {
 
 // つよさ: 全ステータスと、装備で上がっている分 (装備がないときとの差)
 function strengthHtml() {
-  const p = player, st = p.stats, bare = computeStats({ ...p, equip: {} });
+  const p = player, st = p.stats, bare = computeStats({ ...p, equip: {}, buffs: [] });
   const rows = Object.keys(STATS).map((k) => {
     const diff = st[k] - bare[k];
     const d = Math.abs(diff) < 1e-9 ? '' : `<span class="${diff > 0 ? 'up' : 'down'}">${fmtStat(k, diff, true)}</span>`;
     return `<div class="row"><span>${STATS[k].label}</span><span>${fmtStat(k, st[k])} ${d}</span></div>`;
   }).join('');
-  return `<div class="dname">つよさ</div><div class="dsub">Lv${p.level}　色の数字は装備で上がっている分</div><div class="stats">${rows}</div>`;
+  return `<div class="dname">つよさ</div><div class="dsub">Lv${p.level}　色の数字は装備と強化（バフ）で上がっている分</div><div class="stats">${rows}</div>`;
 }
 
 // ----- 道具 (使うもの。今は回復薬だけ) -----

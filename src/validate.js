@@ -68,9 +68,18 @@ function validateData() {
     check(!(k in PLAYER.stats), `data/player.js stats: '${k}' は params.js の derivedStats で計算するので書かない`);
     check(d.from in PLAYER.stats, `params.js derivedStats.${k}: もとのステータス '${d.from}' が data/player.js の stats にない`);
   }
+  // 強化 (data/buffs.js) と、強化をかける技
+  for (const [id, b] of Object.entries(BUFFS)) {
+    check(STATS[b.stat], `data/buffs.js ${id}: stat '${b.stat}' が data/stats.js にない`);
+    check(b.mult > 0, `data/buffs.js ${id}: mult は 0 より大きくする`);
+  }
+  for (const s of PLAYER.skills.filter((x) => x.type === 'buff')) {
+    check(BUFFS[s.buff], `data/player.js スキル「${s.name}」: buff '${s.buff}' が data/buffs.js にない`);
+    check(s.duration >= 1, `data/player.js スキル「${s.name}」: duration は 1 以上にする`);
+  }
   // 技の種類: 物理は power、術は base が要る
   const attacks = [['data/player.js', PLAYER.basicAttack],
-    ...PLAYER.skills.filter((s) => s.type !== 'dash').map((s) => ['data/player.js', s]),
+    ...PLAYER.skills.filter((s) => s.type !== 'dash' && s.type !== 'buff').map((s) => ['data/player.js', s]),
     ...Object.entries(ENEMIES).flatMap(([type, d]) => d.attacks.map((a) => [`data/enemies.js ${type}`, a]))];
   for (const [where, a] of attacks) {
     const kind = a.kind || 'physical';

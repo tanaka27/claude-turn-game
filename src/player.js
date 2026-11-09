@@ -61,6 +61,8 @@ window.addEventListener('keydown', (e) => {
     log(`${sk.name}はあと ${Math.ceil(player.skillCd[sk.key])} 行動で使える。`, '#9da7b3');
   } else if (sk && !enoughMp(sk)) {
     logNoMp(sk);
+  } else if (sk && sk.type === 'buff') {
+    castSkill(sk, player.tx, player.ty); // 強化は狙わずにすぐ使う
   } else if (sk) {
     aiming = sk;
   }
@@ -132,6 +134,8 @@ function castSkill(sk, tx, ty) {
   game.inputT = game.rt;
   if (sk.type === 'dash') {
     if (!dash(sk, tx, ty)) return;
+  } else if (sk.type === 'buff') {
+    castBuff(sk);
   } else {
     const h = planAttack(p, sk, tx, ty);
     p.facing = h.dir;
@@ -141,6 +145,16 @@ function castSkill(sk, tx, ty) {
   p.skillCd[sk.key] = skillCooldown(sk);
   p.mp = Math.max(0, p.mp - skillMp(sk));
   endPlayerAction();
+}
+
+// 自分を強化する (data/buffs.js)
+function castBuff(sk) {
+  const p = player, b = BUFFS[sk.buff];
+  addBuff(p, sk.buff, sk.duration);
+  log(`${sk.name}！ ${b.name}（${sk.duration} 行動）`, '#ffab91');
+  floatText(p.x, p.y - p.r - 30, `${STATS[b.stat].label}↑`, b.color, 17);
+  effects.push({ type: 'ring', x: p.x, y: p.y, r0: p.r, r1: p.r * 3, t: 0, life: 0.45, color: '255,138,101' });
+  burst(p.x, p.y, '#ffab91', 16, 180);
 }
 
 // MP が足りるか (MP は小数で回復していくので、表示と同じく切り捨てで比べる)

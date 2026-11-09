@@ -11,7 +11,7 @@
 
 | 項目 | 意味 |
 |---|---|
-| type | `melee`（自分のまわり）/ `projectile`（まっすぐ飛ぶ弾）/ `lob`（指定したマスへ投げる。壁を越える）/ `dash`（移動） |
+| type | `melee`（自分のまわり）/ `projectile`（まっすぐ飛ぶ弾）/ `lob`（指定したマスへ投げる。壁を越える）/ `dash`（移動）/ `buff`（自分を強化する。狙わずにすぐ使う） |
 | shape | melee の形。`fan`（扇形）/ `circle`（円）/ `line`（直線） |
 | range | 射程（マス）。fan / circle は半径（マスの中心どうしの距離）、line / projectile は長さ（縦横の大きいほうで数える。斜めも同じ歩数まで届く）。となりのマスだけなら 1.5 |
 | angle | fan の角度（度） |
@@ -25,6 +25,7 @@
 | pierce | 弾が貫通する |
 | count / spread | 同時に撃つ弾の数 / 広がる角度（度） |
 | castRange / radius / scatter | lob の最大射程 / 着弾範囲の半径 / 複数投げるときの散らばり（どれもマス） |
+| buff / duration | buff の技がかける強化（`data/buffs.js` のキー） / 続く行動回数 |
 
 ## 主人公の技（`data/player.js`）
 
@@ -35,8 +36,23 @@
 | 2 | 旋風斬 | 自分のまわり半径 2.3 マス | 6 | 4 | 物理 1.6 | Lv3 |
 | 3 | メテオ | 8 マス以内のマスへ。半径 2.3 マス | 10 | 8 | 術 base 6 | Lv6 |
 | 4 | ダッシュ | 狙った向き（8 方向）へ最大 4 マス一気に進む（1 行動） | 6 | 2 | - | Lv1 |
+| 5 | 闘気 | 自分に「攻撃力アップ」（こうげき力 ×1.3）を 6 行動のあいだかける。キーを押すとすぐ使う（狙わない） | 12 | 4 | 強化 | Lv1 |
 
 主人公のスキルはどれも予告なし（使ったその場で当たる）。
+
+### 強化（バフ）
+
+- 強化の種類は `data/buffs.js` の `BUFFS`（表示名・変えるステータス `stat`・倍率 `mult`・アイコンの字 `icon` と色 `color`）。どれをかけて何行動続くかは技（`type: 'buff'`、`buff`、`duration`）に書く
+
+| キー | 名前 | 効果 | アイコン |
+|---|---|---|---|
+| atkUp | 攻撃力アップ | こうげき力 ×1.3（物理のダメージが上がる。術には効かない） | 橙の「攻」に緑の ▲ |
+
+- 主人公は `buffs: [{ id, left }]` を持つ。`left` は残りの行動回数。かけた行動では減らさず（`fresh`）、そのあとの主人公の行動ごとに 1 減り（`tickBuffs`、`endPlayerAction` から）、0 で外れて「〇〇の効果が切れた。」と出る。`duration: 6` なら、使ったあとの 6 行動のあいだ効く
+- 同じ強化をもう一度かけると、残りの長いほうになる（重ねがけはしない）
+- ステータスは `computeStats` が「もとのステータス + 装備」を計算したあとに強化の倍率を掛ける（`applyBuffs`）。かけたとき・切れたときに `refreshStats` で計算し直す
+- 倒れて復活すると強化は消える（`clearBuffs`）。セーブには入れない（続きから遊ぶと強化はない）
+- 今は主人公だけ。敵に強化を持たせるときも `buffs` を持たせれば頭上にアイコンが出る（`drawUnit`）
 
 ### MP
 
@@ -62,4 +78,4 @@
 - `startCharge` / `cancelCharge`: 予告を `hazards` に出す・消す。敵の `charging` に持つ
 - `rollDamage(src, tgt, a)`: 技 `a` の `kind` で物理か術の式を選び、`{ dmg, crit }` を返す
 - `dealDamage(src, tgt, a, what)`: `rollDamage` でダメージを決め、浮かぶ数字、メッセージ欄。待機中の敵は追跡を始める（`aggro`）。HP が 0 以下なら `kill`
-- 主人公のスキルは `castSkill`（`src/player.js`）が MP を確かめ → `planAttack` → `resolveAttack` → 再使用を設定・MP を減らす → `endPlayerAction`。狙っている間は同じ `planAttack` の範囲を白く表示する
+- 主人公のスキルは `castSkill`（`src/player.js`）が MP を確かめ → `planAttack` → `resolveAttack`（強化の技は `castBuff`、ダッシュは `dash`）→ 再使用を設定・MP を減らす → `endPlayerAction`。狙っている間は同じ `planAttack` の範囲を白く表示する

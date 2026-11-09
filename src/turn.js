@@ -10,6 +10,7 @@ function endPlayerAction() {
   const p = player;
   p.next = game.time + actionCost(p);
   for (const k in p.skillCd) p.skillCd[k] = Math.max(0, p.skillCd[k] - 1);
+  tickBuffs(p);
   computeFlow(p.tx, p.ty, flow);
   runUntilPlayer();
 }

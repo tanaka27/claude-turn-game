@@ -22,6 +22,9 @@ const hudButtons = [];
 const HUD_TOP = 56; // 上中央の行動順の下端 (世界地図がこれより下に収まるようにする)
 const hudButtonAt = (x, y) => hudButtons.find((b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) || null;
 
+// HUD に出した強化のアイコン ({ x, y, s, b })。マウスを重ねると説明を出す
+const buffIcons = [];
+
 // 左上に並べる仲間 (今は主人公だけ。仲間を足したらここに並べる)
 const partyMembers = () => [player];
 
@@ -48,6 +51,15 @@ function drawPartyCard(u, x, y) {
   const tx = fx + f + 10, bw = x + CARD.w - tx - 10;
   ctx.textAlign = 'left'; ctx.font = 'bold 14px sans-serif'; ctx.fillStyle = '#e6edf3';
   ctx.fillText(u.name, tx, y + 21);
+  // 名前の右に強化のアイコン (マウスを重ねると説明。drawTooltip)
+  const bs = 18;
+  let bx = tx + ctx.measureText(u.name).width + 8;
+  for (const b of u.buffs || []) {
+    drawBuffIcon(b, bx, y + 6, bs);
+    buffIcons.push({ x: bx, y: y + 6, s: bs, b });
+    bx += bs + 5;
+  }
+  ctx.font = 'bold 14px sans-serif';
   ctx.textAlign = 'right'; ctx.fillStyle = '#ffd54f'; ctx.fillText(`Lv ${u.level}`, tx + bw, y + 21);
   const hpR = u.hp / st.maxHp;
   bar(tx, y + 30, bw, 16, hpR, hpR > 0.3 ? '#43a047' : '#e53935', `HP ${Math.ceil(u.hp)} / ${Math.round(st.maxHp)}`);
@@ -62,6 +74,7 @@ function drawHUD() {
   const p = player;
   ctx.textBaseline = 'alphabetic';
   hudButtons.length = 0;
+  buffIcons.length = 0;
   // 左上: 仲間の欄 (上から順に)
   const party = partyMembers();
   party.forEach((u, i) => drawPartyCard(u, 16, 16 + i * (CARD.h + CARD.gap)));
@@ -250,6 +263,7 @@ function drawWorldMap() {
 }
 
 function drawTooltip() {
+  if (drawBuffTooltip()) return;
   const e = enemies.find((u) => u.tx === mouse.tx && u.ty === mouse.ty);
   if (!e) { drawNpcTooltip(); return; }
   const st = e.stats;
@@ -270,6 +284,25 @@ function drawTooltip() {
   ctx.fillStyle = levelColor(e.level); ctx.font = 'bold 14px sans-serif'; ctx.fillText(`Lv${e.level} ${e.name}`, x + 10, y + 20);
   ctx.fillStyle = '#e6edf3'; ctx.font = '13px sans-serif';
   lines.forEach((l, i) => ctx.fillText(l, x + 10, y + 40 + i * 18));
+}
+
+// 仲間の欄の強化のアイコンにマウスを乗せたとき: 名前・効果・残り。出したら true
+function drawBuffTooltip() {
+  const it = buffIcons.find((r) => mouse.x >= r.x && mouse.x <= r.x + r.s && mouse.y >= r.y && mouse.y <= r.y + r.s);
+  if (!it) return false;
+  const d = BUFFS[it.b.id];
+  const pct = Math.round((d.mult - 1) * 100);
+  const lines = [`${STATS[d.stat].label} ${pct >= 0 ? '+' : ''}${pct}%`, `あと ${it.b.left} 行動`];
+  ctx.font = '13px sans-serif';
+  const w = Math.max(...lines.map((l) => ctx.measureText(l).width), 110) + 20, h = 30 + lines.length * 18;
+  const x = clamp(mouse.x + 16, 0, W - w), y = clamp(mouse.y + 16, 0, H - h);
+  ctx.fillStyle = 'rgba(13,17,23,0.92)'; roundRect(x, y, w, h, 8); ctx.fill();
+  ctx.strokeStyle = d.color; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#ffccbc'; ctx.font = 'bold 14px sans-serif'; ctx.fillText(d.name, x + 10, y + 20);
+  ctx.fillStyle = '#e6edf3'; ctx.font = '13px sans-serif';
+  lines.forEach((l, i) => ctx.fillText(l, x + 10, y + 40 + i * 18));
+  return true;
 }
 
 // NPC にマウスを乗せたとき: 種類とステータス (今は NPC に攻撃は当たらない)

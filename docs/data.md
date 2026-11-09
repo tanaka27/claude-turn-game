@@ -14,6 +14,7 @@
 | `data/items.js` | `ITEMS` | レア度、部位（基本性能・名前）、追加性能、価値、回復薬（`potions`。レア度・使うキー付き）、商人の品ぞろえ（`shops`）、鍛冶屋の品ぞろえ（`smiths`）、素材（名前・レア度・売値・色） |
 | `data/quests.js` | `QUESTS` | 討伐クエスト（依頼する NPC・倒す敵・数・報酬・前提） |
 | `data/stats.js` | `STATS` | ステータスの表示名・桁数（並び順がキャラクターの画面のつよさの並び順） |
+| `data/buffs.js` | `BUFFS` | 強化（バフ）の種類（表示名・変えるステータスと倍率・アイコンの字と色）。かける技は `data/player.js` の `type: 'buff'`（[combat.md](combat.md)） |
 | `data/theme.js` | `THEME` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、MP のゲージと消費 MP の色） |
 | `world.js` | `WORLD` | 世界地図（`worldMap`、ゾーンの `mapPos`）、地形の種類（`terrain`）、ゾーン、門、湧き場所、NPC（位置は px で書き、読み込むときにマスに直す。ステータスの種類は `kind`） |
 
@@ -28,6 +29,7 @@
 - NPC を足す: `world.js` の `npcs` に足し、`kind` に `data/npcs.js` の種類を書く。合う種類がなければ `NPC_KINDS` に 1 つ足す
 - クエストを足す: `data/quests.js` に 1 つ足す（`giver` は `world.js` の NPC の `id`。くり返し受けられるものは `repeatable: true`）
 - ステータスを足す: `data/stats.js` に 1 行足し、`data/player.js` の `stats` に Lv1 の値を書く。レベルで上げるなら `params.js` の `progression.growth`、ほかのステータスから計算するなら `params.js` の `derivedStats` に書く（このときは `stats` に書かない）。それ以外の効き目は `src/` に書く
+- 強化を足す: `data/buffs.js` に 1 つ足し、`data/player.js` の `skills` に `type: 'buff', buff: 'キー', duration: 行動回数` の技を足す
 - 地形を足す: [world.md](world.md) の「ゾーンと障害物」を見る
 
 ## 仕組み: データの確認（`src/validate.js`）
@@ -37,6 +39,7 @@
 - 全ゾーンに世界地図の位置 `mapPos` があり、重なっていないか（`world.js`）
 - 敵の落とす素材が `data/items.js` の `materials` にあるか（`data/enemies.js`）。同じ敵の素材どうしで、レア度が高いほうが確率が低く（同じまで）売値が高いか
 - 回復薬・素材のレア度が `rarities` にあるか
+- 強化の `stat` が `data/stats.js` にあり `mult` が 0 より大きいか、強化の技の `buff` が `data/buffs.js` にあり `duration` が 1 以上か（`data/buffs.js`・`data/player.js`）
 - 湧き場所の敵、地形の種類、門の行き先、`start` / `respawnZone` の復活地点、店の NPC の `shop` / 鍛冶屋の NPC の `smith`、NPC の `kind`、話すだけの NPC の `lines`、建物の中のゾーンの `parent` と入口、門をたどって全部のゾーンに行けるか（`world.js`）
 - 最初の装備の部位とレア度、スキルのキーの重なり、スキルのキーが移動・画面のキーと重なっていないか、`maxMp` / `mpRegen` があるか、スキルの `mp` が 0 以上で Lv1 の `maxMp` 以下か（`data/player.js`）
 - 敵のステータスが主人公と同じものだけそろっているか（計算で決まるものを書いていないか）、`gear` のステータスが `data/stats.js` にあるか、技の `cooldown` が 1 以上か、技の `mp` が 0 以上で Lv1 の `maxMp` 以下か、MP を使わない基本の技があるか、`skillChance` が 0〜1・`keepDistance` と技の `weight` が 0 より大きいか、技の `situations` が `params.js` にあるか、`surround` が true / false か（`data/enemies.js`）。`src/ai.js` の `SITUATIONS` の数値が `params.js` にあるか

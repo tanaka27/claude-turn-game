@@ -5,6 +5,36 @@
 
 function pathCircle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, Math.max(0, r), 0, TAU); }
 
+// 強化 (data/buffs.js) のアイコン。(x, y) は左上、s は一辺。地の色に 1 文字、右上に上昇 (▲) か低下 (▼) の印、
+// 右下に残りの行動回数。残り 1 行動のときは点滅する。HUD の仲間の欄と、フィールドのキャラの頭上で使う
+function drawBuffIcon(b, x, y, s) {
+  const d = BUFFS[b.id];
+  if (!d) return;
+  ctx.save();
+  if (b.left <= 1) ctx.globalAlpha *= 0.45 + 0.55 * Math.abs(Math.sin(game.rt * 6));
+  ctx.fillStyle = d.color; roundRect(x, y, s, s, s * 0.22); ctx.fill();
+  ctx.lineWidth = Math.max(1, s * 0.07); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(s * 0.58)}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(d.icon, x + s * 0.42, y + s * 0.56);
+  const up = d.mult >= 1, ax = x + s * 0.82, ay = y + s * 0.24, a = s * 0.17;
+  ctx.fillStyle = up ? '#b9f6ca' : '#ff8a80'; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = Math.max(1, s * 0.05);
+  ctx.beginPath();
+  if (up) { ctx.moveTo(ax, ay - a); ctx.lineTo(ax + a, ay + a * 0.7); ctx.lineTo(ax - a, ay + a * 0.7); }
+  else { ctx.moveTo(ax, ay + a); ctx.lineTo(ax + a, ay - a * 0.7); ctx.lineTo(ax - a, ay - a * 0.7); }
+  ctx.closePath(); ctx.stroke(); ctx.fill();
+  ctx.font = `bold ${Math.round(s * 0.42)}px sans-serif`; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+  ctx.lineWidth = Math.max(2, s * 0.14); ctx.strokeStyle = '#000';
+  ctx.strokeText(String(b.left), x + s + 2, y + s + 2); ctx.fillStyle = '#fff'; ctx.fillText(String(b.left), x + s + 2, y + s + 2);
+  ctx.restore();
+}
+// キャラの強化のアイコンを、(cx, bottom) を下の中央にして横に並べる
+function drawBuffRow(u, cx, bottom, s) {
+  const list = u.buffs || [];
+  const gap = s * 0.25, w = list.length * s + (list.length - 1) * gap;
+  list.forEach((b, i) => drawBuffIcon(b, cx - w / 2 + i * (s + gap), bottom - s, s));
+}
+
 // 絵 (PNG) の読み込み。最初に使うときに読み込みを始め、読み込み終わるまでは null を返す (そのあいだは図形で描く)
 // 当たったときの白い光り用に、同じ形の白い絵 (flash) も作っておく
 const sprites = {};
@@ -175,6 +205,8 @@ function drawUnit(u) {
       ctx.fillText(u.def.glyph, u.x, u.y + 1);
     }
   }
+  // 頭上の強化のアイコン (主人公。敵は HP バーのさらに上)
+  if (u.buffs && u.buffs.length) drawBuffRow(u, u.x, (spriteTop !== null ? spriteTop : u.y - u.r) - (u.isPlayer ? 4 : 14), 14);
   if (!u.isPlayer) {
     // 頭上の HP バーとレベル (絵のときは絵の上端の上)
     ctx.textBaseline = 'middle';

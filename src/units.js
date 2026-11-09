@@ -24,7 +24,7 @@ function createPlayer() {
     stats: null, base: growthBase(1), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: EC.startGold, potions: startPotions(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null,
-    skillCd, hitFlash: 0, dead: false,
+    skillCd, buffs: [], hitFlash: 0, dead: false,
   };
 }
 
@@ -123,8 +123,43 @@ function deriveStats(base, gears) {
   for (const k in DS) if (DS[k].max !== undefined) st[k] = Math.min(DS[k].max, st[k]);
   return st;
 }
-// 主人公のステータス = Lv1 の値 (成長するものは p.base) + 装備
-const computeStats = (p) => deriveStats({ ...PLAYER.stats, ...p.base }, Object.values(p.equip).map((it) => it && it.stats));
+// 主人公のステータス = Lv1 の値 (成長するものは p.base) + 装備、に強化 (p.buffs) を掛ける
+const computeStats = (p) => applyBuffs(deriveStats({ ...PLAYER.stats, ...p.base }, Object.values(p.equip).map((it) => it && it.stats)), p.buffs);
+
+// ----- 強化 (バフ。data/buffs.js) -----
+// u.buffs = [{ id, left, fresh }]。left: 残りの行動回数 / fresh: かけた行動の間は減らさない
+function applyBuffs(st, buffs) {
+  for (const b of buffs || []) { const d = BUFFS[b.id]; if (d) st[d.stat] *= d.mult; }
+  return st;
+}
+// 強化をかける (今は主人公だけ)。同じ強化なら残りの長いほうにする
+function addBuff(u, id, n) {
+  const b = u.buffs.find((x) => x.id === id);
+  if (b) { b.left = Math.max(b.left, n); b.fresh = true; } else u.buffs.push({ id, left: n, fresh: true });
+  refreshStats(u);
+}
+// 行動 1 回ぶん強化を進め、切れたものを外す (src/turn.js の endPlayerAction)
+function tickBuffs(u) {
+  let changed = false;
+  u.buffs = u.buffs.filter((b) => {
+    if (b.fresh) { b.fresh = false; return true; }
+    if (--b.left > 0) return true;
+    log(`${BUFFS[b.id].name}の効果が切れた。`, '#9da7b3');
+    changed = true;
+    return false;
+  });
+  if (changed) refreshStats(u);
+}
+function clearBuffs(u) {
+  u.buffs = [];
+  refreshStats(u);
+}
+// ステータスを計算し直す (最大 HP・MP が下がったら今の値も合わせる)
+function refreshStats(u) {
+  u.stats = computeStats(u);
+  u.hp = Math.min(u.hp, u.stats.maxHp);
+  u.mp = Math.min(u.mp, u.stats.maxMp);
+}
 
 function gainExp(n, x, y) {
   const p = player;
@@ -166,6 +201,7 @@ const homeZone = () => (WORLD.zones[player.home] && WORLD.zones[player.home].res
 function respawnPlayer() {
   const p = player, home = homeZone();
   const r = WORLD.zones[home].respawn;
+  clearBuffs(p);
   Object.assign(p, { hp: p.stats.maxHp, mp: p.stats.maxMp, dead: false, facing: -Math.PI / 2 });
   enterZone(home, tileOf(r.x), tileOf(r.y));
   game.state = 'play';
