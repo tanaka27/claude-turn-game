@@ -27,7 +27,7 @@ window.addEventListener('keydown', (e) => {
     // クエストの画面: ↑↓ で選び、Enter で受ける・報告する
     if (menu.mode === 'quest' && (k === 'arrowup' || k === 'arrowdown')) { moveQuestSel(k === 'arrowup' ? -1 : 1); return; }
     if (menu.mode === 'quest' && k === 'enter' && !e.repeat) { questAction(questById(questSel)); return; }
-    if (!e.repeat && (k === 'escape' || (k === 'i' && menu.mode === 'inv') || (k === 'c' && menu.mode === 'char') ||
+    if (!e.repeat && (k === 'escape' || (k === 'i' && menu.mode === 'inv') || ((k === 'c' || k === 'tab') && menu.mode === 'char') ||
       (k === 'f' && (menu.mode === 'shop' || menu.mode === 'smith' || menu.mode === 'quest')))) closeMenu();
     return;
   }
@@ -50,6 +50,7 @@ window.addEventListener('keydown', (e) => {
   if (WAIT_KEYS.includes(k) || e.code === 'Numpad5') { act(waitTurn); return; }
   if (e.repeat) return;
   if (k === 'i') { openMenu('inv'); return; }
+  if (k === 'tab') { openMenu('char'); return; }
   if (k === 'f') { interact(); return; }
   const potion = potionByKey(k);
   if (potion) { act(() => usePotion(potion)); return; }
@@ -74,9 +75,12 @@ canvas.addEventListener('mousedown', (e) => {
   if (!canAct()) return;
   if (e.button === 2) { aiming = null; player.travel = null; return; }
   if (e.button !== 0) return;
-  // HUD のボタン (画面下の「道具」、右下の地図) を押したら、マスへの操作はしない
+  // HUD のボタン (左上の仲間の欄、画面下の「道具」、右下の地図) を押したら、マスへの操作はしない
   const hb = hudButtonAt(e.clientX, e.clientY);
-  if (hb) { if (hb.id === 'items') openMenu('inv'); else if (hb.id === 'map') toggleWorldMap(); return; }
+  if (hb) {
+    if (hb.id === 'items') openMenu('inv'); else if (hb.id === 'char') openMenu('char'); else if (hb.id === 'map') toggleWorldMap();
+    return;
+  }
   updateMouseTile();
   if (aiming) { castSkill(aiming, mouse.tx, mouse.ty); return; }
   const { tx, ty } = mouse;

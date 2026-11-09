@@ -103,6 +103,8 @@ function validateData() {
   for (const k in SITUATIONS) check(P.field.ai.situations[k], `params.js field.ai.situations: '${k}' の数値がない (src/ai.js の SITUATIONS にはある)`);
   check(PLAYER.sprite === undefined || (typeof PLAYER.sprite === 'string' && /\.(png|webp)$/i.test(PLAYER.sprite)), 'data/player.js: sprite は PNG か WebP のパスにする');
   if (PLAYER.sprite) getSprite(PLAYER.sprite);
+  check(PLAYER.face === undefined || (typeof PLAYER.face === 'string' && /\.(png|webp)$/i.test(PLAYER.face)), 'data/player.js: face は PNG か WebP のパスにする');
+  if (PLAYER.face) getSprite(PLAYER.face);
   for (const [type, d] of Object.entries(ENEMIES)) {
     // 敵も主人公と同じステータスを持つ (計算で決まるものは書かない)
     for (const k in PLAYER.stats) check(Number.isFinite(d.stats[k]) && d.stats[k] >= 0, `data/enemies.js ${type}: stats に ${k} がない`);

@@ -1,5 +1,5 @@
 // =====================================================================
-//  HUD (ステータス・スキル欄・クエスト・ミニマップ・ツールチップ)
+//  HUD (仲間の欄・スキル欄・行動順・ミニマップ・ツールチップ)
 // =====================================================================
 'use strict';
 
@@ -19,52 +19,59 @@ function bar(x, y, w, h, ratio, color, label) {
 
 // HUD の上のクリックできるボタン ({ id, x, y, w, h })。drawHUD が毎回作り直す
 const hudButtons = [];
-let statsBottom = 0; // 右上のステータス欄の下端 (世界地図がこれより下に収まるようにする)
+const HUD_TOP = 56; // 上中央の行動順の下端 (世界地図がこれより下に収まるようにする)
 const hudButtonAt = (x, y) => hudButtons.find((b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) || null;
+
+// 左上に並べる仲間 (今は主人公だけ。仲間を足したらここに並べる)
+const partyMembers = () => [player];
+
+// 左上の 1 人分の欄: 顔の絵・名前・レベル・HP・MP だけ (ほかはキャラクターの画面で見る)。クリックでキャラクターの画面
+const CARD = { w: 260, h: 72, face: 60, gap: 8 };
+function drawPartyCard(u, x, y) {
+  const st = u.stats, f = CARD.face, pad = (CARD.h - f) / 2;
+  const hover = mouse.x >= x && mouse.x <= x + CARD.w && mouse.y >= y && mouse.y <= y + CARD.h;
+  hudButtons.push({ id: 'char', x, y, w: CARD.w, h: CARD.h });
+  ctx.fillStyle = hover ? 'rgba(30,48,66,0.92)' : 'rgba(13,17,23,0.8)'; roundRect(x, y, CARD.w, CARD.h, 10); ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = hover ? '#4fc3f7' : 'rgba(79,195,247,0.35)'; ctx.stroke();
+  // 顔の絵 (読み込めないうちは色の付いた四角に名前の 1 文字目)
+  const fx = x + pad, fy = y + pad, face = getSprite(u.isPlayer ? PLAYER.face : u.def && u.def.face);
+  ctx.save(); roundRect(fx, fy, f, f, 8); ctx.clip();
+  ctx.fillStyle = '#1b2633'; ctx.fillRect(fx, fy, f, f);
+  if (face) ctx.drawImage(face.img, fx, fy, f, f);
+  else {
+    ctx.fillStyle = u.color; ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(u.name[0], fx + f / 2, fy + f / 2 + 1); ctx.textBaseline = 'alphabetic';
+  }
+  ctx.restore();
+  ctx.lineWidth = 2; ctx.strokeStyle = u.color; roundRect(fx, fy, f, f, 8); ctx.stroke();
+  // 名前・レベル・HP・MP
+  const tx = fx + f + 10, bw = x + CARD.w - tx - 10;
+  ctx.textAlign = 'left'; ctx.font = 'bold 14px sans-serif'; ctx.fillStyle = '#e6edf3';
+  ctx.fillText(u.name, tx, y + 21);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#ffd54f'; ctx.fillText(`Lv ${u.level}`, tx + bw, y + 21);
+  const hpR = u.hp / st.maxHp;
+  bar(tx, y + 30, bw, 16, hpR, hpR > 0.3 ? '#43a047' : '#e53935', `HP ${Math.ceil(u.hp)} / ${Math.round(st.maxHp)}`);
+  bar(tx, y + 52, bw, 12, u.mp / st.maxMp, THEME.mp);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`MP ${Math.floor(u.mp)} / ${Math.round(st.maxMp)}`, tx + bw / 2, y + 59);
+  ctx.textBaseline = 'alphabetic';
+}
 
 function drawHUD() {
   if (!player) return;
-  const p = player, st = p.stats;
+  const p = player;
   ctx.textBaseline = 'alphabetic';
-  // HP・MP・経験値
-  bar(20, 20, 300, 22, p.hp / st.maxHp, p.hp / st.maxHp > 0.3 ? '#43a047' : '#e53935', `HP ${Math.ceil(p.hp)} / ${Math.round(st.maxHp)}`);
-  bar(20, 50, 300, 16, p.mp / st.maxMp, THEME.mp, `MP ${Math.floor(p.mp)} / ${Math.round(st.maxMp)}`);
-  const maxed = p.level >= PG.maxLevel, need = expToNext(p.level);
-  bar(20, 74, 300, 8, maxed ? 1 : p.exp / need, '#9575cd');
-  ctx.textAlign = 'left'; ctx.fillStyle = '#e6edf3'; ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(`Lv ${p.level}  ${p.name}`, 20, 104);
-  ctx.font = '13px sans-serif'; ctx.fillStyle = '#b39ddb';
-  ctx.fillText(maxed ? 'EXP MAX' : `EXP ${p.exp} / ${need}`, 150, 104);
-  ctx.fillStyle = '#9da7b3';
-  const status = inSafeZone() ? '安全地帯' : game.time - p.lastHurt >= PG.restDelay ? '休息中' : '戦闘中';
-  ctx.fillText(`撃破 ${game.kills}   ${status}   ターン ${Math.floor(game.time)}`, 20, 124);
-  ctx.fillStyle = '#ffd54f'; ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(`${p.gold} G`, 220, 124);
-  ctx.fillStyle = '#80deea'; ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(`${zone.name}（${zoneLevelText(zone)}）`, 20, 146);
-
-  // ステータス
-  // 並び順と表示のしかたは data/stats.js の hud
-  const lines = Object.keys(STATS).filter((k) => STATS[k].hud).map((k) => {
-    const { label, pct, hud } = STATS[k];
-    const v = (pct ? (st[k] * 100).toFixed(hud.dec) + '%' : st[k].toFixed(hud.dec));
-    return [label, (hud.prefix || '') + v + (hud.suffix || '')];
-  });
-  const px = W - 190, py = 16;
-  statsBottom = py + 18 + lines.length * 19;
-  ctx.fillStyle = 'rgba(13,17,23,0.75)'; roundRect(px, py, 174, 18 + lines.length * 19, 8); ctx.fill();
-  ctx.font = '13px sans-serif';
-  lines.forEach(([k, v], i) => {
-    ctx.textAlign = 'left'; ctx.fillStyle = '#9da7b3'; ctx.fillText(k, px + 12, py + 24 + i * 19);
-    ctx.textAlign = 'right'; ctx.fillStyle = '#e6edf3'; ctx.fillText(v, px + 162, py + 24 + i * 19);
-  });
+  hudButtons.length = 0;
+  // 左上: 仲間の欄 (上から順に)
+  const party = partyMembers();
+  party.forEach((u, i) => drawPartyCard(u, 16, 16 + i * (CARD.h + CARD.gap)));
+  const partyBottom = 16 + party.length * (CARD.h + CARD.gap);
 
   // スキルバー
   const slots = SKILLS.map((s) => ({ label: s.label, name: s.name, cd: p.skillCd[s.key], max: skillCooldown(s), active: aiming === s,
       lock: p.level < s.unlockLevel ? s.unlockLevel : 0, mp: skillMp(s), short: !enoughMp(s) }))
     .concat(Object.entries(IT.potions).map(([id, po]) => ({ label: po.key.toUpperCase(), name: po.name, cd: 0, max: 1, count: p.potions[id] || 0 })))
     .concat([{ label: 'I', name: '道具', cd: 0, max: 1, button: 'items' }]);
-  hudButtons.length = 0;
   const sz = 62, gap = 12, total = slots.length * sz + (slots.length - 1) * gap;
   let sx = (W - total) / 2;
   const sy = H - sz - 34;
@@ -114,28 +121,12 @@ function drawHUD() {
     sx += sz + gap;
   }
 
-  // クエスト
-  const qs = QUESTS.filter((q) => p.quests[q.id] && p.quests[q.id].state !== 'claimed');
-  if (qs.length) {
-    const qy = py + 18 + lines.length * 19 + 10;
-    ctx.fillStyle = 'rgba(13,17,23,0.75)'; roundRect(px, qy, 174, 26 + qs.length * 34, 8); ctx.fill();
-    ctx.textAlign = 'left'; ctx.fillStyle = '#ffd54f'; ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('クエスト', px + 12, qy + 18);
-    qs.forEach((q, i) => {
-      const st = p.quests[q.id], y = qy + 38 + i * 34;
-      ctx.fillStyle = '#e6edf3'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(q.name, px + 12, y);
-      ctx.font = '12px sans-serif';
-      if (st.state === 'ready') { ctx.fillStyle = '#69f0ae'; ctx.fillText(`${npcById(q.giver).name}に報告`, px + 12, y + 15); }
-      else { ctx.fillStyle = '#9da7b3'; ctx.fillText(`${enemyName(q.target)} ${st.count} / ${q.count}`, px + 12, y + 15); }
-    });
-  }
-
   // ボスHP
   const boss = enemies.find((e) => e.isBoss && e.state === 'chase');
   if (boss) {
-    // 画面が狭いと左上の HP バーと重なるので、そのときは少し下に出す
+    // 画面が狭いと左上の仲間の欄と重なるので、そのときは欄の下に出す
     const bw = Math.min(520, W - 420), bx = (W - bw) / 2;
-    bar(bx, bx < 340 ? 160 : 58, bw, 18, boss.hp / boss.stats.maxHp, '#c62828', `Lv${boss.level} ${boss.name}  ${Math.ceil(boss.hp)} / ${boss.stats.maxHp}`);
+    bar(bx, bx < 16 + CARD.w + 12 ? partyBottom + 4 : 58, bw, 18, boss.hp / boss.stats.maxHp, '#c62828', `Lv${boss.level} ${boss.name}  ${Math.ceil(boss.hp)} / ${boss.stats.maxHp}`);
   }
 
   drawTurnOrder();
@@ -205,9 +196,9 @@ function drawWorldMap() {
   const here = door ? { x: door.x + door.w / 2, y: door.y + door.h / 2 } : player;
   const cols = Math.max(...zones.map(([, z]) => z.mapPos[0])) + 1, rows = Math.max(...zones.map(([, z]) => z.mapPos[1])) + 1;
   const pad = 8, labelH = 26, margin = 13;
-  // 枠の大きさ: スキル欄の右と、右上のステータス (statsBottom) の下に収まるように縮める (文字は縮めない)
+  // 枠の大きさ: スキル欄の右と、上中央の行動順 (HUD_TOP) の下に収まるように縮める (文字は縮めない)
   const sb = hudButtons.find((b) => b.id === 'items');
-  const availW = W - margin - (sb ? sb.x + sb.w + 12 : 0), availH = H - margin - statsBottom - 12;
+  const availW = W - margin - (sb ? sb.x + sb.w + 12 : 0), availH = H - margin - HUD_TOP - 12;
   const k = clamp(Math.min(1, (availW - (cols - 1) * M.gap - pad * 2) / (cols * M.cellW),
     (availH - rows * labelH - (rows - 1) * M.gap - pad * 2) / (rows * M.cellH)), M.minScale, 1);
   const cellW = M.cellW * k, cellH = M.cellH * k;

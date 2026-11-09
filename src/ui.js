@@ -126,16 +126,27 @@ function renderMenu() {
     detailHtml(it, menu.sel.from) + (menu.mode === 'char' ? '<div class="sep"></div>' + strengthHtml() : '');
 }
 
-// キャラクターの画面の左上: 名前・レベル・HP・MP・経験値・撃破数・今いるゾーン
+// キャラクターの画面の左上: 顔の絵・名前・レベル・HP・MP・経験値・撃破数・状態・ターン・今いるゾーン・受けているクエスト
+// (フィールドの HUD には顔・名前・レベル・HP・MP しか出さないので、ほかはここで見る)
 function profileHtml() {
   const p = player, maxed = p.level >= PG.maxLevel, need = expToNext(p.level);
   const bar = (v, max, color) => `<div class="bar" style="--bc:${color}"><i style="width:${clamp(v / max, 0, 1) * 100}%"></i></div>`;
-  return `<div class="profile"><div class="pname">${p.name}　Lv${p.level}</div>
+  const status = inSafeZone() ? '安全地帯' : game.time - p.lastHurt >= PG.restDelay ? '休息中' : '戦闘中';
+  const face = PLAYER.face ? `<img class="pface" src="${PLAYER.face}" alt="" style="--fc:${PLAYER.color}">` : '';
+  const qs = QUESTS.filter((q) => p.quests[q.id] && p.quests[q.id].state !== 'claimed').map((q) => {
+    const st = p.quests[q.id];
+    return st.state === 'ready' ? `<div class="row"><span>${q.name}</span><span class="up">${npcById(q.giver).name}に報告</span></div>`
+      : `<div class="row"><span>${q.name}</span><span>${enemyName(q.target)} ${st.count} / ${q.count}</span></div>`;
+  }).join('');
+  return `<div class="profile"><div class="phead">${face}<div class="pname">${p.name}　Lv${p.level}</div></div>
     <div class="row"><span>HP</span><span>${Math.ceil(p.hp)} / ${p.stats.maxHp}</span></div>${bar(p.hp, p.stats.maxHp, '#ef5350')}
     <div class="row"><span>MP</span><span>${Math.floor(p.mp)} / ${p.stats.maxMp}</span></div>${bar(p.mp, p.stats.maxMp, THEME.mp)}
     <div class="row"><span>経験値</span><span>${maxed ? '最大レベル' : `${p.exp} / ${need}（あと ${need - p.exp}）`}</span></div>${bar(maxed ? 1 : p.exp, maxed ? 1 : need, '#b39ddb')}
     <div class="row"><span>撃破数</span><span>${game.kills}</span></div>
-    <div class="row"><span>いる場所</span><span>${zone.name}</span></div></div>`;
+    <div class="row"><span>状態</span><span>${status}</span></div>
+    <div class="row"><span>ターン</span><span>${Math.floor(game.time)}</span></div>
+    <div class="row"><span>いる場所</span><span>${zone.name}（${zoneLevelText(zone)}）</span></div>
+    <div class="pquest">クエスト</div>${qs || '<div class="row none"><span>受けているクエストはない</span></div>'}</div>`;
 }
 
 // つよさ: 全ステータスと、装備で上がっている分 (装備がないときとの差)

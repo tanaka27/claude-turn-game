@@ -73,7 +73,12 @@
   .hint { color: #6e7681; font-size: 13px; }
   /* キャラクター (一時停止から開く) */
   .profile { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; }
+  .profile .phead { display: flex; align-items: center; gap: 10px; }
+  .profile .pface { width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--fc); background: #1b2633; }
   .profile .pname { font-size: 17px; font-weight: bold; color: #4fc3f7; }
+  .profile .pquest { margin-top: 8px; color: #ffd54f; font-weight: bold; border-top: 1px solid #30363d; padding-top: 6px; }
+  .profile .row.none { color: #6e7681; }
+  .profile .up { color: #69f0ae; }
   .profile .row { display: flex; justify-content: space-between; margin-top: 4px; }
   .profile .bar { height: 6px; background: #30363d; border-radius: 3px; overflow: hidden; margin-top: 2px; }
   .profile .bar i { display: block; height: 100%; background: var(--bc); }
@@ -128,7 +133,8 @@
       <b>I</b><span>道具一覧（道具を使う・装備の付け替え。画面下の「道具」ボタンでも開く）</span>
       <b>F</b><span>となりの人に話しかける（人のいるマスへ移動しても話しかける）</span>
       <b>M</b><span>右下の地図を世界地図に切り替える（地図のクリックでも）</span>
-      <b>Esc / P</b><span>一時停止（一時停止中に C でキャラクターの画面）</span>
+      <b>Tab</b><span>キャラクターの画面（ステータス・経験値・所持金・クエストなど。左上の自分の欄のクリックでも開く。一時停止中は C でも）</span>
+      <b>Esc / P</b><span>一時停止</span>
       <b>マウスを敵に重ねる</b><span>敵のレベル・速度などを表示（名前の色: 赤＝格上、灰＝格下）</span>
     </div>
     <div class="legend">
