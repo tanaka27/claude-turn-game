@@ -149,15 +149,17 @@ function profileHtml() {
     <div class="pquest">クエスト</div>${qs || '<div class="row none"><span>受けているクエストはない</span></div>'}</div>`;
 }
 
-// つよさ: 全ステータスと、装備で上がっている分 (装備がないときとの差)
+// つよさ: 全ステータスの最終的な値 (強化と装備を入れたもの) と、( ) に装備で上がっている分。強化がかかっている値は色を変える
 function strengthHtml() {
-  const p = player, st = p.stats, bare = computeStats({ ...p, equip: {}, buffs: [] });
+  const p = player, st = p.stats, { equip } = statParts(p);
+  const buffed = new Set(p.buffs.map((b) => BUFFS[b.id] && BUFFS[b.id].stat));
   const rows = Object.keys(STATS).map((k) => {
-    const diff = st[k] - bare[k];
-    const d = Math.abs(diff) < 1e-9 ? '' : `<span class="${diff > 0 ? 'up' : 'down'}">${fmtStat(k, diff, true)}</span>`;
-    return `<div class="row"><span>${STATS[k].label}</span><span>${fmtStat(k, st[k])} ${d}</span></div>`;
+    const e = equip[k] || 0;
+    const d = e ? `<span class="${e > 0 ? 'up' : 'down'}">（${fmtStat(k, e, true)}）</span>` : '';
+    const v = buffed.has(k) ? `<span class="buffed">${fmtStat(k, st[k])}</span>` : fmtStat(k, st[k]);
+    return `<div class="row"><span>${STATS[k].label}</span><span>${v} ${d}</span></div>`;
   }).join('');
-  return `<div class="dname">つよさ</div><div class="dsub">Lv${p.level}　色の数字は装備と強化（バフ）で上がっている分</div><div class="stats">${rows}</div>`;
+  return `<div class="dname">つよさ</div><div class="dsub">Lv${p.level}　（ ）は装備で上がっている分。<span class="buffed">この色</span>は強化（バフ）中</div><div class="stats">${rows}</div>`;
 }
 
 // ----- 道具 (使うもの。今は回復薬だけ) -----

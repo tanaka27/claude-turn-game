@@ -123,8 +123,28 @@ function deriveStats(base, gears) {
   for (const k in DS) if (DS[k].max !== undefined) st[k] = Math.min(DS[k].max, st[k]);
   return st;
 }
-// 主人公のステータス = Lv1 の値 (成長するものは p.base) + 装備、に強化 (p.buffs) を掛ける
-const computeStats = (p) => applyBuffs(deriveStats({ ...PLAYER.stats, ...p.base }, Object.values(p.equip).map((it) => it && it.stats)), p.buffs);
+// 主人公のステータス: もとのステータス (Lv1 の値。成長するものは p.base) から計算 → 強化 (p.buffs) の倍率を掛ける → 装備の固定値を足す
+// 装備は強化の倍率を受けない。上限 (derivedStats の max) は最後にかける
+function computeStats(p) {
+  const { bare, equip } = statParts(p);
+  const st = applyBuffs({ ...bare }, p.buffs);
+  for (const k in equip) st[k] = (st[k] || 0) + equip[k];
+  for (const k in DS) if (DS[k].max !== undefined) st[k] = Math.min(DS[k].max, st[k]);
+  return st;
+}
+// 装備なしのステータス (bare) と、装備で上がる分 (equip = 装備ありで計算した値 − bare)。
+// equip には、ちから +3 の装備ならこうげき力 +3 のように、計算で決まるステータスへの効き目も入る
+function statParts(p) {
+  const base = { ...PLAYER.stats, ...p.base };
+  const bare = deriveStats(base, []);
+  const geared = deriveStats(base, Object.values(p.equip).map((it) => it && it.stats));
+  const equip = {};
+  for (const k in geared) {
+    const d = geared[k] - (bare[k] || 0);
+    if (Math.abs(d) > 1e-9) equip[k] = d;
+  }
+  return { bare, equip };
+}
 
 // ----- 強化 (バフ。data/buffs.js) -----
 // u.buffs = [{ id, left, fresh }]。left: 残りの行動回数 / fresh: かけた行動の間は減らさない
