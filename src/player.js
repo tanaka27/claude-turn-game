@@ -22,6 +22,8 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
   if (game.state === 'menu') {
+    // アイテムの詳細 (ポップアップ) を開いているときは、Esc でそれだけ閉じる
+    if (menu.pop && !e.repeat && k === 'escape') { closePop(); return; }
     // 会話: F / Enter / スペースで次の言葉へ (最後なら閉じる)
     if (menu.mode === 'talk' && !e.repeat && (k === 'f' || k === 'enter' || k === ' ')) { nextTalk(); return; }
     // クエストの画面: ↑↓ で選び、Enter で受ける・報告する

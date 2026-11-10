@@ -8,7 +8,11 @@
 //   'smith' (鍛冶屋: 装備を買う・売る) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る) /
 //   'quest' (クエスト。src/quests.js) / 'talk' (話すだけの NPC との会話)
 // shop: 開いている店のキー (商人は data/items.js の ITEMS.shops、鍛冶屋は ITEMS.smiths) / sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
-const menu = { mode: 'inv', shop: null, sel: null };
+// pop: 開いているアイテムの詳細 (ポップアップ。道具一覧とキャラクターの画面だけ) null / { kind: 'gear' } (装備。どれかは sel) /
+//   { kind: 'tool', id: 回復薬のキー } / { kind: 'mat', id: 素材のキー }
+const menu = { mode: 'inv', shop: null, sel: null, pop: null };
+// アイテムをクリックしたときにポップアップで詳細を出す画面か (店では今までどおり右の欄に出す)
+const usesPop = () => menu.mode === 'inv' || menu.mode === 'char';
 // 鍛冶屋ごとの品ぞろえ { 鍛冶屋のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
 const shopStocks = {};
 const shopDef = () => (menu.mode === 'smith' ? IT.smiths : IT.shops)[menu.shop];
@@ -31,12 +35,15 @@ function openMenu(mode, shop) {
   menu.mode = mode;
   menu.shop = mode === 'shop' || mode === 'smith' ? shop : null;
   menu.sel = null;
+  menu.pop = null;
   if (mode === 'smith') refreshSmith(shop);
   if (mode === 'char') $('pause').classList.remove('show');
   renderMenu();
   $('menu').classList.add('show');
 }
 function closeMenu() {
+  menu.pop = null;
+  $('itemPop').classList.remove('show');
   $('menu').classList.remove('show');
   $('quest').classList.remove('show');
   $('talk').classList.remove('show');
@@ -58,7 +65,7 @@ function itemChip(it, from) {
   const r = rarityOf(it.rarity);
   const on = menu.sel && menu.sel.id === it.id ? ' sel' : '';
   const price = from === 'shop' ? `<span class="price">${itemValue(it)} G</span>` : '';
-  return `<div class="item${on}" data-from="${from}" data-id="${it.id}" style="--rc:${r.color}">
+  return `<div class="item${on}${usesPop() ? ' pop' : ''}" data-from="${from}" data-id="${it.id}" style="--rc:${r.color}">
     <b>${it.name}</b><span>${IT.slots[it.slot].label} Lv${it.level}</span>${price}</div>`;
 }
 
@@ -121,9 +128,63 @@ function renderMenu() {
   }
   renderMaterials();
   const it = findSel();
-  // キャラクターの画面では、装備を選んでいても下につよさを出す (付け替えで変わるのを見られるように)
-  $('detail').innerHTML = !it ? strengthHtml() + '<p class="hint">装備を選ぶと詳しく表示します</p>' :
-    detailHtml(it, menu.sel.from) + (menu.mode === 'char' ? '<div class="sep"></div>' + strengthHtml() : '');
+  if (usesPop()) {
+    // 道具一覧・キャラクターの画面: 右の欄はいつもつよさ。アイテムの詳細はポップアップ (付け替えるとつよさも変わる)
+    $('detail').innerHTML = strengthHtml() + '<p class="hint">アイテムをクリックすると詳しく表示します</p>';
+    renderPop();
+    return;
+  }
+  $('detail').innerHTML = !it ? strengthHtml() + '<p class="hint">装備を選ぶと詳しく表示します</p>' : detailHtml(it, menu.sel.from);
+}
+
+// ----- アイテムの詳細 (ポップアップ) -----
+function openPop(pop) {
+  menu.pop = pop;
+  renderMenu();
+}
+function closePop() {
+  menu.pop = null;
+  menu.sel = null;
+  renderMenu();
+}
+function renderPop() {
+  const pop = menu.pop, it = pop && pop.kind === 'gear' ? findSel() : null;
+  let html = '', rc = '';
+  if (it) { html = detailHtml(it, menu.sel.from); rc = rarityOf(it.rarity).color; }
+  else if (pop && pop.kind === 'tool') {
+    const t = toolEntries().find((x) => x.id === pop.id);
+    if (t) { html = toolPopHtml(t); rc = rarityOf(t.rarity).color; }
+  } else if (pop && pop.kind === 'mat' && player.materials[pop.id] > 0) {
+    html = matPopHtml(pop.id); rc = rarityOf(IT.materials[pop.id].rarity).color;
+  }
+  // 中身がなくなった (捨てた・売った) ら閉じる
+  if (!html) menu.pop = null;
+  $('itemPopBody').innerHTML = html ? `<button class="pclose" data-act="popClose">閉じる</button>${html}` : '';
+  $('itemPopBody').style.setProperty('--rc', rc || '#30363d');
+  $('itemPop').classList.toggle('show', !!html);
+}
+// 道具 (回復薬) の詳細。道具一覧で、一時停止していなければ「使う」(画面を閉じて 1 行動)
+function toolPopHtml(t) {
+  const r = rarityOf(t.rarity), canUse = menu.mode === 'inv' && !game.paused;
+  const reason = t.count <= 0 ? '持っていない' : player.hp >= player.stats.maxHp ? 'HP が満タン' : '';
+  return `<div class="dname" style="color:${r.color}">${t.name}</div>
+    <div class="dsub">${r.name}・道具</div>
+    <div class="ptext">${t.desc}</div>
+    <div class="stats"><div class="row"><span>持っている数</span><span>${t.count} / ${t.max}</span></div>
+      <div class="row"><span>使うキー</span><span>${t.key.toUpperCase()}（フィールドで。1 行動）</span></div></div>
+    ${canUse ? `<div class="btns"><button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>使う</button></div>
+      ${reason ? `<p class="hint">${reason}なので使えない</p>` : ''}` : ''}`;
+}
+// 素材の詳細: 数・売値・落とす魔物
+function matPopHtml(id) {
+  const m = IT.materials[id], r = rarityOf(m.rarity), n = player.materials[id];
+  const from = Object.values(ENEMIES).filter((d) => (d.drops || []).some((x) => x.id === id)).map((d) => d.name);
+  return `<div class="dname" style="color:${r.color}"><i class="swatch" style="background:${m.color}"></i>${m.name}</div>
+    <div class="dsub">${r.name}・素材</div>
+    <div class="stats"><div class="row"><span>持っている数</span><span>${n}</span></div>
+      <div class="row"><span>売値</span><span>${m.price} G（全部で ${m.price * n} G）</span></div>
+      <div class="row"><span>落とす魔物</span><span>${from.join('、') || '-'}</span></div></div>
+    <p class="hint">商人に売るとお金になる</p>`;
 }
 
 // キャラクターの画面の左上: 顔の絵・名前・レベル・HP・MP・経験値・撃破数・状態・ターン・今いるゾーン・受けているクエスト
@@ -179,7 +240,7 @@ function renderTools() {
   $('toolList').innerHTML = toolEntries().map((t) => {
     const btn = inv ? `<button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>使う</button>` : '';
     const r = rarityOf(t.rarity);
-    return `<div class="item tool${t.count ? '' : ' none'}" style="--rc:${r.color}"><b>${t.name} ×${t.count}<small> / ${t.max}</small></b>
+    return `<div class="item tool${t.count ? '' : ' none'}${usesPop() ? ' pop' : ''}" data-tool="${t.id}" style="--rc:${r.color}"><b>${t.name} ×${t.count}<small> / ${t.max}</small></b>
       <span>${r.name}・${t.desc}・${t.key.toUpperCase()} キー</span>${btn}</div>`;
   }).join('');
 }
@@ -196,7 +257,7 @@ function renderMaterials() {
     const btns = shop ? `<div class="btns"><button data-act="sellMat" data-mat="${id}">1つ売る</button>
       <button data-act="sellMat" data-mat="${id}" data-all="1">全部（${m.price * n} G）</button></div>` : '';
     const r = rarityOf(m.rarity);
-    return `<div class="item mat" style="--rc:${r.color}"><b><i class="swatch" style="background:${m.color}"></i>${m.name} ×${n}</b><span>${r.name}・売値 ${m.price} G</span>${btns}</div>`;
+    return `<div class="item mat${usesPop() ? ' pop' : ''}" data-mat="${id}" style="--rc:${r.color}"><b><i class="swatch" style="background:${m.color}"></i>${m.name} ×${n}</b><span>${r.name}・売値 ${m.price} G</span>${btns}</div>`;
   }).join('') || '<p class="hint">素材は魔物を倒すと手に入る</p>';
   $('matSellAll').innerHTML = shop && ids.length ? `<button data-act="sellAllMat">全部売る（${materialTotal()} G）</button>` : '';
 }
@@ -236,6 +297,7 @@ $('menu').addEventListener('click', (e) => {
   if (btn && !btn.disabled) {
     const it = findSel(), a = btn.dataset.act;
     if (a === 'close') { closeMenu(); return; }
+    if (a === 'popClose') { closePop(); return; }
     if (a === 'use' && menu.mode === 'inv') {
       const t = toolEntries().find((x) => x.id === btn.dataset.tool);
       if (t && t.usable) { closeMenu(); act(t.use); }
@@ -260,8 +322,18 @@ $('menu').addEventListener('click', (e) => {
     renderMenu();
     return;
   }
+  // ポップアップの外 (暗いところ) をクリックしたら閉じる
+  if (e.target.id === 'itemPop') { closePop(); return; }
+  if (e.target.closest('#itemPop')) return;
   const chip = e.target.closest('.item[data-id]');
-  if (chip) { menu.sel = { from: chip.dataset.from, id: chip.dataset.id }; renderMenu(); }
+  if (chip) {
+    menu.sel = { from: chip.dataset.from, id: chip.dataset.id };
+    if (usesPop()) openPop({ kind: 'gear' }); else renderMenu();
+    return;
+  }
+  // 道具・素材は、道具一覧とキャラクターの画面でだけクリックで詳細を出す
+  const other = usesPop() && e.target.closest('.item[data-tool], .item[data-mat]');
+  if (other) openPop(other.dataset.tool ? { kind: 'tool', id: other.dataset.tool } : { kind: 'mat', id: other.dataset.mat });
 });
 
 // 話しかけられる NPC (となりのマスにいる人)
