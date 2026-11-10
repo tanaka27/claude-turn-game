@@ -114,6 +114,19 @@ function computeFlow(tx, ty, field) {
   }
 }
 
+// キャラ u のマスまでの歩数の場。主人公は flow (主人公が行動するたびに作り直す)。
+// ほかのキャラは、そのキャラが持つ場 (u.pathField) を、いるマスかゾーンが変わったときだけ作り直す
+function flowTo(u) {
+  if (u === player) return flow;
+  const key = `${zone.id}:${u.tx},${u.ty}`;
+  if (u.pathKey !== key) {
+    if (!u.pathField || u.pathField.length !== COLS * ROWS) u.pathField = new Float64Array(COLS * ROWS);
+    computeFlow(u.tx, u.ty, u.pathField);
+    u.pathKey = key;
+  }
+  return u.pathField;
+}
+
 // field の値が一番小さくなるとなりのマスへの 1 歩 ([dx, dy])。ほかのキャラがいるマスは避ける。なければ null
 function stepDownhill(u, field) {
   let best = field[idx(u.tx, u.ty)], pick = null;
@@ -214,7 +227,7 @@ function rememberZone() {
 // 別のゾーンに入る。(tx, ty) のマスが通れなければ、復活地点か最初の門の前に立つ
 function enterZone(id, tx, ty) {
   if (zone) rememberZone();
-  enemies = []; hazards = []; spawns = []; effects = []; texts = []; loots = [];
+  units = player ? [player] : []; hazards = []; spawns = []; effects = []; texts = []; loots = [];
   loadZone(id);
   if (isBlocked(tx, ty) || gateAt[idx(tx, ty)] >= 0) {
     const r = zone.respawn || { tx: zone.gates[0].sx, ty: zone.gates[0].sy };

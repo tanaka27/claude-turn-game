@@ -15,7 +15,7 @@
 | `data/quests.js` | `QUESTS` | 討伐クエスト（依頼する NPC・倒す敵・数・報酬・前提） |
 | `data/stats.js` | `STATS` | ステータスの表示名・桁数（並び順がキャラクターの画面のつよさの並び順） |
 | `data/buffs.js` | `BUFFS` | 強化（バフ）の種類（表示名・変えるステータスと倍率・アイコンの字と色）。かける技は `data/player.js` の `type: 'buff'`（[combat.md](combat.md)） |
-| `data/theme.js` | `THEME` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、MP のゲージと消費 MP の色） |
+| `data/theme.js` | `THEME` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、仲間の HP バー、MP のゲージと消費 MP の色） |
 | `world.js` | `WORLD` | 世界地図（`worldMap`、ゾーンの `mapPos`）、地形の種類（`terrain`）、ゾーン、門、湧き場所、NPC（位置は px で書き、読み込むときにマスに直す。ステータスの種類は `kind`） |
 
 読み込み順は `params.js` → `data/*.js` → `world.js` → `src/*.js`（`index.html`）。どれも `const` なので `window` のプロパティにはならず、名前で直接参照する。

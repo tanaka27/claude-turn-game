@@ -13,6 +13,7 @@ const THEME = {
   // 敵のレベルの文字色 (自分とのレベル差で決まる。格下の境目は params.js の enemyLevel.grayDiff)
   level: { much: '#ff5252', higher: '#ffab40', even: '#e6edf3', gray: '#8b949e' },
   levelMuchDiff: 3,       // このレベル以上高いと much
+  allyHp: '#66bb6a',      // 主人公の陣営のほかのキャラ (仲間) の頭上の HP バー
   mp: '#3d8bfd',          // MP のゲージ (HUD・キャラクターの画面)
   mpShort: '#ff8a80',     // スキル欄の消費 MP (MP が足りないとき)
 };

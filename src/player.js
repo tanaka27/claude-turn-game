@@ -103,12 +103,13 @@ function act(fn) {
   if (fn()) endPlayerAction();
 }
 
-// (dx, dy) へ 1 歩。敵がいれば攻撃、NPC がいれば話しかける
+// (dx, dy) へ 1 歩。敵がいれば攻撃、味方がいれば進めない (行動にならない)、NPC がいれば話しかける
 function tryMove(dx, dy) {
   const p = player, nx = p.tx + dx, ny = p.ty + dy;
   p.facing = Math.atan2(dy, dx);
   const u = unitAt(nx, ny);
-  if (u && !u.isPlayer) { bumpAttack(u); return true; }
+  if (u && hostileTo(p.faction, u.faction)) { bumpAttack(u); return true; }
+  if (u) return false;
   const npc = (zone.npcs || []).find((n) => n.tx === nx && n.ty === ny);
   if (npc) { talkTo(npc); return false; }
   if (!canStep(p.tx, p.ty, dx, dy)) return false;

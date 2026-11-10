@@ -61,8 +61,15 @@ let camps = [];
 const zoneMemory = {};
 const inSafeZone = () => !!zone.safe;
 const expToNext = (lv) => Math.round(PG.expBase * Math.pow(lv, PG.expExponent));
+// units: 今のゾーンで戦うキャラ全員 (主人公・敵・これからの仲間)。どのキャラも faction (陣営) を持つ。
+//   「このマスに誰がいるか」「誰が次に行動するか」「誰が回復するか」はここから探す (主人公も入る。先頭)
+// player: そのうち人が操作するキャラ (主人公)。入力・カメラ・HUD・セーブは主人公を見る
 let player = null;
-let enemies = [], hazards = [], effects = [], texts = [], spawns = [], loots = [];
+let units = [], hazards = [], effects = [], texts = [], spawns = [], loots = [];
+// 陣営 f のキャラ (倒れて片付く前のものも入る。描画・HUD 用)
+const factionUnits = (f) => units.filter((u) => u.faction === f);
+// 陣営 a から見て陣営 b が敵か (NPC はどちらとも戦わない)
+const hostileTo = (a, b) => (a === 'player' && b === 'enemy') || (a === 'enemy' && b === 'player');
 const cam = { x: 0, y: 0 };
 const mouse = { x: 0, y: 0, wx: 0, wy: 0, tx: 0, ty: 0 };
 let aiming = null;

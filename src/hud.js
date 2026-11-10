@@ -135,7 +135,7 @@ function drawHUD() {
   }
 
   // ボスHP
-  const boss = enemies.find((e) => e.isBoss && e.state === 'chase');
+  const boss = factionUnits('enemy').find((e) => e.isBoss && e.state === 'chase');
   if (boss) {
     // 画面が狭いと左上の仲間の欄と重なるので、そのときは欄の下に出す
     const bw = Math.min(520, W - 420), bx = (W - bw) / 2;
@@ -190,12 +190,13 @@ function drawMinimap() {
   ctx.strokeRect(mx + cam.x * s, my + cam.y * s, (W / VIEW) * s, (H / VIEW) * s);
   ctx.fillStyle = '#b388ff';
   for (const sp of spawns) ctx.fillRect(mx + center(sp.tx) * s - 2, my + center(sp.ty) * s - 2, 4, 4);
-  for (const e of enemies) {
+  for (const e of factionUnits('enemy')) {
     ctx.fillStyle = e.isBoss ? '#ffd54f' : e.state === 'chase' ? '#ff1744' : '#c96b6b';
     const r = e.isBoss ? 4 : 2.5;
     ctx.fillRect(mx + e.x * s - r, my + e.y * s - r, r * 2, r * 2);
   }
   ctx.fillStyle = '#4fc3f7';
+  for (const u of units) if (u !== player && u.faction === 'player' && !u.dead) ctx.fillRect(mx + u.x * s - 2.5, my + u.y * s - 2.5, 5, 5);
   pathCircle(mx + player.x * s, my + player.y * s, 3.5); ctx.fill();
 }
 
@@ -264,7 +265,7 @@ function drawWorldMap() {
 
 function drawTooltip() {
   if (drawBuffTooltip()) return;
-  const e = enemies.find((u) => u.tx === mouse.tx && u.ty === mouse.ty);
+  const e = factionUnits('enemy').find((u) => u.tx === mouse.tx && u.ty === mouse.ty);
   if (!e) { drawNpcTooltip(); return; }
   const st = e.stats;
   const lines = [
@@ -338,7 +339,7 @@ function drawTurnOrder() {
   ctx.fillText('行動順', x0 - 52, y + sz / 2);
   list.forEach((u, i) => {
     const x = x0 + i * (sz + gap);
-    ctx.fillStyle = u.isPlayer ? '#0b3a52' : '#3a1a1a'; roundRect(x, y, sz, sz, 6); ctx.fill();
+    ctx.fillStyle = u.faction === 'player' ? '#0b3a52' : '#3a1a1a'; roundRect(x, y, sz, sz, 6); ctx.fill();
     ctx.lineWidth = 2; ctx.strokeStyle = u.isPlayer ? '#4fc3f7' : u.charging ? '#ff7043' : u.color; ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = u.isPlayer ? '#e1f5fe' : u.color; ctx.font = 'bold 15px sans-serif';
     ctx.fillText(u.isPlayer ? '自' : u.def.glyph, x + sz / 2, y + sz / 2 + 1);

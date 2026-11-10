@@ -29,6 +29,7 @@ node tests/run.js damage     （名前に damage を含むものだけ。「フ�
 | `tests/turns.test.js` | 行動順（速度・同じ時刻は主人公が先）、HP・MP の回復、再使用待ち、湧き直し、落とし物が消える |
 | `tests/ai.test.js` | 敵が気づく・群れの仲間が来る・諦めて帰る（無敵・全回復）・予告の技 |
 | `tests/kill.test.js` | 経験値（灰色の敵は 0.2 倍）、落とし物、クエスト、レベルアップ、倒れたとき・復活 |
+| `tests/allies.test.js` | 主人公の陣営のほかのキャラ（仲間。`addAlly` で置く）: マスをふさぐ、速度どおりに行動順に入る、仲間しか見えない敵が仲間を狙って近づき攻撃する、予告の技が当たる、倒れても主人公の倒れた流れにならず経験値も入らない、仲間がいても敵を倒せば経験値 |
 | `tests/actions.test.js` | 移動・攻撃・待機・スキル（MP・再使用待ち・解放レベル）・ダッシュ・回復薬 |
 | `tests/save.test.js` | セーブの往復（`buildSave` → `migrateSave` → `applySave`）、ないゾーン、版の違い、おかしな値 |
 | `tests/smoke.test.js` | 通し試験。はじめから草原へ出て、簡単な方針（近づいて殴る・スキル・HP が減ったら回復薬）で 400 行動 × 3 つの種。毎行動、不変条件（HP・MP・ステータスに NaN がない、HP が 0〜最大、同じマスに 2 体いない、通れないマスにいない、時間が戻らない）を確かめる |
@@ -41,7 +42,7 @@ node tests/run.js damage     （名前に damage を含むものだけ。「フ�
 - `console` は記録する（`g.consoleLog`）。`window.addEventListener` で登録された処理も記録し（`g.windowListeners`）、キー入力のテストはこれに偽の `keydown` を渡す
 - テストごとに新しい vm で読み込み直す（テストどうしで状態が混ざらない）。ファイルの解釈は 1 回だけ
 
-`loadGame()` の戻り値 `g` から、ゲームの名前を `g.player` / `g.enemies` / `g.game` / `g.startGame(null)` のように読める（トップレベルの `let` も、書き換えられたあとの値が読める）。`g.player = ...` のように書くこともできる。
+`loadGame()` の戻り値 `g` から、ゲームの名前を `g.player` / `g.units` / `g.game` / `g.startGame(null)` のように読める（トップレベルの `let` も、書き換えられたあとの値が読める）。`g.player = ...` のように書くこともできる。
 
 注意: vm の中で作られた配列やオブジェクトは、テスト側のものと「別の世界」のものなので、`assert.deepStrictEqual` でそのまま比べると形が同じでも失敗する。`plain(x)`（JSON にして戻す）か `Array.from(...)` でふつうの値にしてから比べる。
 
@@ -79,8 +80,8 @@ test('となりの敵を殴ると HP が減る', () => {
 ## テストが頼っている内部の名前（作りを変えたら `tests/helpers.js` を直す）
 
 - 試験場: `WORLD.zones` にゾーンを足して `enterZone`、湧いた敵は `camps[i].slots[j].enemy` から取り、`placeUnit` と `e.home` で置き直す。`computeFlow(…, flow)`
-- キャラ: `player` / `enemies`、`u.stats` / `u.hp` / `u.mp` / `u.tx` / `u.ty` / `u.dead` / `u.level` / `u.exp` / `u.base` / `u.buffs` / `u.skillCd`、敵の `e.state`（`'idle'` / `'chase'` / `'return'`）と `e.invuln`、`e.next`（行動順のテストで時刻を合わせる）
+- キャラ: `player` / `units`（主人公も入る。敵は `faction === 'enemy'`）、`unitAt`、仲間は `createAlly` / `addUnit`（`addAlly`）、敵の狙う相手 `e.target`（`targetOf`）、`u.stats` / `u.hp` / `u.mp` / `u.tx` / `u.ty` / `u.dead` / `u.level` / `u.exp` / `u.base` / `u.buffs` / `u.skillCd`、敵の `e.state`（`'idle'` / `'chase'` / `'return'`）と `e.invuln`、`e.next`（行動順のテストで時刻を合わせる）
 - ステータス: `deriveStats`、`refreshStats`（計算し直し）、`addBuff`（技を使わずに強化をかける）、`equipItem` / `unequipItem`
-- 行動の記録: `enemyAct` と `endPlayerAction` を包んで、誰がいつ行動したかを数える（`traceTurns`）
+- 行動の記録: どのキャラも行動のあとに通る `endTurn` を包んで、誰がいつ行動したかを数える（`traceTurns`）
 - 技: `planAttack`（範囲）、`resolveAttack`（判定）、`hazards`（予告中の範囲）、`SKILLS`
 - そのほか: `loots`（落とし物）、`logLines`（メッセージ欄）、`aiming` / `mouse`（スキルを構える）、`updateWorld`（倒れてから復活するまでの実時間）、`findPath` / `gateAt` / `zone.gates`（通し試験の道案内）、セーブの `buildSave` / `migrateSave` / `applySave`（`startGame(save)` 経由）/ `saveGame` / `readLocalSave`

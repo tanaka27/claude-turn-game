@@ -48,7 +48,7 @@ window.addEventListener('beforeunload', () => { if (['play', 'menu'].includes(ga
 function stepTravel() {
   const p = player;
   if (!p.travel || !canAct() || aiming || game.rt - game.inputT < TN.travelDelay) return;
-  const danger = enemies.some((e) => e.state === 'chase' && hasLOS(e.tx, e.ty, p.tx, p.ty));
+  const danger = units.some((e) => hostileTo(p.faction, e.faction) && e.state === 'chase' && hasLOS(e.tx, e.ty, p.tx, p.ty));
   const [nx, ny] = p.travel[0];
   const hot = hazards.some((h) => h.keys.has(tileKey(nx, ny)));
   if (danger || hot || !isFree(nx, ny)) {
@@ -74,7 +74,7 @@ function updateWorld(dt) {
 function updateFx(dt) {
   // 描く位置を、いるマスへ近づける
   const k = 1 - Math.exp(-dt / TN.animTime * 3);
-  for (const u of player ? [player, ...enemies] : enemies) {
+  for (const u of units) {
     const tx = center(u.tx), ty = center(u.ty);
     if (Math.hypot(tx - u.x, ty - u.y) > T * 8) { u.x = tx; u.y = ty; }
     u.x += (tx - u.x) * k; u.y += (ty - u.y) * k;
@@ -130,4 +130,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // デバッグ用
-window.__game = { game, saveStore, get player() { return player; }, get enemies() { return enemies; } };
+window.__game = { game, saveStore, get player() { return player; }, get units() { return units; }, get enemies() { return factionUnits('enemy'); } };

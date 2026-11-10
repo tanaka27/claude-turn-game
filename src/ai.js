@@ -13,7 +13,7 @@ function attackReach(a) {
 // 追跡開始。同じ群れの近くにいる仲間も一緒に追ってくる
 function aggro(e) {
   e.state = 'chase';
-  for (const o of enemies) {
+  for (const o of units) {
     if (o !== e && o.camp === e.camp && o.state === 'idle' && dist(o.tx, o.ty, e.tx, e.ty) <= AI.assistRange) o.state = 'chase';
   }
 }
@@ -41,11 +41,21 @@ function stepBest(e, score) {
   return !!pick;
 }
 
-// プレイヤーへ近づく。道がふさがっていたら、少しでも近づけるマスへ
-function approach(e) {
-  const s = stepDownhill(e, flow);
+// 相手 t へ近づく (t までの歩数の場 flowTo。主人公なら flow)。道がふさがっていたら、少しでも近づけるマスへ
+function approach(e, t) {
+  const s = stepDownhill(e, flowTo(t));
   if (s) { moveUnitTo(e, e.tx + s[0], e.ty + s[1]); return; }
-  stepBest(e, (x, y) => -dist(x, y, player.tx, player.ty));
+  stepBest(e, (x, y) => -dist(x, y, t.tx, t.ty));
+}
+
+// 狙う相手を選ぶ: 自分の陣営の敵 (opponents) のうち、視線が通るものを先に、近い順 (同じなら units の順 = 主人公が先)。いなければ null
+function chooseTarget(e) {
+  let best = null, bestSee = false, bestD = Infinity;
+  for (const o of opponents(e.faction)) {
+    const see = hasLOS(e.tx, e.ty, o.tx, o.ty), d = dist(e.tx, e.ty, o.tx, o.ty);
+    if (!best || (see && !bestSee) || (see === bestSee && d < bestD)) { best = o; bestSee = see; bestD = d; }
+  }
+  return best;
 }
 
 function enemyAct(e) {
@@ -59,9 +69,10 @@ function enemyAct(e) {
   }
   for (let i = 0; i < e.cd.length; i++) e.cd[i] = Math.max(0, e.cd[i] - 1);
 
-  const alive = player && !player.dead;
-  const d = alive ? dist(e.tx, e.ty, player.tx, player.ty) : Infinity;
-  const canSee = alive && hasLOS(e.tx, e.ty, player.tx, player.ty);
+  const t = e.target = chooseTarget(e);
+  const alive = !!t;
+  const d = alive ? dist(e.tx, e.ty, t.tx, t.ty) : Infinity;
+  const canSee = alive && hasLOS(e.tx, e.ty, t.tx, t.ty);
   const fromHome = dist(e.tx, e.ty, e.home.tx, e.home.ty);
   if (e.state === 'idle') {
     if (alive && !inSafeZone() && d <= AI.aggroRange && canSee) aggro(e);
@@ -73,7 +84,7 @@ function enemyAct(e) {
     e.returnT = AI.returnTimeout; // 引っかかって戻れないときの保険
   }
   // 帰還中: 無敵のまま湧いた位置へ戻り、着いたら全回復
-  // 戻る途中で（すぐまた諦めない所まで戻っていて）プレイヤーが近くに見えたら戦い直す
+  // 戻る途中で（すぐまた諦めない所まで戻っていて）相手が近くに見えたら戦い直す
   if (e.state === 'return' && alive && !inSafeZone() && fromHome <= AI.leashRange * AI.reengageLeashRatio &&
     d <= AI.aggroRange && canSee) {
     e.invuln = false;
@@ -93,18 +104,18 @@ function enemyAct(e) {
   }
 
   e.surroundAt = null; // 回り込む枠は、近づくときに毎回選び直す (closeIn)
-  if (!e.intent || e.intentT <= 0) chooseIntent(e);
+  if (!e.intent || e.intentT <= 0) chooseIntent(e, t);
   e.intentT--;
   const a = e.def.attacks[e.intent.i];
 
   // 遠くから撃つつもりで近すぎるときは、まず下がる (下がれなければその場で撃つ)
   const kd = e.def.keepDistance;
   if (e.intent.far && canSee && d < kd * AI.retreatRatio &&
-    stepBest(e, (x, y) => dist(x, y, player.tx, player.ty))) return;
+    stepBest(e, (x, y) => dist(x, y, t.tx, t.ty))) return;
   // 狙っている技が使えて、相手が範囲に入っていれば使う
   if (canSee && e.cd[e.intent.i] <= 0 && e.mp + 1e-9 >= skillMp(a) && d <= attackReach(a) + 0.01) {
-    const h = planAttack(e, a, player.tx, player.ty);
-    if (h.keys.has(tileKey(player.tx, player.ty))) {
+    const h = planAttack(e, a, t.tx, t.ty);
+    if (h.keys.has(tileKey(t.tx, t.ty))) {
       useEnemyAttack(e, e.intent.i, h);
       e.intent = null;
       return;
@@ -112,31 +123,31 @@ function enemyAct(e) {
   }
   // 技を待っている (近づく) 間でも、となりにいれば基本の技で攻撃する。遠くから撃つつもりのときは殴らない
   if (canSee && !e.intent.far && e.intent.i !== e.basic && e.basic >= 0 && e.cd[e.basic] <= 0) {
-    const h = planAttack(e, e.def.attacks[e.basic], player.tx, player.ty);
-    if (h.keys.has(tileKey(player.tx, player.ty))) { useEnemyAttack(e, e.basic, h); return; }
+    const h = planAttack(e, e.def.attacks[e.basic], t.tx, t.ty);
+    if (h.keys.has(tileKey(t.tx, t.ty))) { useEnemyAttack(e, e.basic, h); return; }
   }
 
   // 移動: 遠くから撃つつもりなら間合いを取り、そうでなければ近づく
   if (e.intent.far) {
-    if (!canSee || d > kd * AI.approachRatio) approach(e);
-  } else if (steps(e.tx, e.ty, player.tx, player.ty) > 1) {
-    closeIn(e);
+    if (!canSee || d > kd * AI.approachRatio) approach(e, t);
+  } else if (steps(e.tx, e.ty, t.tx, t.ty) > 1) {
+    closeIn(e, t);
   }
-  if (steps(e.tx, e.ty, player.tx, player.ty) <= 1) e.facing = Math.atan2(player.ty - e.ty, player.tx - e.tx);
+  if (steps(e.tx, e.ty, t.tx, t.ty) <= 1) e.facing = Math.atan2(t.ty - e.ty, t.tx - e.tx);
 }
 
 // ----- 狙う技の選び方 -----
 // 状況 (params.js の field.ai.situations) ごとの重みの倍率。新しい状況はここと params.js に 1 つずつ足す
-//   c: そのときの様子 (situationContext)。戻り値は倍率 (1 なら変えない)
+//   c: そのときの様子 (situationContext。c.target が狙っている相手)。戻り値は倍率 (1 なら変えない)
 const SITUATIONS = {
   // 今の位置から届く技
   reachNow: (e, a, c, p) => (c.canSee && c.d <= attackReach(a) + 0.01 ? p.mult : 1),
-  // 主人公が縦・横・斜めの直線上にいて届く (直線の技・弾)
+  // 相手が縦・横・斜めの直線上にいて届く (直線の技・弾)
   aligned: (e, a, c, p) => (c.canSee && c.aligned && c.d <= attackReach(a) + 0.01 ? p.mult : 1),
-  // 主人公のまわりの空いているマスが少ない (逃げにくいので範囲技)
+  // 相手のまわりの空いているマスが少ない (逃げにくいので範囲技)
   cornered: (e, a, c, p) => (c.freeAround <= p.maxFree ? p.mult : 1),
-  // 予告ありの技: 主人公が自分より速いほど逃げられるので選びにくい
-  telegraph: (e, a, c, p) => clamp((e.stats.speed / player.stats.speed) ** p.exp, p.min, 1),
+  // 予告ありの技: 相手が自分より速いほど逃げられるので選びにくい
+  telegraph: (e, a, c, p) => clamp((e.stats.speed / c.target.stats.speed) ** p.exp, p.min, 1),
 };
 // 技の形から、見る状況を決める (技に situations があればそちらを使う)
 function attackSituations(a) {
@@ -147,12 +158,12 @@ function attackSituations(a) {
   if (a.charge) list.push('telegraph');
   return list;
 }
-// 技を選ぶときの様子
-function situationContext(e) {
-  const dx = player.tx - e.tx, dy = player.ty - e.ty;
-  const canSee = hasLOS(e.tx, e.ty, player.tx, player.ty);
-  const freeAround = NB.filter(([nx, ny]) => canStep(player.tx, player.ty, nx, ny) && !unitAt(player.tx + nx, player.ty + ny)).length;
-  return { d: dist(e.tx, e.ty, player.tx, player.ty), canSee, aligned: dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy), freeAround };
+// 技を選ぶときの様子 (t: 狙っている相手)
+function situationContext(e, t) {
+  const dx = t.tx - e.tx, dy = t.ty - e.ty;
+  const canSee = hasLOS(e.tx, e.ty, t.tx, t.ty);
+  const freeAround = NB.filter(([nx, ny]) => canStep(t.tx, t.ty, nx, ny) && !unitAt(t.tx + nx, t.ty + ny)).length;
+  return { target: t, d: dist(e.tx, e.ty, t.tx, t.ty), canSee, aligned: dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy), freeAround };
 }
 // 技の重み = weight (省略時 1) × 状況ごとの倍率
 function attackWeight(e, a, c) {
@@ -165,14 +176,14 @@ function attackWeight(e, a, c) {
 //   基本の技の重みは、状況の倍率がどれも 1 のときに技が当たる確率が skillChance になるように決める
 //   (技の重み = weight × 状況の倍率。状況に合った技ほど、基本の技より選ばれやすくなる)
 // far: keepDistance を持つ敵が、となりより遠くまで届く技を狙うとき。間合いを取ったまま撃つ
-function chooseIntent(e) {
+function chooseIntent(e, t) {
   const atks = e.def.attacks;
   const opts = [];
   atks.forEach((a, i) => { if (i !== e.basic && e.cd[i] <= 0 && e.mp + 1e-9 >= skillMp(a)) opts.push(i); });
   let i = e.basic;
   if (opts.length) {
     const chance = e.def.skillChance ?? AI.skillChance;
-    const c = situationContext(e);
+    const c = situationContext(e, t);
     const w = opts.map((k) => attackWeight(e, atks[k], c));
     const plain = opts.reduce((sum, k) => sum + (atks[k].weight ?? 1), 0);
     const wBasic = e.basic < 0 ? 0 : chance <= 0 ? Infinity : plain * (1 - chance) / chance;
@@ -188,8 +199,8 @@ function chooseIntent(e) {
 }
 
 // ----- 取り囲む -----
-// 近づく敵は、主人公のとなりの空いているマス (枠) を分け合う。ほかの敵がもっと近くから狙っている枠は譲る
-// 主人公まで surroundRange 歩以内に来たら使う。data/enemies.js で surround: false にした敵は使わない
+// 近づく敵は、相手のとなりの空いているマス (枠) を分け合う。ほかのキャラがもっと近くから狙っている枠は譲る
+// 相手まで surroundRange 歩以内に来たら使う。data/enemies.js で surround: false にした敵は使わない
 
 // 自分のまわり limit 歩以内の最短経路 (ほかのキャラのいるマスは通らない)。
 // 戻り値: Map(マスの番号 → { d: 歩数, first: そこへ行く最初の 1 歩 [x, y] })
@@ -211,31 +222,31 @@ function localPaths(e, limit) {
   }
   return res;
 }
-// 狙う枠を選ぶ (今の自分からの歩数が一番少ない、ほかの敵に譲らなくてよい枠)。戻り値 { at: [x, y], first } か null
-function surroundSlot(e, paths) {
+// 相手 t のまわりで狙う枠を選ぶ (今の自分からの歩数が一番少ない、ほかのキャラに譲らなくてよい枠)。戻り値 { at: [x, y], first } か null
+function surroundSlot(e, t, paths) {
   let best = null;
   for (const [dx, dy] of NB) {
-    const x = player.tx + dx, y = player.ty + dy;
-    if (!canStep(player.tx, player.ty, dx, dy)) continue;
+    const x = t.tx + dx, y = t.ty + dy;
+    if (!canStep(t.tx, t.ty, dx, dy)) continue;
     const p = paths.get(idx(x, y));
     if (!p) continue;
-    const taken = enemies.some((o) => o !== e && !o.dead && o.surroundAt && o.surroundAt[0] === x && o.surroundAt[1] === y &&
+    const taken = units.some((o) => o !== e && !o.dead && o.surroundAt && o.surroundAt[0] === x && o.surroundAt[1] === y &&
       dist(o.tx, o.ty, x, y) < dist(e.tx, e.ty, x, y));
     if (!taken && (!best || p.d < best.d)) best = { at: [x, y], first: p.first, d: p.d };
   }
   return best;
 }
-// 主人公へ近づく。近くまで来ていれば、空いている枠へ回り込む
-function closeIn(e) {
-  if (e.def.surround !== false && flow[idx(e.tx, e.ty)] <= AI.surroundRange) {
-    const t = surroundSlot(e, localPaths(e, AI.surroundRange + 2));
-    if (t && t.first) {
-      e.surroundAt = t.at;
-      moveUnitTo(e, t.first[0], t.first[1]);
+// 相手 t へ近づく。近くまで来ていれば、空いている枠へ回り込む
+function closeIn(e, t) {
+  if (e.def.surround !== false && flowTo(t)[idx(e.tx, e.ty)] <= AI.surroundRange) {
+    const s = surroundSlot(e, t, localPaths(e, AI.surroundRange + 2));
+    if (s && s.first) {
+      e.surroundAt = s.at;
+      moveUnitTo(e, s.first[0], s.first[1]);
       return;
     }
   }
-  approach(e);
+  approach(e, t);
 }
 
 // 技を出す (予告ありなら構える)。再使用待ちと MP を減らす
@@ -269,7 +280,7 @@ function placeEnemy(type, tx, ty, camp, slot) {
   const e = createEnemy(type, tx, ty, camp, slot);
   placeUnit(e, tx, ty);
   slot.enemy = e;
-  enemies.push(e);
+  units.push(e);
   return e;
 }
 

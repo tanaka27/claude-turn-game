@@ -212,7 +212,7 @@ function drawUnit(u) {
     ctx.textBaseline = 'middle';
     const w = Math.max(30, u.r * 2.2), y = spriteTop !== null ? spriteTop - 4 : u.y - u.r - 9;
     ctx.fillStyle = '#000a'; ctx.fillRect(u.x - w / 2 - 1, y - 1, w + 2, 6);
-    ctx.fillStyle = u.state === 'return' ? '#8b949e' : '#ef5350'; ctx.fillRect(u.x - w / 2, y, w * u.hp / u.stats.maxHp, 4);
+    ctx.fillStyle = u.faction === 'player' ? THEME.allyHp : u.state === 'return' ? '#8b949e' : '#ef5350'; ctx.fillRect(u.x - w / 2, y, w * u.hp / u.stats.maxHp, 4);
     ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'right';
     ctx.lineWidth = 3; ctx.strokeStyle = '#000';
     ctx.strokeText(`Lv${u.level}`, u.x - w / 2 - 3, y + 3);
@@ -411,7 +411,7 @@ function drawWorld() {
   const near = nearNpc();
   for (const n of zone.npcs || []) drawNpc(n, n === near);
   for (const e of effects) if (e.type === 'ghost') drawEffect(e);
-  for (const e of enemies) drawUnit(e);
+  for (const u of units) if (u !== player) drawUnit(u);
   if (player && !player.dead) drawUnit(player);
   for (const e of effects) if (e.type !== 'ghost') drawEffect(e);
   drawAimPreview();

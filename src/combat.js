@@ -133,60 +133,78 @@ function rollDamage(src, tgt, a) {
   return { dmg, crit };
 }
 
+// メッセージ欄の文。主人公が受けたときは相手の名前、主人公が与えたときは受けた側の名前、どちらでもないときは両方の名前を出す
+function damageLine(src, tgt, what, dmg, crit) {
+  const c = crit ? '（会心）' : '';
+  if (tgt === player) return dmg === 0 ? `${src.name}の${what}！ ミス！ ダメージを受けない` : `${src.name}の${what}！ ${dmg} のダメージを受けた${c}`;
+  const head = src === player ? `${what}: ` : `${src.name}の${what}！ `;
+  return dmg === 0 ? `${head}ミス！ ${tgt.name}にダメージを与えられない` : `${head}${tgt.name}に ${dmg} のダメージ${c}`;
+}
+
 // a: 技 (物理か術か・威力)。戻り値: 当たったか (ミスも当たったことにする。帰還中で無効のときは当たっていない)
+// 色は受けた側の陣営で決める (主人公の陣営が受けたら赤っぽく)。歩くのをやめる・画面の揺れは主人公だけ
 function dealDamage(src, tgt, a, what) {
   if (tgt.dead) return false;
   if (tgt.invuln) { floatText(tgt.x, tgt.y - tgt.r - 6, '無効', '#80deea', 15); return false; }
   const { dmg, crit } = rollDamage(src, tgt, a);
+  const ours = tgt.faction === 'player';
   if (dmg === 0) {
-    if (tgt.isPlayer) tgt.travel = null;
-    else if (tgt.state === 'idle') aggro(tgt);
-    log(tgt.isPlayer ? `${src.name}の${what}！ ミス！ ダメージを受けない` : `${what}: ミス！ ${tgt.name}にダメージを与えられない`, '#9e9e9e');
+    if (tgt === player) tgt.travel = null;
+    if (tgt.state === 'idle') aggro(tgt);
+    log(damageLine(src, tgt, what, 0, false), '#9e9e9e');
     floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, 'ミス', '#9e9e9e', 15);
     return true;
   }
   tgt.hp -= dmg;
   tgt.hitFlash = 0.15;
-  if (tgt.isPlayer) {
-    tgt.lastHurt = game.time;
-    tgt.travel = null;
-    log(`${src.name}の${what}！ ${dmg} のダメージを受けた${crit ? '（会心）' : ''}`, '#ff8a80');
-  } else {
-    if (tgt.state === 'idle') aggro(tgt);
-    log(`${what}: ${tgt.name}に ${dmg} のダメージ${crit ? '（会心）' : ''}`, crit ? '#ffab40' : '#e6edf3');
-  }
+  tgt.lastHurt = game.time;
+  if (tgt === player) tgt.travel = null;
+  if (tgt.state === 'idle') aggro(tgt);
+  log(damageLine(src, tgt, what, dmg, crit), ours ? '#ff8a80' : crit ? '#ffab40' : '#e6edf3');
   floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, crit ? dmg + '!' : String(dmg),
-    tgt.isPlayer ? '#ff5252' : crit ? '#ffab40' : '#ffffff', crit ? 24 : 17);
-  burst(tgt.x, tgt.y, tgt.isPlayer ? '#ff8a80' : tgt.color, crit ? 10 : 5, 160);
-  if (tgt.isPlayer) addShake(6);
+    ours ? '#ff5252' : crit ? '#ffab40' : '#ffffff', crit ? 24 : 17);
+  burst(tgt.x, tgt.y, ours ? '#ff8a80' : tgt.color, crit ? 10 : 5, 160);
+  if (tgt === player) addShake(6);
   if (tgt.hp <= 0) kill(tgt);
   return true;
 }
 
+// 倒れる。演出は共通で、そのあとはキャラによって分ける:
+//   主人公 → 倒れてから復活する流れ (heroDown) / 敵 → 経験値・落とし物・クエスト・湧き場所 (enemyDefeated) / 主人公の陣営のほかのキャラ → 倒れるだけ (allyDown)
 function kill(u) {
   u.dead = true;
   u.hp = 0;
   cancelCharge(u);
   burst(u.x, u.y, u.color, u.isBoss ? 60 : 18, u.isBoss ? 380 : 220);
   effects.push({ type: 'ring', x: u.x, y: u.y, r0: u.r, r1: u.r * 3, t: 0, life: 0.4, color: '255,255,255' });
-  if (u.isPlayer) {
-    // 失うものはその場で決めて保存する (復活前に閉じても取り消せないように)
-    game.deathLoss = { exp: Math.floor(u.exp * PG.deathExpLoss), gold: Math.floor(u.gold * PG.deathGoldLoss) };
-    u.exp -= game.deathLoss.exp;
-    u.gold -= game.deathLoss.gold;
-    game.state = 'dying';
-    game.dyingT = 1.4;
-    log('力尽きた…', '#ff5252');
-    saveGame();
-  } else {
-    game.kills++;
-    u.slot.enemy = null;
-    u.slot.timer = u.camp.respawn;
-    log(`${u.name}を倒した。`, '#b39ddb');
-    const gray = player.level - u.level >= P.enemyLevel.grayDiff;
-    gainExp(Math.max(1, Math.round(u.exp * (gray ? P.enemyLevel.grayExpMult : 1))), u.x, u.y);
-    dropLoot(u);
-    questKill(u);
-    if (u.isBoss) { addShake(14); showMsg('BOSS 撃破！'); }
-  }
+  if (u === player) heroDown(u);
+  else if (u.faction === 'enemy') enemyDefeated(u);
+  else allyDown(u);
+}
+
+function heroDown(u) {
+  // 失うものはその場で決めて保存する (復活前に閉じても取り消せないように)
+  game.deathLoss = { exp: Math.floor(u.exp * PG.deathExpLoss), gold: Math.floor(u.gold * PG.deathGoldLoss) };
+  u.exp -= game.deathLoss.exp;
+  u.gold -= game.deathLoss.gold;
+  game.state = 'dying';
+  game.dyingT = 1.4;
+  log('力尽きた…', '#ff5252');
+  saveGame();
+}
+
+function enemyDefeated(u) {
+  game.kills++;
+  u.slot.enemy = null;
+  u.slot.timer = u.camp.respawn;
+  log(`${u.name}を倒した。`, '#b39ddb');
+  const gray = player.level - u.level >= P.enemyLevel.grayDiff;
+  gainExp(Math.max(1, Math.round(u.exp * (gray ? P.enemyLevel.grayExpMult : 1))), u.x, u.y);
+  dropLoot(u);
+  questKill(u);
+  if (u.isBoss) { addShake(14); showMsg('BOSS 撃破！'); }
+}
+
+function allyDown(u) {
+  log(`${u.name}は倒れた。`, '#ff8a80');
 }

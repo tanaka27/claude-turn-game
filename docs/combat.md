@@ -48,7 +48,7 @@
 |---|---|---|---|
 | atkUp | 攻撃力アップ | こうげき力 ×1.3（物理のダメージが上がる。術には効かない） | 橙の「攻」に緑の ▲ |
 
-- 主人公は `buffs: [{ id, left }]` を持つ。`left` は残りの行動回数。かけた行動では減らさず（`fresh`）、そのあとの主人公の行動ごとに 1 減り（`tickBuffs`、`endPlayerAction` から）、0 で外れて「〇〇の効果が切れた。」と出る。`duration: 6` なら、使ったあとの 6 行動のあいだ効く
+- 主人公は `buffs: [{ id, left }]` を持つ。`left` は残りの行動回数。かけた行動では減らさず（`fresh`）、そのあとの主人公の行動ごとに 1 減り（`tickBuffs`、行動の後始末 `endTurn` から。`buffs` を持つキャラならだれでも）、0 で外れて「〇〇の効果が切れた。」と出る。`duration: 6` なら、使ったあとの 6 行動のあいだ効く
 - 同じ強化をもう一度かけると、残りの長いほうになる（重ねがけはしない）
 - ステータスの計算の順番は「もとのステータス（装備なし）から計算 → 強化の倍率を掛ける（`applyBuffs`）→ 装備の固定値を足す」（`computeStats`）。装備の分は強化の倍率を受けない（例: ちから 13・武器 +4 で攻撃力アップなら 13 × 1.3 + 4 = 20.9）。かけたとき・切れたときに `refreshStats` で計算し直す
 - 倒れて復活すると強化は消える（`clearBuffs`）。セーブには入れない（続きから遊ぶと強化はない）
@@ -74,8 +74,8 @@
   - melee の fan / circle: 半径内で、角度に入り、攻撃を遮る地形でなく、視線が通るマス
   - line / projectile: `rayTiles` で直線のマス（攻撃を遮る地形の手前まで）
   - lob: 射程より遠ければ同じ向きで射程いっぱいのマスにする。着弾点の半径内で、着弾点から視線が通るマス（着弾点が壁の中なら視線は見ない）
-- `resolveAttack(h)`: 判定。範囲のマスにいる相手に `dealDamage`（同じ相手には 1 回だけ）。projectile は弾の通り道を近い順に見て、`pierce` でなければ最初に当たった相手で止まる
+- `resolveAttack(h)`: 判定。範囲のマスにいる相手（使った者の陣営から見た敵 `opponents(h.faction)`。敵の技なら主人公の陣営のキャラ全員）に `dealDamage`（同じ相手には 1 回だけ）。projectile は弾の通り道を近い順に見て、`pierce` でなければ最初に当たった相手で止まる
 - `startCharge` / `cancelCharge`: 予告を `hazards` に出す・消す。敵の `charging` に持つ
 - `rollDamage(src, tgt, a)`: 技 `a` の `kind` で物理か術の式を選び、`{ dmg, crit }` を返す
-- `dealDamage(src, tgt, a, what)`: `rollDamage` でダメージを決め、浮かぶ数字、メッセージ欄。待機中の敵は追跡を始める（`aggro`）。HP が 0 以下なら `kill`
+- `dealDamage(src, tgt, a, what)`: `rollDamage` でダメージを決め、浮かぶ数字、メッセージ欄（`damageLine`）。待機中の敵は追跡を始める（`aggro`）。HP が 0 以下なら `kill`（主人公・敵・仲間で分かれる）。色・文・倒れたときの分かれ方は [units.md](units.md)
 - 主人公のスキルは `castSkill`（`src/player.js`）が MP を確かめ → `planAttack` → `resolveAttack`（強化の技は `castBuff`、ダッシュは `dash`）→ 再使用を設定・MP を減らす → `endPlayerAction`。狙っている間は同じ `planAttack` の範囲を白く表示する

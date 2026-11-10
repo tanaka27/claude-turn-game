@@ -65,8 +65,18 @@ function arena(g, opts = {}) {
 }
 
 // ----- キャラ -----
-const allUnits = (g) => [g.player, ...g.enemies].filter((u) => u && !u.dead);
-const livingEnemies = (g) => g.enemies.filter((e) => !e.dead);
+const allUnits = (g) => g.units.filter((u) => u && !u.dead);
+const livingEnemies = (g) => g.units.filter((e) => e.faction === 'enemy' && !e.dead);
+// 主人公の陣営のキャラ (仲間) を (tx, ty) に置く。今のゲームにはまだない。行動の決め方は既定で「何もしない」
+//   def: { name, stats (もとのステータス。省略したものは主人公の Lv1 の値), gear, color, radius, glyph }
+function addAlly(g, at, def = {}, control) {
+  const d = { name: '仲間', color: '#66bb6a', radius: 14, glyph: '仲', ...def, stats: { ...g.PLAYER.stats, ...(def.stats || {}) } };
+  return g.addUnit(g.createAlly(d, control), at[0], at[1]);
+}
+// そのマスにいるキャラ (いなければ null)
+const unitOn = (g, x, y) => g.unitAt(x, y);
+// 敵が狙っている相手
+const targetOf = (e) => e.target;
 const isHostile = (e) => e.state === 'chase';            // 主人公を追っている
 const isReturning = (e) => e.state === 'return';          // 諦めて帰っている
 const isIdle = (e) => e.state === 'idle';
@@ -102,14 +112,14 @@ function firstStep(g, tx, ty) {
 }
 
 // ----- 行動の記録: 誰がいつ行動したか -----
-// 戻り値の配列に { who: 'player' | 敵, t: その時刻 } がたまる。stop() でやめる
+// 戻り値の配列に { who: 'player' | ほかのキャラ (敵・仲間), t: その時刻 } がたまる。stop() でやめる
+// どのキャラも行動のあとに必ず通る後始末 (endTurn) を包んで数える
 function traceTurns(g) {
   const log = [];
   const ctx = g.context;
-  const origEnemy = ctx.enemyAct, origPlayer = ctx.endPlayerAction;
-  ctx.enemyAct = function (e) { log.push({ who: e, t: g.game.time }); return origEnemy.apply(this, arguments); };
-  ctx.endPlayerAction = function () { log.push({ who: 'player', t: g.game.time }); return origPlayer.apply(this, arguments); };
-  log.stop = () => { ctx.enemyAct = origEnemy; ctx.endPlayerAction = origPlayer; };
+  const orig = ctx.endTurn;
+  ctx.endTurn = function (u) { log.push({ who: u === g.player ? 'player' : u, t: g.game.time }); return orig.apply(this, arguments); };
+  log.stop = () => { ctx.endTurn = orig; };
   return log;
 }
 
@@ -140,7 +150,7 @@ function performAttack(g, u, atk, tx, ty) { g.resolveAttack(g.planAttack(u, atk,
 function runFrames(g, sec, dt = 0.05) { for (let t = 0; t < sec; t += dt) { g.game.rt += dt; g.updateWorld(dt); } }
 
 module.exports = {
-  plain, newGame, arena, allUnits, livingEnemies, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
+  plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
   recompute, setPlayerBase, applyBuff, buffsOf, telegraphTiles, lootsOnGround, messages, traceTurns,
   press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,
 };

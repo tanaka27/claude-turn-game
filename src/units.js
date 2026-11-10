@@ -23,7 +23,7 @@ function createPlayer() {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
     stats: null, base: growthBase(1), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: EC.startGold, potions: startPotions(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
-    equip, next: 0, travel: null,
+    equip, next: 0, travel: null, control: 'input',
     skillCd, buffs: [], hitFlash: 0, dead: false,
   };
 }
@@ -48,11 +48,29 @@ function createEnemy(type, tx, ty, camp, slot) {
     cd: d.attacks.map(() => randInt(...AI.firstAttackDelay)), charging: null,
     // 基本の技 (MP を使わない技のうち下のもの。なければ -1) と、次に狙う技 (src/ai.js の chooseIntent)
     basic: d.attacks.map((a) => !skillMp(a)).lastIndexOf(true), intent: null, intentT: 0,
-    invuln: false, hitFlash: 0, dead: false, returnT: 0,
+    invuln: false, hitFlash: 0, dead: false, returnT: 0, control: 'ai', target: null,
   };
   // 湧いてすぐ動き出さないように、次の行動は 0〜1 回分あと
   e.next = game.time + actionCost(e) * Math.random();
   return e;
+}
+
+// 主人公の陣営のキャラ (仲間) を作る。今のゲームにはまだ出てこない (テストで使う)。置くのは addUnit
+//   d: 種類 { name, stats (もとのステータス), gear (固定値。省略可), color, radius, glyph (描くときの字), level (省略時 1) }
+//   control: 行動の決め方 (src/turn.js の CONTROLLERS。省略時 'wait')
+function createAlly(d, control) {
+  const st = deriveStats({ ...d.stats }, [d.gear]);
+  return {
+    def: d, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
+    level: d.level || 1, stats: st, hp: st.maxHp, mp: st.maxMp, facing: -Math.PI / 2, lastHurt: -99,
+    next: game.time, control: control || 'wait', charging: null, hitFlash: 0, dead: false,
+  };
+}
+// キャラを (tx, ty) に置いて、戦うキャラ (units) に入れる
+function addUnit(u, tx, ty) {
+  placeUnit(u, tx, ty);
+  units.push(u);
+  return u;
 }
 
 // NPC: world.js の配置 + data/npcs.js の種類のステータス (主人公・敵と同じ式で計算する)
@@ -74,10 +92,9 @@ function moveUnitTo(u, tx, ty) {
   if (tx !== u.tx || ty !== u.ty) u.facing = Math.atan2(ty - u.ty, tx - u.tx);
   u.tx = tx; u.ty = ty;
 }
-// そのマスにいるキャラ (主人公か敵)。いなければ null
+// そのマスにいるキャラ (倒れていない units)。いなければ null
 function unitAt(tx, ty) {
-  if (player && !player.dead && player.tx === tx && player.ty === ty) return player;
-  for (const e of enemies) if (!e.dead && e.tx === tx && e.ty === ty) return e;
+  for (const u of units) if (!u.dead && u.tx === tx && u.ty === ty) return u;
   return null;
 }
 // そのマスに入れるか (地形・NPC・ほかのキャラ)
@@ -86,7 +103,8 @@ const isFree = (tx, ty) => !isBlocked(tx, ty) && !unitAt(tx, ty);
 // 行動 1 回にかかる時間 (ターン)
 const actionCost = (u) => TN.baseSpeed / Math.max(TN.minSpeed, u.stats.speed);
 
-const opponents = (faction) => (faction === 'player' ? enemies : (player && !player.dead ? [player] : []));
+// 陣営 faction から見た敵 (倒れていない units。units の順)
+const opponents = (faction) => units.filter((u) => !u.dead && hostileTo(faction, u.faction));
 const skillCooldown = (sk) => sk.cooldown * 100 / (100 + player.stats.skillHaste);
 const skillMp = (sk) => sk.mp || 0;
 // 敵の技の再使用待ち (その敵の行動回数)。主人公と同じくスキル加速で変わる。四捨五入、最低 1
@@ -158,7 +176,7 @@ function addBuff(u, id, n) {
   if (b) { b.left = Math.max(b.left, n); b.fresh = true; } else u.buffs.push({ id, left: n, fresh: true });
   refreshStats(u);
 }
-// 行動 1 回ぶん強化を進め、切れたものを外す (src/turn.js の endPlayerAction)
+// 行動 1 回ぶん強化を進め、切れたものを外す (src/turn.js の endTurn)
 function tickBuffs(u) {
   let changed = false;
   u.buffs = u.buffs.filter((b) => {
