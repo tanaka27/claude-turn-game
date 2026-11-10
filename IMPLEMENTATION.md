@@ -26,6 +26,7 @@
 | [docs/save.md](docs/save.md) | セーブの中身と保存先（ブラウザ・サーバー）、`server.py` の API | 保存する項目を増やす・変える、サーバーを直す |
 | [docs/ui.md](docs/ui.md) | HUD と描画 | 画面の表示を変える |
 | [docs/image-assets.md](docs/image-assets.md) | 画像素材を Codex CLI（`image_gen`）で作る方法、`tools/codex_image.py` の使い方、`assets/` の置き場所 | 画像素材を作る・足す |
+| [docs/testing.md](docs/testing.md) | 自動テスト（`node tests/run.js`）の動かし方、ゲームの読み込み方、乱数の固定、テストの足し方、テストが頼っている内部の名前 | テストを動かす・足す。大きく作りを変える前後 |
 | [docs/history.md](docs/history.md) | 修正履歴（追記専用） | 変更を記録するとき。過去の経緯を調べるとき |
 
 ## ファイル構成
@@ -49,6 +50,8 @@
 | `src/render.js` / `src/hud.js` | ワールドの描画 / HUD・行動順・メッセージ欄・ミニマップ・ツールチップ |
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |
+| `tests/run.js` / `tests/harness.js` / `tests/helpers.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）。詳しくは [docs/testing.md](docs/testing.md) |
+| `tests/*.test.js` | テスト本体（ステータス・強化・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・セーブ・自動で戦わせる通し試験） |
 | `start.bat` | ダブルクリックで `server.py` を起動し、ブラウザでゲームを開く（Windows 用。ポートは中の `PORT`。8766 が使われていると止まって知らせる） |
 | `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする）。詳しくは [docs/save.md](docs/save.md) |
 | `.claude/launch.json` | 確認用ローカルサーバーの設定（`python server.py`） |

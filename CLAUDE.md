@@ -28,3 +28,4 @@
 - `window.__game` から `game` / `player` / `enemies` / `saveStore` の状態を確認できる
 - 進行はサーバーの `saves/save.json` と `localStorage` の `zankai-turn-save` に保存される（新しいほうを使う）。最初から確認したいときは両方を消す
 - 起動時のデータの食い違いはコンソールに `[データの確認]` として出る
+- 自動テストは `node tests/run.js`（Node.js だけで動く。失敗すると終了コード 1。`docs/testing.md`）
