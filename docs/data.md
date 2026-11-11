@@ -14,7 +14,7 @@
 | `data/items.js` | `ITEMS` | レア度、部位（基本性能・名前）、追加性能、価値、回復薬（`potions`。レア度・使うキー付き）、商人の品ぞろえ（`shops`）、鍛冶屋の品ぞろえ（`smiths`）、素材（名前・レア度・売値・色） |
 | `data/quests.js` | `QUESTS` | 討伐クエスト（依頼する NPC・倒す敵・数・報酬・前提） |
 | `data/stats.js` | `STATS` | ステータスの表示名・桁数（並び順がキャラクターの画面のつよさの並び順） |
-| `data/buffs.js` | `BUFFS` | 強化（バフ）の種類（表示名・変えるステータスと倍率・アイコンの字と色）。かける技は `data/player.js` の `type: 'buff'`（[combat.md](combat.md)） |
+| `data/buffs.js` | `BUFFS` | 強化・弱体（バフ・デバフ）の種類（表示名・変えるステータスと倍率・アイコンの字と色）。倍率が 1 より小さいものが弱体。どのキャラにもかけられる。今かける手段は `data/player.js` の `type: 'buff'` の技（自分を強化）だけ（[combat.md](combat.md)） |
 | `data/theme.js` | `THEME` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、仲間の HP バー、MP のゲージと消費 MP の色） |
 | `world.js` | `WORLD` | 世界地図（`worldMap`、ゾーンの `mapPos`）、地形の種類（`terrain`）、ゾーン、門、湧き場所、NPC（位置は px で書き、読み込むときにマスに直す。ステータスの種類は `kind`） |
 

@@ -88,9 +88,19 @@ function setNextAction(g, u, t) { u.next = t; }
 function recompute(g, u) { g.refreshStats(u); }
 // 主人公のもとのステータスを書き換えて計算し直す
 function setPlayerBase(g, values) { Object.assign(g.player.base, values); recompute(g, g.player); }
-// 強化をかける (技を使わずに)
-function applyBuff(g, u, id, n) { g.addBuff(u, id, n); }
+// 強化・弱体をかける (技を使わずに)。src: かけた者 (省略時は u 自身 = 自分にかけた)
+function applyBuff(g, u, id, n, src) { g.addBuff(u, id, n, src); }
 const buffsOf = (u) => Array.from(u.buffs || [], (b) => ({ id: b.id }));
+// テストだけで使う強化・弱体の種類を足す (data/buffs.js と同じ形 { name, stat, mult, icon, color })
+function defineEffect(g, id, def) { g.BUFFS[id] = { icon: '試', color: '#777', ...def }; }
+// 湧き場所を通さずに敵を 1 体作る (units には入れない。ステータスを見るだけ)
+const makeEnemy = (g, type, level = 1) => g.createEnemy(type, 0, 0, { level }, null);
+// 装備なし・強化なしのステータス (bare) と、装備 (敵・仲間は gear) で上がる分 (equip)
+const statPartsOf = (g, u) => { const s = g.statParts(u); return { bare: plain(s.bare), equip: plain(s.equip) }; };
+// キャラクターの画面の「つよさ」の HTML
+const strengthHtml = (g) => g.strengthHtml();
+// レベルを 1 上げる (経験値を通さずに)
+function levelUp(g) { g.levelUp(); }
 // 予告中の技の範囲 (画面の赤いマス) を 'x,y' の集合で
 const telegraphTiles = (g) => new Set(g.hazards.flatMap((h) => h.tiles.map(([x, y]) => `${x},${y}`)));
 const lootsOnGround = (g) => g.loots.length;
@@ -151,6 +161,6 @@ function runFrames(g, sec, dt = 0.05) { for (let t = 0; t < sec; t += dt) { g.ga
 
 module.exports = {
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
-  recompute, setPlayerBase, applyBuff, buffsOf, telegraphTiles, lootsOnGround, messages, traceTurns,
+  recompute, setPlayerBase, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns,
   press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,
 };

@@ -205,7 +205,7 @@ function drawUnit(u) {
       ctx.fillText(u.def.glyph, u.x, u.y + 1);
     }
   }
-  // 頭上の強化のアイコン (主人公。敵は HP バーのさらに上)
+  // 頭上の強化・弱体のアイコン (主人公は頭のすぐ上。敵・仲間は HP バーのさらに上)
   if (u.buffs && u.buffs.length) drawBuffRow(u, u.x, (spriteTop !== null ? spriteTop : u.y - u.r) - (u.isPlayer ? 4 : 14), 14);
   if (!u.isPlayer) {
     // 頭上の HP バーとレベル (絵のときは絵の上端の上)

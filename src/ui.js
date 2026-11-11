@@ -270,23 +270,20 @@ function sellMaterial(id, all) {
   if (!p.materials[id]) delete p.materials[id];
 }
 
+// 付け替えたら、最大 HP・MP の増減ぶん今の値もずらす (refreshStats の 'shift')
 function equipItem(it) {
-  const p = player, before = p.stats.maxHp, beforeMp = p.stats.maxMp;
+  const p = player;
   p.inventory = p.inventory.filter((x) => x !== it);
   if (p.equip[it.slot]) p.inventory.push(p.equip[it.slot]);
   p.equip[it.slot] = it;
-  p.stats = computeStats(p);
-  p.hp = clamp(p.hp + p.stats.maxHp - before, 1, p.stats.maxHp);
-  p.mp = clamp(p.mp + p.stats.maxMp - beforeMp, 0, p.stats.maxMp);
+  refreshStats(p, 'shift');
   menu.sel = { from: 'equip', id: it.id };
 }
 function unequipItem(it) {
-  const p = player, before = p.stats.maxHp, beforeMp = p.stats.maxMp;
+  const p = player;
   p.equip[it.slot] = null;
   p.inventory.push(it);
-  p.stats = computeStats(p);
-  p.hp = clamp(p.hp + p.stats.maxHp - before, 1, p.stats.maxHp);
-  p.mp = clamp(p.mp + p.stats.maxMp - beforeMp, 0, p.stats.maxMp);
+  refreshStats(p, 'shift');
   menu.sel = { from: 'inv', id: it.id };
 }
 

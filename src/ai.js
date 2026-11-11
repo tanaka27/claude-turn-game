@@ -95,6 +95,7 @@ function enemyAct(e) {
     const home = e.home;
     if ((e.tx === home.tx && e.ty === home.ty) || (e.returnT <= 0 && isFree(home.tx, home.ty))) {
       if (e.tx !== home.tx || e.ty !== home.ty) placeUnit(e, home.tx, home.ty);
+      clearBuffs(e); // 湧いたばかりと同じ状態に戻す (強化・弱体も消す)
       Object.assign(e, { state: 'idle', invuln: false, hp: e.stats.maxHp, mp: e.stats.maxMp, intent: null });
       return;
     }

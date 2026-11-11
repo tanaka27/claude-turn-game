@@ -175,6 +175,7 @@ function kill(u) {
   u.dead = true;
   u.hp = 0;
   cancelCharge(u);
+  if (u !== player) clearBuffs(u); // 強化・弱体は消す (主人公は復活するときに消す。倒れている間はアイコンを残す)
   burst(u.x, u.y, u.color, u.isBoss ? 60 : 18, u.isBoss ? 380 : 220);
   effects.push({ type: 'ring', x: u.x, y: u.y, r0: u.r, r1: u.r * 3, t: 0, life: 0.4, color: '255,255,255' });
   if (u === player) heroDown(u);

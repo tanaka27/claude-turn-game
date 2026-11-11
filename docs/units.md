@@ -35,7 +35,7 @@
 | `ai` | 敵 | `enemyAct`（[enemy-ai.md](enemy-ai.md)） |
 | `wait` | テスト用の仲間 | 何もしない |
 
-どのキャラも行動のあとは `endTurn(u)`（次の時刻・スキルの再使用待ち・強化）を通る。キャラごとの「行動 1 回ぶん進めるもの」はここに足す。
+どのキャラも行動のあとは `endTurn(u)`（次の時刻・スキルの再使用待ち・強化と弱体）を通る。キャラごとの「行動 1 回ぶん進めるもの」はここに足す（毒のような行動ごとの効果は、そこから呼ばれる `tickBuffs` に）。スタンのような「行動できない」効果を足すときは、`runUntilInput` で `control` を呼ぶ前に判定する。
 
 ## 敵の狙う相手
 
@@ -58,13 +58,19 @@
 
 倒れる演出は共通。そのあとはキャラによって分ける:
 
+- 主人公以外は、ここで強化・弱体を消す（`clearBuffs`）。主人公は復活するときに消す
 - 主人公（`heroDown`）: 失う経験値・お金を決めて保存し、倒れてから復活する流れへ（[progression.md](progression.md)）
 - 敵（`enemyDefeated`）: 撃破数、湧き場所の枠を空けて再出現を待つ、経験値（主人公に入る）・落とし物・クエスト
 - 主人公の陣営のほかのキャラ（`allyDown`）: 「〇〇は倒れた。」と出るだけ。ゲームオーバーにも経験値にもならない
 
 ## 仲間を作る（まだゲームには出てこない）
 
-- `createAlly(d, control)`: 主人公の陣営のキャラを作る。`d` は `{ name, stats（もとのステータス）, gear, color, radius, glyph, level }`（ステータスは `deriveStats` で計算）。`control` の省略時は `wait`
+- `createAlly(d, control)`: 主人公の陣営のキャラを作る。`d` は `{ name, stats（もとのステータス）, gear, color, radius, glyph, level }`（`baseStats` / `gear` として持ち、主人公・敵と同じ `computeStats` で計算する）。`control` の省略時は `wait`
 - `addUnit(u, tx, ty)`: マスに置いて `units` に足す
 - 描くときは敵と同じ形（丸い体と字）で、頭上の HP バーは緑（`THEME.allyHp`）。行動順の枠は主人公と同じ青、ミニマップは小さな水色の四角
-- 今は主人公だけがステータスの計算（`computeStats`）・強化を持つ。仲間のステータスは作ったときの値のまま
+- 強化・弱体も主人公・敵と同じようにかかる（頭上にアイコン）。左上の仲間の欄（`partyMembers`）・キャラクターの画面はまだ主人公だけ
+
+## ステータスと強化・弱体（どのキャラも同じ）
+
+- どのキャラも、ステータスを計算し直せるもと（主人公: `base` と `equip`、敵・仲間: `baseStats` と `gear`）と、強化・弱体の `buffs` を持つ。計算は `computeStats` / `refreshStats`（[damage.md](damage.md)）、強化・弱体のかけ方・数え方・消えるときは [combat.md](combat.md)
+- 行動の後始末 `endTurn` で強化・弱体の残りが 1 減る。倒れたとき（主人公以外）と、敵が帰り着いたときに消える

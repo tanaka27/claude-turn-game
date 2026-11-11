@@ -29,6 +29,7 @@ node tests/run.js damage     （名前に damage を含むものだけ。「フ�
 | `tests/turns.test.js` | 行動順（速度・同じ時刻は主人公が先）、HP・MP の回復、再使用待ち、湧き直し、落とし物が消える |
 | `tests/ai.test.js` | 敵が気づく・群れの仲間が来る・諦めて帰る（無敵・全回復）・予告の技 |
 | `tests/kill.test.js` | 経験値（灰色の敵は 0.2 倍）、落とし物、クエスト、レベルアップ、倒れたとき・復活 |
+| `tests/effects.test.js` | 強化・弱体がどのキャラにも同じしくみで効くか（弱体の種類はテストの中で `defineEffect` で足す）: 効果なしなら敵（全種類・いくつかのレベル）・仲間を計算し直しても作ったときと同じ、敵の守備ダウンで受けるダメージが増える・敵自身の行動回数で切れて元に戻る、攻撃ダウンで与えるダメージが減る、鈍足・加速で行動の回数が変わる（敵・仲間）、最大 HP ダウンで HP が切られ切れても戻らない、敵の gear は倍率を受けない、帰り着いた敵・倒れた敵と仲間は消える、主人公の弱体とつよさの画面、装備の付け替え・レベルアップの HP・MP の合わせ方 |
 | `tests/allies.test.js` | 主人公の陣営のほかのキャラ（仲間。`addAlly` で置く）: マスをふさぐ、速度どおりに行動順に入る、仲間しか見えない敵が仲間を狙って近づき攻撃する、予告の技が当たる、倒れても主人公の倒れた流れにならず経験値も入らない、仲間がいても敵を倒せば経験値 |
 | `tests/actions.test.js` | 移動・攻撃・待機・スキル（MP・再使用待ち・解放レベル）・ダッシュ・回復薬 |
 | `tests/save.test.js` | セーブの往復（`buildSave` → `migrateSave` → `applySave`）、ないゾーン、版の違い、おかしな値 |
@@ -81,7 +82,7 @@ test('となりの敵を殴ると HP が減る', () => {
 
 - 試験場: `WORLD.zones` にゾーンを足して `enterZone`、湧いた敵は `camps[i].slots[j].enemy` から取り、`placeUnit` と `e.home` で置き直す。`computeFlow(…, flow)`
 - キャラ: `player` / `units`（主人公も入る。敵は `faction === 'enemy'`）、`unitAt`、仲間は `createAlly` / `addUnit`（`addAlly`）、敵の狙う相手 `e.target`（`targetOf`）、`u.stats` / `u.hp` / `u.mp` / `u.tx` / `u.ty` / `u.dead` / `u.level` / `u.exp` / `u.base` / `u.buffs` / `u.skillCd`、敵の `e.state`（`'idle'` / `'chase'` / `'return'`）と `e.invuln`、`e.next`（行動順のテストで時刻を合わせる）
-- ステータス: `deriveStats`、`refreshStats`（計算し直し）、`addBuff`（技を使わずに強化をかける）、`equipItem` / `unequipItem`
+- ステータス: `deriveStats`、`refreshStats`（計算し直し）、`statParts`（`statPartsOf`）、`addBuff`（技を使わずに強化・弱体をかける。かけた者 `src` も渡せる）、`BUFFS`（`defineEffect` でテスト用の種類を足す）、`createEnemy`（`makeEnemy`。湧き場所を通さずに作る）、`levelUp`、`strengthHtml`（キャラクターの画面のつよさ）、`equipItem` / `unequipItem`
 - 行動の記録: どのキャラも行動のあとに通る `endTurn` を包んで、誰がいつ行動したかを数える（`traceTurns`）
 - 技: `planAttack`（範囲）、`resolveAttack`（判定）、`hazards`（予告中の範囲）、`SKILLS`
 - そのほか: `loots`（落とし物）、`logLines`（メッセージ欄）、`aiming` / `mouse`（スキルを構える）、`updateWorld`（倒れてから復活するまでの実時間）、`findPath` / `gateAt` / `zone.gates`（通し試験の道案内）、セーブの `buildSave` / `migrateSave` / `applySave`（`startGame(save)` 経由）/ `saveGame` / `readLocalSave`

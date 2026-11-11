@@ -5,7 +5,7 @@
 
 ## 敵の種類（レベル 1 の値）
 
-敵も主人公と同じステータスを持つ（`stats`。意味は [damage.md](damage.md)）。こうげき力・しゅび力・術防御・速度・スキル加速・会心率は、主人公と同じ式（`params.js` の `derivedStats`）で計算する（`createEnemy` → `deriveStats`、`src/units.js`）。
+敵も主人公と同じステータスを持つ（`stats`。意味は [damage.md](damage.md)）。こうげき力・しゅび力・術防御・速度・スキル加速・会心率は、主人公と同じ式（`params.js` の `derivedStats`）で計算する（`createEnemy` がレベルで補正したもとのステータス `baseStats` と `gear` を持ち、主人公と同じ `computeStats` で計算する。強化・弱体がかかったら計算し直す。[damage.md](damage.md)、`src/units.js`）。
 敵は装備を持たないかわりに `gear`（装備と同じく、計算で決まるステータスに直接足す）を持つ。今は術防御だけに使っている（術防御 = かしこさ × 0.5 + gear）。
 
 | キー | 名前 | 間合い（keepDistance） | HP | MP | MP再生 | ちから | みのまもり | すばやさ（速度） | かしこさ | うんのよさ（会心率） | gear 術防御（術防御） | 技（上ほど優先。MP） | 経験値 |
