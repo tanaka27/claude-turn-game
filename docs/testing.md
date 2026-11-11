@@ -11,6 +11,7 @@ node tests/run.js damage     （名前に damage を含むものだけ。「フ�
 ```
 
 - Node.js（v18 以上）だけで動く。`npm install` も `package.json` もいらない
+- テストは `async` でもよい（返した Promise が終わるまで待つ）
 - 1 つでも失敗すると終了コード 1。最後に「N passed, N failed, N skipped」と出る。失敗したものは最後にまとめて理由が出る
 - 全部で 20 秒ほど（一番重いのは自動で戦わせる通し試験）
 
@@ -34,13 +35,14 @@ node tests/run.js damage     （名前に damage を含むものだけ。「フ�
 | `tests/actions.test.js` | 移動・攻撃・待機・スキル（MP・再使用待ち・解放レベル）・ダッシュ・回復薬 |
 | `tests/skills.test.js` | 技を使う道（`useSkill`）がどのキャラにも同じか: 仲間が主人公のスキル（弾・まわり・投げる・ダッシュ・強化）を使い MP を払って再使用待ちになる、仲間の予告ありの技（テストの中で足した技）が次の行動で範囲の敵に当たる、再使用待ち・MP 不足では使えない、敵が強化の技を自分に使う、主人公と敵で違う再使用待ち・MP の決まり（[skill-use.md](skill-use.md)）、主人公の文が今までどおり |
 | `tests/save.test.js` | セーブの往復（`buildSave` → `migrateSave` → `applySave`）、ないゾーン、版の違い、おかしな値 |
+| `tests/migrate.test.js` | セーブの版の移し替え（[save-versions.md](save-versions.md)）: そのまま書いた v1 のセーブが v2 に直って読める（クエストの id が変わり進み具合はそのまま）、そのあとの保存が v2 で読み直しても同じ、渡したものを書き換えない、壊れた・型のおかしいセーブで落ちない、新しい版のセーブを読まずタイトルを開いただけでは上書きしない、壊れたセーブをタイトルで知らせる、ブラウザ v1・サーバー v2 で `savedAt` の新しいほうを使う |
 | `tests/smoke.test.js` | 通し試験。はじめから草原へ出て、簡単な方針（近づいて殴る・スキル・HP が減ったら回復薬）で 400 行動 × 3 つの種。毎行動、不変条件（HP・MP・ステータスに NaN がない、HP が 0〜最大、同じマスに 2 体いない、通れないマスにいない、時間が戻らない）を確かめる |
 
 ## 読み込み方（`tests/harness.js`）
 
 - `index.html` の `<script src="...">` を上から順に読み、その順で 1 つの vm（Node の `vm.createContext`）の中で実行する。読み込み順をテスト側に写して持たない（`index.html` にファイルを足せばテストにも入る）
 - 同じ vm で実行したスクリプトどうしは、ブラウザと同じくトップレベルの `const` / `let` / `function` を共有する
-- ブラウザの機能は、読み込みで落ちない程度の代わりを置く: `document`（どの id でも空の要素を返す）、canvas と 2D コンテキスト（何を呼んでも何もしない）、`localStorage`（メモリ上）、`fetch`（いつも 404）、`location.protocol` は `file:`（サーバーのセーブは使わない）、`requestAnimationFrame`（何もしない。描画は動かない）、`performance`、`Image`、`confirm` など
+- ブラウザの機能は、読み込みで落ちない程度の代わりを置く: `document`（どの id でも空の要素を返す）、canvas と 2D コンテキスト（何を呼んでも何もしない）、`localStorage`（メモリ上。`loadGame({ storage: { キー: 文字列 } })` で読み込む前の中身を決められる）、`fetch`（いつも 404）、`location.protocol` は `file:`（サーバーのセーブは使わない。`loadGame({ server: { save } })` ならサーバーの代わりを置き、`http:` にして `GET /api/save` で save を返し、PUT されたセーブを `g.server.puts` に残す）、`requestAnimationFrame`（何もしない。描画は動かない）、`performance`、`Image`、`confirm` など
 - `console` は記録する（`g.consoleLog`）。`window.addEventListener` で登録された処理も記録し（`g.windowListeners`）、キー入力のテストはこれに偽の `keydown` を渡す
 - テストごとに新しい vm で読み込み直す（テストどうしで状態が混ざらない）。ファイルの解釈は 1 回だけ
 
@@ -86,4 +88,4 @@ test('となりの敵を殴ると HP が減る', () => {
 - ステータス: `deriveStats`、`refreshStats`（計算し直し）、`statParts`（`statPartsOf`）、`addBuff`（技を使わずに強化・弱体をかける。かけた者 `src` も渡せる）、`BUFFS`（`defineEffect` でテスト用の種類を足す）、`createEnemy`（`makeEnemy`。湧き場所を通さずに作る）、`levelUp`、`strengthHtml`（キャラクターの画面のつよさ）、`equipItem` / `unequipItem`
 - 行動の記録: どのキャラも行動のあとに通る `endTurn` を包んで、誰がいつ行動したかを数える（`traceTurns`）
 - 技: `planAttack`（範囲）、`resolveAttack`（判定）、`hazards`（予告中の範囲）、`SKILLS`、どのキャラも同じ技を使う道 `useSkill`（`useSkillBy`）、`cooldownLeft` / `skillCooldown` / `canUseSkill`（`cooldownLeftOf` / `cooldownLengthOf` / `canUseSkillOf`）、`skillKey`（`setCooldown`）
-- そのほか: `loots`（落とし物）、`logLines`（メッセージ欄）、`aiming` / `mouse`（スキルを構える）、`updateWorld`（倒れてから復活するまでの実時間）、`findPath` / `gateAt` / `zone.gates`（通し試験の道案内）、セーブの `buildSave` / `migrateSave` / `applySave`（`startGame(save)` 経由）/ `saveGame` / `readLocalSave`
+- そのほか: `loots`（落とし物）、`logLines`（メッセージ欄）、`aiming` / `mouse`（スキルを構える）、`updateWorld`（倒れてから復活するまでの実時間）、`findPath` / `gateAt` / `zone.gates`（通し試験の道案内）、セーブの `buildSave` / `migrateSave` / `readSave` / `SAVE_MIGRATIONS` / `SAVE_VERSION` / `applySave`（`startGame(save)` 経由）/ `saveGame` / `readLocalSave` / `saveStore`（`cached` / `problems`）/ `questStatus` / `questById`、タイトルの `continueBtn` / `startBtn`（`onclick`）/ `saveInfo`（`g.elements`）、`confirm`（`g.set` で差し替え）

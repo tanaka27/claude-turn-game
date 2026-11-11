@@ -22,6 +22,7 @@ const filter = process.argv[2] || '';
 let pass = 0, fail = 0, skip = 0;
 const failures = [];
 const t0 = Date.now();
+(async () => {
 for (const t of registry) {
   const label = `${t.file} > ${t.name}`;
   if (filter && !label.includes(filter)) continue;
@@ -32,7 +33,7 @@ for (const t of registry) {
   }
   const ts = Date.now();
   try {
-    t.fn();
+    await t.fn(); // async のテスト (Promise を返すもの) は終わるまで待つ
     pass++;
     const ms = Date.now() - ts;
     console.log(`  ok   ${label}${ms >= 500 ? ` (${(ms / 1000).toFixed(1)}s)` : ''}`);
@@ -47,3 +48,4 @@ for (const { label, err } of failures) {
 }
 console.log(`\n${pass} passed, ${fail} failed, ${skip} skipped (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 process.exit(fail ? 1 : 0);
+})();

@@ -40,13 +40,13 @@ test('倒した敵はいなくなり、素材を落とす。そのマスへ歩�
 });
 
 test('受けているクエストの数が進み、数に届くと報告できる', () => {
-  const a = killNext('wolf', 1, (g) => { g.player.quests.goblin = { state: 'active', count: 0 }; g.player.quests.archer = { state: 'active', count: 0 }; });
-  assert.strictEqual(a.g.player.quests.goblin.count, 1);
-  assert.strictEqual(a.g.player.quests.goblin.state, 'active');
-  assert.strictEqual(a.g.player.quests.archer.count, 0, '対象でない敵では進まない');
-  const b = killNext('wolf', 1, (g) => { g.player.quests.goblin = { state: 'active', count: 7 }; });
-  assert.strictEqual(b.g.player.quests.goblin.count, 8);
-  assert.strictEqual(b.g.player.quests.goblin.state, 'ready');
+  const a = killNext('wolf', 1, (g) => { g.player.quests.c_wolf = { state: 'active', count: 0 }; g.player.quests.c_bee = { state: 'active', count: 0 }; });
+  assert.strictEqual(a.g.player.quests.c_wolf.count, 1);
+  assert.strictEqual(a.g.player.quests.c_wolf.state, 'active');
+  assert.strictEqual(a.g.player.quests.c_bee.count, 0, '対象でない敵では進まない');
+  const b = killNext('wolf', 1, (g) => { g.player.quests.c_wolf = { state: 'active', count: 7 }; });
+  assert.strictEqual(b.g.player.quests.c_wolf.count, 8);
+  assert.strictEqual(b.g.player.quests.c_wolf.state, 'ready');
 });
 
 test('経験値がたまるとレベルが上がり、ステータスが伸びて HP・MP が満タンになる', () => {

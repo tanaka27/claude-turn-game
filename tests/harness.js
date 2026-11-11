@@ -101,8 +101,24 @@ function makeElement(id) {
   };
 }
 
+// サーバー (server.py の /api/save) の代わり。GET は save を JSON にして返し、PUT は puts に記録して save を置き換える
+function makeServer(save) {
+  const server = { save: save ?? null, puts: [] };
+  const reply = (obj) => { const text = JSON.stringify(obj); return Promise.resolve({ ok: true, status: 200, json: async () => JSON.parse(text) }); };
+  server.fetch = (url, init = {}) => {
+    if (init.method !== 'PUT') return reply({ save: server.save });
+    const data = JSON.parse(init.body);
+    server.puts.push(data);
+    server.save = data;
+    return reply({ ok: true, stale: false });
+  };
+  return server;
+}
+
 // 新しいゲームを読み込む。戻り値 g: ゲームの名前を g.名前 で読み書きできる (トップレベルの let / const も)
 //   opts.seed: 乱数の種 (省略時 1)
+//   opts.storage: 読み込む前の localStorage の中身 { キー: 文字列 }
+//   opts.server: サーバーの代わりを置く ({ save: サーバーにあるセーブ | null })。g.server.puts に送られたセーブが残る。省略時はサーバーなし (file: で開いたのと同じ)
 function loadGame(opts = {}) {
   const rng = makeRng(opts.seed ?? 1);
   const consoleLog = [];
@@ -110,7 +126,8 @@ function loadGame(opts = {}) {
     consoleLog.push({ level, text: args.map((a) => (a && a.stack) || String(a)).join(' ') });
   };
   const elements = {};
-  const storage = new Map();
+  const storage = new Map(Object.entries(opts.storage || {}));
+  const server = opts.server ? makeServer(opts.server.save) : null;
   const windowListeners = {};
   const sandbox = {
     console: { log: record('log'), info: record('info'), warn: record('warn'), error: record('error'), debug: record('debug') },
@@ -126,14 +143,14 @@ function loadGame(opts = {}) {
     removeEventListener: () => {},
     requestAnimationFrame: () => 0, cancelAnimationFrame: () => {},
     performance: { now: () => 0 },
-    location: { protocol: 'file:', href: 'file:///index.html' },
+    location: server ? { protocol: 'http:', href: 'http://localhost/' } : { protocol: 'file:', href: 'file:///index.html' },
     localStorage: {
       getItem: (k) => (storage.has(k) ? storage.get(k) : null),
       setItem: (k, v) => { storage.set(k, String(v)); },
       removeItem: (k) => { storage.delete(k); },
       clear: () => storage.clear(),
     },
-    fetch: () => Promise.resolve({ ok: false, status: 404, json: async () => null }),
+    fetch: server ? server.fetch : () => Promise.resolve({ ok: false, status: 404, json: async () => null }),
     Image: class { constructor() { this.onload = null; this.onerror = null; this.src = ''; this.width = 0; this.height = 0; } },
     confirm: () => true, alert: () => {},
     setTimeout, clearTimeout, AbortController,
@@ -151,7 +168,7 @@ function loadGame(opts = {}) {
   const read = (name) => (getters[name] = getters[name] || vm.runInContext(`(() => ${name})`, context))();
   const write = (name, v) => (setters[name] = setters[name] || vm.runInContext(`((__v) => { ${name} = __v; })`, context))(v);
   const special = {
-    rng, consoleLog, storage, elements, windowListeners, context,
+    rng, consoleLog, storage, elements, windowListeners, context, server,
     eval: (code) => vm.runInContext(code, context),
     set: write,
   };

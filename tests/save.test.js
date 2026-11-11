@@ -18,8 +18,8 @@ function playedSave() {
   p.inventory.push(g.makeItem('armor', 3, 'rare'), g.makeItem('accessory', 2, 'epic'));
   p.equip.accessory = g.makeItem('accessory', 4, 'common');
   p.materials.wolfPelt = 5; p.materials.honey = 2;
-  p.quests.goblin = { state: 'claimed', count: 8 };
-  p.quests.archer = { state: 'active', count: 3 };
+  p.quests.c_wolf = { state: 'claimed', count: 8 };
+  p.quests.c_bee = { state: 'active', count: 3 };
   g.enterZone('plains', 30, 30);
   g.enterZone('waystation', 20, 16); // 町に入ると戻る先 (home) になる
   g.enterZone('plains', 31, 32);
@@ -43,7 +43,7 @@ test('セーブを読み直すと、レベル・ステータス・お金・持�
   assert.deepStrictEqual(plain(p.inventory), plain(q.inventory));
   assert.deepStrictEqual(plain(p.equip), plain(q.equip));
   assert.deepStrictEqual(plain(p.materials), { wolfPelt: 5, honey: 2 });
-  assert.deepStrictEqual(plain(p.quests), { goblin: { state: 'claimed', count: 8 }, archer: { state: 'active', count: 3 } });
+  assert.deepStrictEqual(plain(p.quests), { c_wolf: { state: 'claimed', count: 8 }, c_bee: { state: 'active', count: 3 } });
   assert.strictEqual(g2.zone.id, 'plains');
   assert.deepStrictEqual([p.tx, p.ty], [31, 32]);
   assert.strictEqual(p.home, 'waystation');
@@ -81,9 +81,9 @@ test('今はないゾーンにいたセーブは、戻る町のかがり火か�
   assert.strictEqual(g3.zone.id, 'town');
 });
 
-test('版が違う・形がおかしいセーブは読まない', () => {
+test('新しい版・古すぎる版・形がおかしいセーブは読まない', () => {
   const { g, save } = playedSave();
-  assert.strictEqual(g.migrateSave({ ...save, v: 2 }), null);
+  assert.strictEqual(g.migrateSave({ ...save, v: g.SAVE_VERSION + 1 }), null);
   assert.strictEqual(g.migrateSave({ ...save, v: 0 }), null);
   assert.strictEqual(g.migrateSave({ ...save, player: undefined }), null);
   assert.strictEqual(g.migrateSave(null), null);

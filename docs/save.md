@@ -1,7 +1,7 @@
 # セーブとサーバー
 
 自動セーブの中身、保存先（ブラウザとサーバー）、読み込み。コードは `src/save.js`、サーバーは `server.py`。
-保存する項目を増やしたら、ここと `buildSave` / `applySave` を合わせて直す。形を変えたら `SAVE_VERSION` を上げ、`migrateSave` に古い形からの変換を足す。
+保存する項目を増やす・形を変えるときは、[save-versions.md](save-versions.md) の「形を変えるとき（版を足す）」の手順で版を 1 つ上げる。
 
 ## いつ保存するか（`params.js` の `save`）
 
@@ -15,22 +15,22 @@
 | `start.bat` または `python server.py`（おすすめ） | サーバーの `saves/save.json` と、ブラウザの `localStorage`（キー `zankai-turn-save`）の両方 |
 | `python -m http.server` や `index.html` を直接開く | ブラウザの `localStorage` だけ |
 
-- 起動時（`initSave`）に両方を読み、`savedAt` が新しいほうを使う。ブラウザにしかないセーブ（またはブラウザのほうが新しいセーブ）は、そのときサーバーにも送る
+- 起動時（`initSave`）に両方を読み、それぞれ今の形に直してから `savedAt` が新しいほうを使う（ブラウザが v1・サーバーが v2 のように版が違っても比べられる）。ブラウザにしかないセーブ（またはブラウザのほうが新しいセーブ）は、そのとき（今の形に直したものを）サーバーにも送る。サーバーに使えないセーブがあるときは送らない
 - サーバーへの送信は 1 つずつ。送っている間に次のセーブが来たら、終わってから一番新しいものだけを送る。ページを閉じるときは待たずに送る（`keepalive`）
 - サーバーに保存できなかったときはブラウザには保存し、一時停止画面にその旨を出す。保存先の説明はタイトルと一時停止画面に出る（`saveWhereText`）
 - キーは、もとのリアルタイム版（斬界アリーナ、`zankai-arena-save`）とは別。同じブラウザで両方遊んでも混ざらない（ポートも 8766 と 8765 で別）
 
-## セーブの形（v1）
+## セーブの形（v2）
 
 ```
-{ v: 1, savedAt,
+{ v: 2, savedAt,
   player:   { level, exp, base, hp, mp, gold, potions, inventory, materials, equip, quests },
   progress: { kills, time },
   location: { zone, tx, ty },
   home }
 ```
 
-- `base` は成長で上がったステータス `{ maxHp, maxMp, str, vit, agi, int }`（[progression.md](progression.md)）。`inventory` / `equip` は装備（`{ id, slot, name, rarity, level, stats }`）そのもの、`materials` は素材の数 `{ 素材のid: 数 }`、`quests` は `{ id: { state, count } }`、`potions` は回復薬の数 `{ 回復薬のキー: 数 }`（数だけの古いセーブは回復薬 `potion` の数として読む）
+- `base` は成長で上がったステータス `{ maxHp, maxMp, str, vit, agi, int }`（[progression.md](progression.md)）。`inventory` / `equip` は装備（`{ id, slot, name, rarity, level, stats }`）そのもの、`materials` は素材の数 `{ 素材のid: 数 }`、`quests` は `{ クエストのid: { state, count } }`（id は `data/quests.js`。v2 から衛兵隊長のクエストは `c_wolf` など）、`potions` は回復薬の数 `{ 回復薬のキー: 数 }`（数だけの古いセーブは回復薬 `potion` の数として読む）
 - `progress.time` はゲーム内の時刻（ターン）。`location` の `tx`, `ty` はマス
 - ステータスそのもの（こうげき力など）は保存せず、読み込むときに「`base` + 装備」から計算し直す（`computeStats`）。式や装備の数値を変えても、続きから遊ぶと新しい数値が反映される
 - `mp` は今の MP。ない（MP を入れる前の）セーブは満タンから始まる。`base.maxMp` がないセーブはそのレベルの目安の値になる（下の決まり）
@@ -38,7 +38,11 @@
 - `home` は倒れたときに戻る町のゾーン（[world.md](world.md)）。ない・町でないときは `WORLD.respawnZone`
 - 倒れている間に保存するときは、`home` の町のかがり火にいるものとして保存する（`hp: null`・`mp: null` で満タンから始まる）
 - 読み込むとき、存在しないクエスト・部位・ステータスの装備・素材は捨てる（`STATS` にないステータスを持つ装備も捨てる）
-- 形が違う（`v` が 1 でない）セーブは読まない（`migrateSave` が null を返す）
+- 上の「ない・おかしい値の読み方」（`potions` が数だけ、`base` / `mp` / `home` がないなど）は v1 より前のセーブのためのもので、`applySave` に置いてある。これからの形の変更は版の移し替え（[save-versions.md](save-versions.md)）で行う
+
+## 版の移し替えと使えないセーブ
+
+読むときに古い形のセーブを今の形に直すしくみ（`SAVE_MIGRATIONS`）、形を変えるときの手順、新しい版・壊れたセーブの扱いは [save-versions.md](save-versions.md)。
 
 ## サーバー（`server.py`）
 
@@ -50,15 +54,16 @@
 
 | API | 動き |
 |---|---|
-| `GET /api/save` | `{"save": セーブ または null}` を返す |
+| `GET /api/save` | `{"save": セーブ または null}` を返す。ファイルはあるが JSON として読めないときは `{"save": null, "unreadable": true}`（ゲームは「壊れたセーブ」として扱う） |
 | `PUT /api/save` | セーブを書き込み `{"ok": true, "stale": false}` を返す。すでにあるセーブのほうが新しい（`savedAt` が大きい）ときは書き換えず `stale: true`（通信の順番が入れ替わっても古いもので上書きしないため） |
 
-- 書き込みは一時ファイルに書いてから置き換える。1 つ前のセーブを `saves/save.json.bak` に残す
+- 書き込みは一時ファイルに書いてから置き換える。1 つ前のセーブを `saves/save.json.bak` に残す（次の保存で上書きされる）
+- 置き換えるセーブの形（`v`）が受け取ったものと違うとき・読めないときは、`saves/save.json.v<形>.bak`（例 `save.json.v1.bak`）/ `saves/save.json.unreadable.bak` にも写す。形が変わったときだけなので、次の保存では上書きされない（新しい版のセーブを古い版のゲームで「はじめから」にしたときや、版が上がったときの控え）。サーバーはセーブの中身を直さない（直すのはゲームの `readSave`）
 - 受け付けるのは 512KB までの JSON で、`v`（整数）と `savedAt`（数）を持つものだけ
 - `/api/save` が `{ save: ... }` の形で答えないとき（404 など）は、ゲームはサーバーなしとみなす
 
 ## 仕組み: 読み込みと開始
 
-- タイトル画面は `initSave` が終わるまで「はじめから」を押せない。終わると `refreshTitle` が「続きから（Lv・ゾーン）」と保存先を出す
-- `startGame(save)`: 主人公を作り直し、save があれば `applySave` で中身を戻して保存した場所から始める。「はじめから」はセーブがあると確認してから上書きする
-- デバッグ用に `window.__game.saveStore` で保存先の状態（`server` / `error` / `cached`）を見られる
+- タイトル画面は `initSave` が終わるまで「はじめから」を押せない。終わると `refreshTitle` が「続きから（Lv・ゾーン）」と、使えないセーブの説明（`saveProblemText`）と保存先を出す
+- `startGame(save)`: 主人公を作り直し、save があれば `applySave` で中身を戻して保存した場所から始める。HP は数で 0 より大きければその値（最大まで）、それ以外（`null` など）は満タン。「はじめから」はセーブ（使えないものも）があると確認してから上書きする
+- デバッグ用に `window.__game.saveStore` で保存先の状態（`server` / `error` / `cached` / `problems`（使えないセーブ））を見られる

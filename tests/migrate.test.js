@@ -1,0 +1,213 @@
+// セーブの形の移し替え (SAVE_MIGRATIONS)、使えないセーブ (新しい版・壊れたもの) の扱い、起動時にブラウザとサーバーのどちらを使うか
+'use strict';
+const assert = require('assert');
+const { loadGame } = require('./harness');
+const { plain } = require('./helpers');
+
+// 形 v1 のセーブ (クエストの id が古い名前のころ)。そのまま書いておく
+const V1_SAVE = {
+  v: 1, savedAt: 1794000000000,
+  player: {
+    level: 5, exp: 420,
+    base: { maxHp: 30, maxMp: 18, str: 13, vit: 6, agi: 26, int: 19 },
+    hp: 21, mp: 9, gold: 210,
+    potions: { potion: 5, hiPotion: 1 },
+    inventory: [{ id: 'fx-1', slot: 'armor', name: '革の鎧', rarity: 'rare', level: 3, stats: { def: 3, maxHp: 4, vit: 1 } }],
+    materials: { wolfPelt: 6, beeStinger: 4 },
+    equip: {
+      weapon: { id: 'fx-2', slot: 'weapon', name: '銅の剣', rarity: 'common', level: 2, stats: { atk: 3 } },
+      armor: null,
+      accessory: { id: 'fx-3', slot: 'accessory', name: '銀の指輪', rarity: 'epic', level: 4, stats: { critMult: 0.1, agi: 2 } },
+    },
+    quests: {
+      goblin: { state: 'claimed', count: 8 },
+      archer: { state: 'claimed', count: 5 },
+      mage: { state: 'ready', count: 6 },
+      g_trial: { state: 'claimed', count: 3 },
+      g_boar: { state: 'active', count: 2 },
+    },
+  },
+  progress: { kills: 70, time: 1352.5 },
+  location: { zone: 'plains', tx: 31, ty: 32 },
+  home: 'waystation',
+};
+const V2_QUESTS = {
+  c_wolf: { state: 'claimed', count: 8 },
+  c_bee: { state: 'claimed', count: 5 },
+  c_salamander: { state: 'ready', count: 6 },
+  g_trial: { state: 'claimed', count: 3 },
+  g_boar: { state: 'active', count: 2 },
+};
+const copy = (x) => JSON.parse(JSON.stringify(x));
+// 起動時の initSave → refreshTitle が終わるまで待つ
+const settle = () => new Promise((r) => setTimeout(r, 0));
+const title = (g) => ({ continueShown: g.elements.continueBtn.style.display !== 'none', info: g.elements.saveInfo.textContent });
+
+test('v1 のセーブは v2 に直して読め、クエストの進み具合が新しい id でそのまま戻る', () => {
+  const g = loadGame();
+  const d = g.migrateSave(copy(V1_SAVE));
+  assert.ok(d, '読める');
+  assert.strictEqual(d.v, 2);
+  assert.deepStrictEqual(plain(d.player.quests), V2_QUESTS);
+  g.startGame(d);
+  const p = g.player;
+  assert.strictEqual(p.level, 5);
+  assert.strictEqual(p.exp, 420);
+  assert.deepStrictEqual(plain(p.base), V1_SAVE.player.base);
+  assert.strictEqual(p.hp, 21);
+  assert.strictEqual(p.mp, 9);
+  assert.strictEqual(p.gold, 210);
+  assert.deepStrictEqual(plain(p.potions), { potion: 5, hiPotion: 1 });
+  assert.deepStrictEqual(plain(p.inventory), V1_SAVE.player.inventory);
+  assert.deepStrictEqual(plain(p.equip), V1_SAVE.player.equip);
+  assert.deepStrictEqual(plain(p.materials), { wolfPelt: 6, beeStinger: 4 });
+  assert.deepStrictEqual(plain(p.quests), V2_QUESTS);
+  assert.strictEqual(g.questStatus(g.questById('c_salamander')), 'ready');
+  assert.strictEqual(g.questStatus(g.questById('c_wolfKing')), 'locked', '前のクエストを報告するまでは受けられない');
+  assert.strictEqual(g.zone.id, 'plains');
+  assert.deepStrictEqual([p.tx, p.ty], [31, 32]);
+  assert.strictEqual(p.home, 'waystation');
+  assert.strictEqual(g.game.kills, 70);
+  assert.strictEqual(g.game.time, 1352.5);
+});
+
+test('v1 から読んだあとのセーブは v2 で書かれ、読み直しても同じ', () => {
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V1_SAVE) } });
+  assert.strictEqual(g.readLocalSave().v, 2);
+  g.startGame(g.readLocalSave());
+  const saved = JSON.parse(g.storage.get('zankai-turn-save'));
+  assert.strictEqual(saved.v, 2);
+  assert.deepStrictEqual(saved.player.quests, V2_QUESTS);
+  assert.ok(!('goblin' in saved.player.quests));
+  const g2 = loadGame();
+  const d = g2.migrateSave(copy(saved));
+  assert.deepStrictEqual(plain(d), saved, 'v2 のセーブはそのまま読める');
+  g2.startGame(d);
+  const again = plain(g2.buildSave());
+  delete again.savedAt; delete saved.savedAt;
+  assert.deepStrictEqual(again, saved, '読んでからまた書いても同じ');
+});
+
+test('v1 → v2 は衛兵隊長の 7 つのクエストの id を変え、ほかは変えない', () => {
+  const g = loadGame();
+  const quests = {
+    goblin: { state: 'claimed', count: 8 }, archer: { state: 'claimed', count: 5 }, mage: { state: 'claimed', count: 6 },
+    king: { state: 'claimed', count: 1 }, ogre: { state: 'claimed', count: 6 }, treant: { state: 'ready', count: 1 },
+    warlord: { state: 'active', count: 0 }, g_wolf: { state: 'active', count: 4 }, someOldQuest: { state: 'active', count: 1 },
+  };
+  const d = g.SAVE_MIGRATIONS[1]({ v: 1, player: { quests: copy(quests) } });
+  assert.deepStrictEqual(plain(d.player.quests), {
+    c_wolf: quests.goblin, c_bee: quests.archer, c_salamander: quests.mage, c_wolfKing: quests.king,
+    c_golem: quests.ogre, c_treant: quests.treant, c_dragon: quests.warlord, g_wolf: quests.g_wolf, someOldQuest: quests.someOldQuest,
+  });
+  for (const id of Object.keys(d.player.quests)) if (id.startsWith('c_')) assert.ok(g.questById(id), `${id} は data/quests.js にある`);
+  // ない項目があっても落ちない
+  assert.doesNotThrow(() => g.SAVE_MIGRATIONS[1]({ v: 1 }));
+  assert.doesNotThrow(() => g.SAVE_MIGRATIONS[1]({ v: 1, player: { quests: null } }));
+  // 今のデータに、どの形の直し方もそろっている
+  assert.deepStrictEqual(g.consoleLog.filter((l) => l.text.includes('[データの確認]')), []);
+});
+
+test('読むときに渡されたセーブは書き換えない', () => {
+  const g = loadGame();
+  const input = copy(V1_SAVE);
+  input.location = { zone: 'noSuchZone', tx: 3, ty: 3 }; // ゾーンの付け替えも通す
+  const before = JSON.stringify(input);
+  const d = g.migrateSave(input);
+  assert.strictEqual(JSON.stringify(input), before);
+  assert.notStrictEqual(d, input);
+  assert.strictEqual(d.location.zone, 'waystation');
+});
+
+test('壊れた・形のおかしいセーブは落ちずに「読めない」になる', () => {
+  const g = loadGame();
+  for (const bad of [null, undefined, 'save', 42, [], {}, { v: '1' }, { v: 1.5 }, { v: 1 }, { v: 0, player: {}, progress: {}, location: {} },
+    { v: 1, player: null, progress: {}, location: {} }, { v: 1, player: 5, progress: {}, location: {} }, { v: 2, player: {}, progress: 'x', location: {} }]) {
+    assert.strictEqual(g.migrateSave(bad), null, JSON.stringify(bad));
+  }
+  assert.deepStrictEqual(plain(g.readSave(null)), {}, 'null はセーブなし');
+  assert.strictEqual(g.readSave({ v: 1 }).problem, 'broken');
+  assert.deepStrictEqual(plain(g.readSave({ v: 3, player: {} })), { problem: 'newer', v: 3 });
+  // 中身がなくても、型がおかしくても、始められる
+  const empty = g.migrateSave({ v: 1, player: {}, progress: {}, location: {} });
+  assert.ok(empty);
+  assert.doesNotThrow(() => g.startGame(empty));
+  assert.strictEqual(g.player.level, 1);
+  assert.strictEqual(g.zone.id, 'town');
+  const g2 = loadGame();
+  const odd = g2.migrateSave({ v: 1, player: { level: 'x', inventory: 'x', equip: 5, materials: null, quests: 3, potions: 'a', base: 7, hp: 'x', mp: 'x' },
+    progress: { kills: null }, location: { zone: 'plains', tx: 31, ty: 32 } });
+  assert.doesNotThrow(() => g2.startGame(odd));
+  assert.strictEqual(g2.player.hp, g2.player.stats.maxHp);
+  assert.deepStrictEqual(plain(g2.player.inventory), []);
+});
+
+test('新しい版のゲームのセーブは読まず、タイトルを開いただけでは上書きしない', async () => {
+  const newer = { ...copy(V1_SAVE), v: 3, savedAt: 1795000000000, party: ['someone'] };
+  const raw = JSON.stringify(newer);
+  const g = loadGame({ storage: { 'zankai-turn-save': raw }, server: { save: copy(newer) } });
+  await settle();
+  assert.strictEqual(g.saveStore.cached, null);
+  assert.strictEqual(title(g).continueShown, false);
+  assert.ok(title(g).info.includes('新しい版'), title(g).info);
+  assert.strictEqual(g.storage.get('zankai-turn-save'), raw);
+  assert.strictEqual(g.storage.get('zankai-turn-save-unread'), raw, '控えも残す');
+  assert.deepStrictEqual(g.server.puts, []);
+  g.saveGame(); // タイトルでは保存しない
+  assert.strictEqual(g.storage.get('zankai-turn-save'), raw);
+  // 「はじめから」を確認でやめたら上書きしない。選んだら上書きする
+  g.set('confirm', () => false);
+  g.elements.startBtn.onclick();
+  assert.strictEqual(g.game.state, 'title');
+  assert.strictEqual(g.storage.get('zankai-turn-save'), raw);
+  g.set('confirm', () => true);
+  g.elements.startBtn.onclick();
+  assert.strictEqual(g.game.state, 'play');
+  assert.strictEqual(JSON.parse(g.storage.get('zankai-turn-save')).v, 2);
+  assert.strictEqual(g.storage.get('zankai-turn-save-unread'), raw);
+});
+
+test('サーバーに新しい版のセーブがあれば、ブラウザの古い版のセーブがあってもサーバーへ送らない', async () => {
+  const newer = { ...copy(V1_SAVE), v: 3, savedAt: 1 };
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V1_SAVE) }, server: { save: newer } });
+  await settle();
+  assert.strictEqual(g.saveStore.cached, null);
+  assert.strictEqual(title(g).continueShown, false);
+  assert.ok(title(g).info.includes('サーバー（saves/save.json）のセーブデータは新しい版'), title(g).info);
+  assert.deepStrictEqual(g.server.puts, []);
+});
+
+test('壊れたセーブしかないときは、タイトルで読めなかったことを知らせる', async () => {
+  const g = loadGame({ storage: { 'zankai-turn-save': '{"v":1,"player":' } });
+  await settle();
+  assert.strictEqual(title(g).continueShown, false);
+  assert.ok(title(g).info.includes('読めませんでした'), title(g).info);
+  assert.strictEqual(g.storage.get('zankai-turn-save-unread'), '{"v":1,"player":');
+  // もう一方に使えるセーブがあれば、それで続きから遊べる
+  const g2 = loadGame({ storage: { 'zankai-turn-save': '{"v":1}' }, server: { save: copy(V1_SAVE) } });
+  await settle();
+  assert.strictEqual(title(g2).continueShown, true);
+  assert.ok(title(g2).info.includes('もう一方のセーブを使います'), title(g2).info);
+  assert.deepStrictEqual(plain(g2.saveStore.cached.player.quests), V2_QUESTS);
+});
+
+test('ブラウザが v1・サーバーが v2 でも、直してから savedAt の新しいほうを使う', async () => {
+  const g = loadGame();
+  g.startGame(g.migrateSave(copy(V1_SAVE)));
+  g.player.gold = 999;
+  const v2 = plain(g.buildSave());
+  // サーバー (v2) のほうが新しい
+  const a = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V1_SAVE) }, server: { save: { ...v2, savedAt: V1_SAVE.savedAt + 1 } } });
+  await settle();
+  assert.strictEqual(a.saveStore.cached.player.gold, 999);
+  assert.deepStrictEqual(a.server.puts, []);
+  assert.ok(a.elements.continueBtn.textContent.includes('Lv 5'));
+  // ブラウザ (v1) のほうが新しい: ブラウザのものを v2 に直して使い、サーバーにも v2 で送る
+  const b = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V1_SAVE) }, server: { save: { ...v2, savedAt: V1_SAVE.savedAt - 1 } } });
+  await settle();
+  assert.strictEqual(b.saveStore.cached.player.gold, 210);
+  assert.strictEqual(b.server.puts.length, 1);
+  assert.strictEqual(b.server.puts[0].v, 2);
+  assert.deepStrictEqual(b.server.puts[0].player.quests, V2_QUESTS);
+  assert.strictEqual(b.server.puts[0].savedAt, V1_SAVE.savedAt);
+});

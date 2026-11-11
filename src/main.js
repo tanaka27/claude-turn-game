@@ -15,7 +15,7 @@ function startGame(save) {
   const start = WORLD.zones[WORLD.start].respawn;
   const at = save ? applySave(save) : { zone: WORLD.start, tx: tileOf(start.x), ty: tileOf(start.y), hp: null, mp: null };
   player.stats = computeStats(player);
-  player.hp = at.hp ? Math.min(at.hp, player.stats.maxHp) : player.stats.maxHp;
+  player.hp = Number.isFinite(at.hp) && at.hp > 0 ? Math.min(at.hp, player.stats.maxHp) : player.stats.maxHp;
   player.mp = Number.isFinite(at.mp) ? clamp(at.mp, 0, player.stats.maxMp) : player.stats.maxMp;
   player.next = game.time;
   enterZone(at.zone, at.tx, at.ty);
@@ -24,18 +24,19 @@ function startGame(save) {
   saveGame();
 }
 
-// タイトル画面: セーブがあれば「続きから」を出す
+// タイトル画面: セーブがあれば「続きから」を出す。この版で読めないセーブがあればその説明も出す
 function refreshTitle() {
   const save = loadSave();
   $('continueBtn').style.display = save ? '' : 'none';
   $('startBtn').className = save ? 'secondary' : '';
   $('startBtn').disabled = false;
   if (save) $('continueBtn').textContent = `続きから（Lv ${save.player.level}・${WORLD.zones[save.location.zone].name}）`;
-  $('saveInfo').textContent = saveWhereText();
+  $('saveInfo').textContent = [saveProblemText(), saveWhereText()].filter(Boolean).join(' ');
 }
 $('continueBtn').onclick = () => { const save = loadSave(); if (save) startGame(save); };
 $('startBtn').onclick = () => {
   if (loadSave() && !confirm('セーブデータを消して、はじめから遊びますか？')) return;
+  if (!loadSave() && saveStore.problems.length && !confirm('この版で読めないセーブデータを上書きして、はじめから遊びますか？（上書きする前の控えは残します）')) return;
   startGame(null);
 };
 validateData();

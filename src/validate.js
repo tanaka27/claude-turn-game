@@ -185,6 +185,10 @@ function validateData() {
     check(!it || (ITEMS.slots[it.slot] && rarityIds.includes(it.rarity)), `data/quests.js '${q.id}': 報酬の装備の部位かレア度がない`);
   }
 
+  for (let n = SAVE_OLDEST; n < SAVE_VERSION; n++) {
+    check(typeof SAVE_MIGRATIONS[n] === 'function', `src/save.js: セーブの形 v${n} → v${n + 1} の直し方 (SAVE_MIGRATIONS[${n}]) がない`);
+  }
+
   for (const e of errors) console.error('[データの確認]', e);
   return errors;
 }

@@ -4,23 +4,41 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v1)
-//   { v: 1, savedAt,
+// セーブの形 (v2。くわしくは docs/save.md)
+//   { v: 2, savedAt,
 //     player:   { level, exp, base, hp, mp, gold, potions, inventory, materials, equip, quests },
-//       base: 成長で上がったステータス { maxHp, maxMp, str, vit, agi, int } (ないもの (MP が入る前のセーブの maxMp など) はレベルの目安の値にする)
-//       mp: 今の MP (ないセーブは満タンで始める)
 //     progress: { kills, time },
-//       potions: 回復薬の数 { 回復薬のキー: 数 } (数だけのセーブは回復薬 (potion) の数として読む)
-//     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン (ないセーブは WORLD.respawnZone) }
+//     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
+// 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
+const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
+const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
 const SAVE_API = 'api/save';
+
+// 形を変えたら SAVE_VERSION を上げ、ここに「1 つ前の形 → 今の形」を 1 つ足す
+// SAVE_MIGRATIONS[n]: 形 n のセーブ (コピー) を直して返す。v は呼ぶ側が n + 1 にする
+//   ない項目があっても落ちないように書く。今のデータ (QUESTS など) は見ない (あとでデータが変わっても同じ結果になるように)
+const SAVE_MIGRATIONS = {
+  // v1 → v2: 衛兵隊長のクエストの id を、倒す敵に合わせた名前にした (もとは人の敵だったころの名前)
+  1: (d) => {
+    const renamed = { goblin: 'c_wolf', archer: 'c_bee', mage: 'c_salamander', king: 'c_wolfKing', ogre: 'c_golem', treant: 'c_treant', warlord: 'c_dragon' };
+    const quests = d.player && d.player.quests;
+    if (quests && typeof quests === 'object') {
+      const out = {};
+      for (const id in quests) out[renamed[id] || id] = quests[id];
+      d.player.quests = out;
+    }
+    return d;
+  },
+};
 
 // server: null (まだ確かめていない) / true (サーバーに保存できる) / false (ブラウザだけ)
 // unreachable: サーバーから時間内に返事がなかった (次に保存するときにもう一度確かめる)。probing: 確かめている最中
 // cached: 一番新しいセーブ。sending / pending: サーバーへ送っている最中と、その次に送るもの
-const saveStore = { server: null, unreachable: false, probing: false, error: '', cached: null, sending: false, pending: null };
+// problems: 起動時に見つけた、この版で使えないセーブ [{ where: 'local' | 'server', problem: 'newer' | 'broken', v }]
+const saveStore = { server: null, unreachable: false, probing: false, error: '', cached: null, sending: false, pending: null, problems: [] };
 
 function buildSave() {
   const p = player;
@@ -36,17 +54,36 @@ function buildSave() {
   };
 }
 
-// 読めないセーブは null
-function migrateSave(d) {
-  if (!d || typeof d !== 'object') return null;
-  if (d.v !== SAVE_VERSION || !d.player || !d.progress || !d.location) return null;
+// 保存されていたもの (JSON を読んだもの) を今の形にする。渡されたものは書き換えない
+// 戻り値: { save } (使える) / { problem: 'newer' (新しい版のゲームのセーブ) | 'broken' (壊れている・古すぎる), v } / {} (セーブなし)
+function readSave(raw) {
+  if (raw === null || raw === undefined) return {};
+  const v = raw && typeof raw === 'object' ? raw.v : undefined;
+  if (!Number.isInteger(v)) return { problem: 'broken' };
+  if (v > SAVE_VERSION) return { problem: 'newer', v };
+  if (v < SAVE_OLDEST) return { problem: 'broken', v };
+  const isObj = (x) => !!x && typeof x === 'object';
+  let d;
+  try {
+    d = JSON.parse(JSON.stringify(raw));
+    for (let n = v; n < SAVE_VERSION; n++) {
+      d = SAVE_MIGRATIONS[n](d);
+      d.v = n + 1;
+    }
+  } catch (err) {
+    console.warn(`セーブ (形 v${v}) を今の形に直せませんでした`, err);
+    return { problem: 'broken', v };
+  }
+  if (!isObj(d.player) || !isObj(d.progress) || !isObj(d.location)) return { problem: 'broken', v };
   // 今はないゾーン (名前を変えた建物など) にいたセーブは、倒れたときに戻る町のかがり火から始める
   if (!WORLD.zones[d.location.zone]) {
     const home = WORLD.zones[d.home] && WORLD.zones[d.home].respawn ? d.home : WORLD.respawnZone, r = WORLD.zones[home].respawn;
     d.location = { ...d.location, zone: home, tx: tileOf(r.x), ty: tileOf(r.y) };
   }
-  return d;
+  return { save: d };
 }
+// 使えないセーブは null
+const migrateSave = (raw) => readSave(raw).save || null;
 
 // 作ったばかりの player にセーブの中身を戻す。戻り値: 始める場所と HP・MP
 function applySave(save) {
@@ -71,7 +108,7 @@ function applySave(save) {
   const home = WORLD.zones[save.home];
   p.home = home && home.safe && home.respawn ? save.home : WORLD.respawnZone;
   const valid = (it) => it && IT.slots[it.slot] && it.stats && Object.keys(it.stats).every((k) => STATS[k]);
-  p.inventory = (s.inventory || []).filter(valid).slice(0, EC.inventorySize);
+  p.inventory = (Array.isArray(s.inventory) ? s.inventory : []).filter(valid).slice(0, EC.inventorySize);
   for (const slot in IT.slots) {
     const it = s.equip && s.equip[slot];
     p.equip[slot] = valid(it) && it.slot === slot ? it : null;
@@ -85,13 +122,23 @@ function applySave(save) {
 }
 
 // ----- 保存先: ブラウザ -----
-function readLocalSave() {
+// 戻り値は readSave と同じ。使えないときは、もとの文字列 (raw) も付ける
+function readLocal() {
+  let raw;
   try {
-    return migrateSave(JSON.parse(localStorage.getItem(SAVE_KEY)));
+    raw = localStorage.getItem(SAVE_KEY);
   } catch (err) {
-    return null;
+    return {};
   }
+  let r;
+  try {
+    r = readSave(JSON.parse(raw));
+  } catch (err) {
+    r = { problem: 'broken' };
+  }
+  return r.problem ? { ...r, raw } : r;
 }
+const readLocalSave = () => readLocal().save || null;
 function writeLocalSave(data) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -101,7 +148,7 @@ function writeLocalSave(data) {
 }
 
 // ----- 保存先: サーバー (server.py) -----
-// サーバーは { save: セーブ | null } を返す。それ以外 (404 や file:// で開いたとき) はサーバーなしとみなす
+// サーバーは { save: セーブ | null } を返す (ファイルが読めないときは unreadable: true も付く)。それ以外 (404 や file:// で開いたとき) はサーバーなしとみなす
 // 時間内に返事がないときやつながらないときは unreachable: true (サーバーはあるかもしれない)
 async function fetchServerSave() {
   if (location.protocol === 'file:') return { ok: false };
@@ -119,7 +166,8 @@ async function fetchServerSave() {
   try {
     const body = res.ok ? await res.json() : null;
     if (!body || !('save' in body)) return { ok: false };
-    return { ok: true, save: migrateSave(body.save) };
+    if (body.unreadable) return { ok: true, problem: 'broken' }; // saves/save.json はあるが JSON として読めない
+    return { ok: true, ...readSave(body.save) };
   } catch (err) {
     return { ok: false };
   }
@@ -132,6 +180,8 @@ function retryServer() {
     saveStore.probing = false;
     saveStore.unreachable = !!r.unreachable;
     if (!r.ok) return;
+    // サーバーに新しい版のゲームのセーブがあったら、知らせないまま上書きしないように送らない
+    if (r.problem === 'newer') { saveStore.problems.push({ where: 'server', problem: r.problem, v: r.v }); return; }
     saveStore.server = true;
     if (saveStore.cached) sendServerSave(saveStore.cached);
   });
@@ -159,16 +209,28 @@ function sendServerSave(data, unloading) {
 }
 
 // 起動時に 1 回: ブラウザとサーバーのセーブのうち新しいほうを使う
+// どちらも今の形に直してから比べる。どちらかに新しい版のゲームのセーブがあれば、どちらも使わない (タイトルで知らせる)
 async function initSave() {
-  const local = readLocalSave();
+  const localRead = readLocal();
   const remote = await fetchServerSave();
   saveStore.server = remote.ok;
   saveStore.unreachable = !!remote.unreachable;
+  saveStore.problems = [];
+  if (localRead.problem) {
+    saveStore.problems.push({ where: 'local', problem: localRead.problem, v: localRead.v });
+    // 読めなかったブラウザのセーブは、あとで上書きされても残るように別のキーに写しておく
+    try { localStorage.setItem(SAVE_UNREAD_KEY, localRead.raw); } catch (err) { /* 写せなくても続ける */ }
+  }
+  if (remote.ok && remote.problem) saveStore.problems.push({ where: 'server', problem: remote.problem, v: remote.v });
+  const newer = saveStore.problems.some((q) => q.problem === 'newer');
+  const local = newer ? null : localRead.save || null;
+  const server = newer || !remote.ok ? null : remote.save || null;
+  const at = (s) => (Number.isFinite(s.savedAt) ? s.savedAt : 0);
   let best = local;
-  if (remote.ok && remote.save && (!local || remote.save.savedAt >= local.savedAt)) best = remote.save;
+  if (server && (!local || at(server) >= at(local))) best = server;
   saveStore.cached = best;
-  // ブラウザにしかない (またはブラウザのほうが新しい) セーブは、サーバーにも送っておく
-  if (remote.ok && best && best === local && (!remote.save || local.savedAt > remote.save.savedAt)) sendServerSave(local);
+  // ブラウザにしかない (またはブラウザのほうが新しい) セーブは、サーバーにも送っておく (サーバーに読めないセーブがあるときは送らない)
+  if (remote.ok && !remote.problem && best && best === local && (!server || at(local) > at(server))) sendServerSave(local);
 }
 
 function saveGame(unloading) {
@@ -182,8 +244,26 @@ function saveGame(unloading) {
 }
 const loadSave = () => saveStore.cached;
 
+// タイトルに出す、この版で使えなかったセーブの説明 (なければ '')
+function saveProblemText() {
+  const ps = saveStore.problems;
+  if (!ps.length) return '';
+  const where = (q) => (q.where === 'server' ? 'サーバー（saves/save.json）' : 'ブラウザ');
+  const newer = ps.find((q) => q.problem === 'newer');
+  if (newer) {
+    return `${where(newer)}のセーブデータは新しい版のゲームで保存されたもの（形 v${newer.v}。この版は v${SAVE_VERSION} まで）なので、この版では読めません。続きは新しい版のゲームで遊んでください。` +
+      '「はじめから」を選ぶとセーブデータが上書きされます（上書きする前の控えは残します）。';
+  }
+  const names = ps.map(where).join('と');
+  if (saveStore.cached) return `${names}のセーブデータは壊れているか古すぎて読めなかったので、もう一方のセーブを使います（控えを残して上書きします）。`;
+  return `${names}にセーブデータがありますが、壊れているか古すぎて読めませんでした。「はじめから」を選ぶと上書きされます（上書きする前の控えは残します）。`;
+}
+
 // 一時停止画面・タイトルに出す、保存先の説明
 function saveWhereText() {
+  if (!saveStore.server && saveStore.problems.some((q) => q.where === 'server' && q.problem === 'newer')) {
+    return 'サーバーに新しい版のゲームのセーブがあるため、サーバーには保存していません。ブラウザには保存しています。';
+  }
   if (!saveStore.server && saveStore.unreachable) return 'サーバーから返事がありません。ブラウザには保存しています（次の保存でもう一度サーバーを試します）。';
   if (!saveStore.server) return '進行はブラウザ（localStorage）に自動で保存されています。サーバーにも保存するには python server.py で起動してください。';
   if (saveStore.error) return `サーバーに保存できませんでした（${saveStore.error}）。ブラウザには保存しています。`;

@@ -26,6 +26,7 @@
 | [docs/items.md](docs/items.md) | 素材とお金、落とし物、装備とレア度、回復薬、商人と鍛冶屋の品ぞろえ | 装備・経済・店を変える |
 | [docs/menu.md](docs/menu.md) | 道具一覧・店（商人・鍛冶屋）・キャラクターの画面（開き方、道具を使う、装備の付け替え、素材を売る） | 画面の中身・道具の種類を変える |
 | [docs/save.md](docs/save.md) | セーブの中身と保存先（ブラウザ・サーバー）、`server.py` の API | 保存する項目を増やす・変える、サーバーを直す |
+| [docs/save-versions.md](docs/save-versions.md) | セーブの形の版と移し替え（`SAVE_MIGRATIONS`）、版の足し方、使えないセーブ（新しい版・壊れたもの）の扱い | 保存する項目を増やす・形を変える。セーブが読めないときの動きを変える |
 | [docs/ui.md](docs/ui.md) | HUD と描画 | 画面の表示を変える |
 | [docs/image-assets.md](docs/image-assets.md) | 画像素材を Codex CLI（`image_gen`）で作る方法、`tools/codex_image.py` の使い方、`assets/` の置き場所 | 画像素材を作る・足す |
 | [docs/testing.md](docs/testing.md) | 自動テスト（`node tests/run.js`）の動かし方、ゲームの読み込み方、乱数の固定、テストの足し方、テストが頼っている内部の名前 | テストを動かす・足す。大きく作りを変える前後 |
@@ -44,7 +45,7 @@
 | `src/units.js` | 主人公と敵（とテスト用の仲間 `createAlly` / `addUnit`）の生成、マスの上の位置、そのマスのキャラ（`unitAt`）・敵の陣営（`opponents`）、行動 1 回にかかる時間、ステータスの計算（どのキャラも同じ `computeStats` / `refreshStats`）、強化・弱体（`addBuff` / `tickBuffs` / `clearBuffs`）、技の再使用待ちと MP の決まり（`SKILL_RULES` / `cooldownLeft` / `enoughMp` / `canUseSkill`）、経験値・レベル・復活 |
 | `src/combat.js` | 技の範囲（マス）・判定・ダメージ（物理・術）、予告（出す・消す・判定する）、どのキャラも同じ技を使う道（`useSkill`、強化 `castBuff`、ダッシュ `dash`）、倒れたとき（主人公・敵・仲間で分ける） |
 | `src/items.js` | 装備の生成、素材と落とし物（拾う・消える）、回復薬 |
-| `src/save.js` | セーブ（ブラウザとサーバー） |
+| `src/save.js` | セーブ（ブラウザとサーバー）、古い形のセーブを今の形に直す（`readSave` / `SAVE_MIGRATIONS`）、使えないセーブの扱い |
 | `src/player.js` | 入力と主人公の行動（移動・通常攻撃・スキルを狙って使う `castSkill`） |
 | `src/ai.js` | 敵の AI（狙う相手の選び方、1 回の行動、狙う技の選び方）、湧き場所 |
 | `src/turn.js` | ターンの進め方（速度による行動順、キャラごとの行動の決め方 `CONTROLLERS`、予告した技を出す・再使用待ちを減らすとき、行動の後始末 `endTurn`、時間を進める、行動順の表示用） |
@@ -53,7 +54,7 @@
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |
 | `tests/run.js` / `tests/harness.js` / `tests/helpers.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）。詳しくは [docs/testing.md](docs/testing.md) |
-| `tests/*.test.js` | テスト本体（ステータス・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・セーブ・主人公の陣営のほかのキャラ（仲間）・自動で戦わせる通し試験） |
+| `tests/*.test.js` | テスト本体（ステータス・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・セーブ・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・自動で戦わせる通し試験） |
 | `start.bat` | ダブルクリックで `server.py` を起動し、ブラウザでゲームを開く（Windows 用。ポートは中の `PORT`。8766 が使われていると止まって知らせる） |
 | `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする）。詳しくは [docs/save.md](docs/save.md) |
 | `.claude/launch.json` | 確認用ローカルサーバーの設定（`python server.py`） |

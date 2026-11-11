@@ -8,9 +8,11 @@ Python の標準ライブラリだけで動く。
     python server.py --open   # 起動したらブラウザでゲームを開く (start.bat はこれを使う)
 
 API
-    GET /api/save   -> 200 {"save": セーブ または null}
+    GET /api/save   -> 200 {"save": セーブ または null}  (ファイルはあるが読めないときは {"save": null, "unreadable": true})
     PUT /api/save   -> 200 {"ok": true, "stale": false}
                        受け取ったセーブより新しい (savedAt が大きい) セーブがすでにあるときは書き換えず、stale: true を返す
+                       1 つ前のセーブを save.json.bak に残す。形 (v) の違う・読めないセーブを置き換えるときは
+                       save.json.v<形>.bak / save.json.unreadable.bak にも残す
 """
 
 import errno
@@ -34,6 +36,9 @@ API_PATH = '/api/save'
 save_lock = threading.Lock()
 
 
+UNREADABLE = object()               # read_save の戻り値: ファイルはあるが読めない
+
+
 def read_save():
     try:
         with open(SAVE_FILE, encoding='utf-8') as f:
@@ -42,14 +47,19 @@ def read_save():
         return None
     except (OSError, ValueError) as err:
         print(f'セーブを読めませんでした: {err}', file=sys.stderr)
-        return None
+        return UNREADABLE
 
 
-def write_save(data):
+def write_save(data, current):
     """一時ファイルに書いてから置き換える (途中で止まっても前のセーブが壊れないように)。"""
     os.makedirs(SAVE_DIR, exist_ok=True)
     if os.path.exists(SAVE_FILE):
         shutil.copyfile(SAVE_FILE, BACKUP_FILE)
+        # 形 (v) の違うセーブ・読めないセーブを置き換えるときは、別の名前にも控えを残す (次の保存で .bak が上書きされても消えないように)
+        old_v = current.get('v') if isinstance(current, dict) else None
+        if old_v != data.get('v'):
+            name = f'.v{old_v}.bak' if isinstance(old_v, int) else '.unreadable.bak'
+            shutil.copyfile(SAVE_FILE, SAVE_FILE + name)
     tmp = SAVE_FILE + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
@@ -85,7 +95,8 @@ class Handler(SimpleHTTPRequestHandler):
             super().do_GET()
             return
         with save_lock:
-            self.send_json(HTTPStatus.OK, {'save': read_save()})
+            data = read_save()
+            self.send_json(HTTPStatus.OK, {'save': None, 'unreadable': True} if data is UNREADABLE else {'save': data})
 
     def do_PUT(self):
         if not self.api_path():
@@ -113,7 +124,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json(HTTPStatus.OK, {'ok': True, 'stale': True})
                 return
             try:
-                write_save(data)
+                write_save(data, current)
             except OSError as err:
                 self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {'error': f'書き込めませんでした: {err}'})
                 return
