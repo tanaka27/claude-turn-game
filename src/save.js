@@ -4,14 +4,14 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v2。くわしくは docs/save.md)
-//   { v: 2, savedAt,
-//     player:   { level, exp, base, hp, mp, gold, potions, inventory, materials, equip, quests },
+// セーブの形 (v3。くわしくは docs/save.md)
+//   { v: 3, savedAt,
+//     player:   { level, exp, base, hp, mp, gold, potions, inventory, materials, equip, quests, knownSkills },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
@@ -32,6 +32,16 @@ const SAVE_MIGRATIONS = {
     }
     return d;
   },
+  // v2 → v3: 覚えたスキルの id (player.knownSkills) を足した。v2 まではレベルで自動で覚えるだけだったので、
+  //   v2 のころの決まり (下の表。data/player.js の learnAtLevel と同じだったもの) で保存したレベルから埋める
+  2: (d) => {
+    const atLevel = { shockwave: 1, whirlwind: 3, meteor: 6, dash: 1, battleAura: 1 };
+    if (d.player && typeof d.player === 'object') {
+      const lv = Math.floor(d.player.level) || 1;
+      d.player.knownSkills = Object.keys(atLevel).filter((id) => lv >= atLevel[id]);
+    }
+    return d;
+  },
 };
 
 // server: null (まだ確かめていない) / true (サーバーに保存できる) / false (ブラウザだけ)
@@ -47,7 +57,7 @@ function buildSave() {
   return {
     v: SAVE_VERSION, savedAt: Date.now(),
     player: { level: p.level, exp: p.exp, base: p.base, hp: p.dead ? null : p.hp, mp: p.dead ? null : p.mp, gold: p.gold, potions: p.potions,
-      inventory: p.inventory, materials: p.materials, equip: p.equip, quests: p.quests },
+      inventory: p.inventory, materials: p.materials, equip: p.equip, quests: p.quests, knownSkills: p.knownSkills },
     progress: { kills: game.kills, time: game.time },
     location: p.dead ? { zone: home, tx: tileOf(r.x), ty: tileOf(r.y) } : { zone: zone.id, tx: p.tx, ty: p.ty },
     home,
@@ -118,6 +128,10 @@ function applySave(save) {
     const n = Math.floor(s.materials[id]);
     if (IT.materials[id] && n > 0) p.materials[id] = n;
   }
+  // 覚えたスキル: 今はないスキルは捨て、はじめの覚え方 (レベル) でそのレベルなら覚えているはずのものは足す
+  p.knownSkills = [];
+  for (const id of Array.isArray(s.knownSkills) ? s.knownSkills : []) teachSkill(p, id);
+  learnSkillsByLevel(p);
   return { ...save.location, hp: s.hp, mp: s.mp };
 }
 

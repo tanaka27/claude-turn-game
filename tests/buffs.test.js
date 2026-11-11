@@ -1,7 +1,7 @@
 // 強化 (バフ): 闘気 (攻撃力アップ)
 'use strict';
 const assert = require('assert');
-const { newGame, arena, applyBuff, buffsOf, press, wait, runFrames } = require('./helpers');
+const { newGame, arena, applyBuff, buffsOf, press, wait, runFrames, keyOf, storedCooldown } = require('./helpers');
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg || ''} ${a} != ${b}`);
 const BUFFED = 10 * 1.3 + 1; // 装備なしのこうげき力 10 × 1.3 + 木の剣 1
@@ -25,20 +25,20 @@ test('闘気: こうげき力が上がり、MP と再使用待ちがかかる', 
   const g = safeArena();
   const p = g.player, sk = g.SKILLS.find((s) => s.type === 'buff');
   const mp0 = p.mp, t0 = g.game.time;
-  press(g, sk.key);
+  press(g, keyOf(g, sk));
   near(p.stats.atk, BUFFED);
   assert.deepStrictEqual(buffsOf(p), [{ id: 'atkUp' }]);
   // 使った行動の終わりに MP の回復も入る (休息中)
   assert.ok(p.mp < mp0 - sk.mp + 1 && p.mp >= mp0 - sk.mp, `mp ${p.mp}`);
   assert.strictEqual(g.game.time, t0 + 1, '1 行動ぶん時間が進む');
   // 再使用待ちは使った行動の終わりに 1 減っている
-  assert.strictEqual(p.skillCd[sk.key], sk.cooldown - 1);
+  assert.strictEqual(storedCooldown(g, p, sk), sk.cooldown - 1);
 });
 
 test('闘気: かけた行動では減らず、そのあと duration 回の行動で切れる', () => {
   const g = safeArena();
   const sk = g.SKILLS.find((s) => s.type === 'buff');
-  press(g, sk.key);
+  press(g, keyOf(g, sk));
   assert.strictEqual(actionsUntilExpired(g), sk.duration);
   near(g.player.stats.atk, PLAIN);
   assert.deepStrictEqual(buffsOf(g.player), []);

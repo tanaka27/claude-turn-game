@@ -75,7 +75,6 @@ const mouse = { x: 0, y: 0, wx: 0, wy: 0, tx: 0, ty: 0 };
 let aiming = null;
 
 const BASIC = PLAYER.basicAttack;
-const SKILLS = PLAYER.skills;
 
 const $ = (id) => document.getElementById(id);
 

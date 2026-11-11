@@ -1,6 +1,6 @@
-# 成長（レベル・クエスト・スキル解放）
+# 成長（レベル・クエスト・スキルを覚える）
 
-経験値とレベル、ステータスの成長、討伐クエスト、スキル解放。数値は `params.js` の `progression`、クエストは `data/quests.js`（`QUESTS`）、スキル解放は `data/player.js` の技の `unlockLevel`。コードは `src/units.js`（成長）と `src/quests.js`。
+経験値とレベル、ステータスの成長、討伐クエスト、スキルを覚える決まり。数値は `params.js` の `progression`、クエストは `data/quests.js`（`QUESTS`）、スキルを覚えるレベルは `data/player.js` の `learnAtLevel`。コードは `src/units.js`（成長・スキルの覚え方）と `src/quests.js`。
 
 ## 成長（`progression`）
 
@@ -80,7 +80,7 @@
 - ステータスは `computeStats` で毎回計算する: Lv1 の値（成長するものは `base`）→ `derivedStats` で こうげき力などを計算 → 強化・弱体（`player.buffs`）の倍率を掛ける → 装備（`player.equip`）で上がる分を足す。装備で上がる分は `statParts` が「装備ありで計算した値 − 装備なしで計算した値」で出す（ちから +3 の装備ならこうげき力にも +3 が入る）。上限（`max`）は最後にかける
 - プレイヤーが倒れると、その場で所持金（と `deathExpLoss` 分の経験値）を減らして保存し、1.4 秒後（実時間）に `respawnPlayer` で最後に立ち寄った町（`player.home`。[world.md](world.md)）のかがり火へ戻る
 
-## 仕組み: クエストとスキル解放
+## 仕組み: クエスト
 
 - クエストの状態は `player.quests[id] = { state, count }`。`questStatus` が `locked`（前のクエストがまだ）/ `lowLevel` / `available` / `active` / `ready`（報告できる）/ `claimed`（報告済み）を返す
 - 敵が倒れると `questKill` が受けているクエストの数を進め、達成したら `ready` にして画面に知らせる
@@ -88,4 +88,15 @@
 - NPC の頭上の印: 報告できるクエストがあれば「?」、くり返しでないクエストを受けられれば「!」（くり返しの依頼だけなら印は出さない。`npcMark`）
 - クエストの画面は HTML（`index.html` の `#quest`）。`openQuest` で開く。左が依頼の一覧（`questEntries`。報告できる → 受けている → 受けられる → レベル不足 → 報告済みの順。前のクエストがまだのものは出さない）、右が選んでいる依頼の内容（説明・倒す敵と数・場所・報酬）と「受ける」「報告する」ボタン。一覧はクリックか ↑↓ で選び（`moveQuestSel`）、Enter かボタンで受ける・報告する（`questAction`）。`renderQuest` が中身を作る
 - 報告すると `claimQuest` が報酬を渡す（装備の報酬は持ち物がいっぱいだと受け取れない）
-- スキルは `unlockLevel` 未満だと押しても発動せず、案内を出す。`levelUp` で新しく使えるようになったスキルを画面に出す
+
+## スキルを覚える（はじめの決まり: レベルで覚える）
+
+主人公が覚えているスキルはキャラの状態（`player.knownSkills`、セーブに残る）で、レベルから毎回決めるものではない。覚えさせるのはいつも `teachSkill`（[skill-use.md](skill-use.md) の「覚えているスキルとスキル欄」）。
+今の覚え方は「そのレベルになったら自動で覚える」だけで、データと関数が 1 つずつ:
+
+- データ: `data/player.js` の `learnAtLevel`（`{ スキルの id: レベル }`。今は衝撃波・ダッシュ・闘気が Lv1、旋風斬が Lv3、メテオが Lv6）。スキルの定義（`data/skills.js`）には覚えるレベルを書かない（技を使う道は覚えるレベルを見ない）
+- 関数: `learnSkillsByLevel(u)`（`src/units.js`）。`learnAtLevel` のレベルに届いていて、まだ覚えていないスキルを `teachSkill` で覚え、新しく覚えたものを返す。呼ぶのは 3 か所: はじめから（`createPlayer`。Lv1 のもの）、レベルアップ（`levelUp`）、セーブを読んだとき（`applySave`。そのレベルなら覚えているはずのものを足す）
+- `levelUp` は覚えたスキルを「LEVEL UP!」の下の最後の行に「新しいスキル: 旋風斬（2）」のように出す（括弧はスキル欄のキー。置いていなければ名前だけ）
+- `learnLevelOf(sk)`: そのスキルを覚えるレベル（なければ `undefined`）。覚えていないスキルの案内（「Lv3 で使えるようになる」「Lv3 で解放」）に使う
+
+ほかの覚え方（師匠・道具・スキルポイントなど）を足すとき: 覚える道（例: 師匠と話す・道具を使う）から `teachSkill(player, id)` を呼ぶだけでよい（覚えたものはそのままセーブに残る）。レベルでも覚えるならそのまま並べて使える。レベルで覚えるのをやめるスキルは `learnAtLevel` から外す（全部やめるなら、上の 3 か所の `learnSkillsByLevel` を新しい決まりに置き換える）。覚えていないスキルの案内の文は `src/player.js`（キー入力）と `src/hud.js`（スキル欄）にある。

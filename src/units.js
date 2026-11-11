@@ -13,19 +13,22 @@ function startPotions() {
 function createPlayer() {
   const d = PLAYER;
   const skillCd = {};
-  for (const s of SKILLS) skillCd[s.key] = 0;
+  for (const s of SKILLS) skillCd[s.id] = 0;
   const equip = {};
   for (const slot in IT.slots) {
     const e = d.startEquip[slot];
     equip[slot] = e ? makeItem(slot, e.level, e.rarity) : null;
   }
-  return {
+  const p = {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
     stats: null, base: growthBase(1), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: EC.startGold, potions: startPotions(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null, control: 'input',
-    skills: SKILLS, skillRule: 'hero', skillCd, buffs: [], hitFlash: 0, dead: false,
+    // 覚えられる技 (data/skills.js 全部)・覚えている技の id (はじめは下の learnSkillsByLevel で Lv1 のもの)・スキル欄 (キー → スキルの id)
+    skills: SKILLS, knownSkills: [], skillSlots: d.skillSlots.map((b) => ({ ...b })), skillRule: 'hero', skillCd, buffs: [], hitFlash: 0, dead: false,
   };
+  learnSkillsByLevel(p);
+  return p;
 }
 
 function createEnemy(type, tx, ty, camp, slot) {
@@ -59,16 +62,17 @@ function createEnemy(type, tx, ty, camp, slot) {
 
 // 主人公の陣営のキャラ (仲間) を作る。今のゲームにはまだ出てこない (テストで使う)。置くのは addUnit
 //   d: 種類 { name, stats (もとのステータス), gear (固定値。省略可), color, radius, glyph (描くときの字), level (省略時 1),
-//            skills (使える技の並び。省略時なし), skillRule (再使用待ちと MP の決まり SKILL_RULES のキー。省略時 'hero') }
+//            skills (使える技の並び。省略時なし。id のある技は覚えていることにする), skillRule (再使用待ちと MP の決まり SKILL_RULES のキー。省略時 'hero') }
 //   control: 行動の決め方 (src/turn.js の CONTROLLERS。省略時 'wait')
 function createAlly(d, control) {
   const a = {
     def: d, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
     level: d.level || 1, baseStats: { ...d.stats }, gear: d.gear, buffs: [], stats: null, hp: 0, mp: 0, facing: -Math.PI / 2, lastHurt: -99,
     next: game.time, control: control || 'wait', charging: null, hitFlash: 0, dead: false,
-    skills: d.skills || [], skillRule: d.skillRule || 'hero', skillCd: {},
+    skills: d.skills || [], knownSkills: [], skillRule: d.skillRule || 'hero', skillCd: {},
   };
   for (const s of a.skills) a.skillCd[skillKey(a, s)] = 0;
+  for (const s of a.skills) teachSkill(a, s.id);
   refreshStats(a, 'full');
   return a;
 }
@@ -115,7 +119,7 @@ const skillMp = (sk) => sk.mp || 0;
 
 // ----- 技の再使用待ちと MP (どのキャラも同じ形。決まりだけキャラごとに名前を付けて持つ) -----
 // 戦うキャラはみな u.skills (使える技の並び)、u.skillCd = { 技の名札: 再使用までの残りの行動回数 }、u.skillRule (下のどれか) を持つ
-// 技の名札 (skillKey): 技に key があればそれ (主人公のスキル。キー = 名札)、なければ u.skills の中の位置 (敵の技)
+// 技の名札 (skillKey): 技に id があればそれ (data/skills.js のスキル)、なければ u.skills の中の位置 (敵の技)
 // 主人公と敵で違う決まりは、遊び方を変えないためにそのまま残している (1 つにそろえない)
 const SKILL_RULES = {
   // 主人公 (と仲間の省略時): 再使用待ちは小数のまま。使った行動も含めて、自分の行動の後始末 (endTurn) ごとに 1 減る
@@ -126,20 +130,38 @@ const SKILL_RULES = {
   enemy: { cooldown: (u, sk) => Math.max(1, Math.round(sk.cooldown * 100 / (100 + u.stats.skillHaste))), tick: 'beforeAction', mpFloor: false, mpClamp: false },
 };
 const skillRule = (u) => SKILL_RULES[u.skillRule];
-const skillKey = (u, sk) => (sk.key !== undefined ? sk.key : u.skills.indexOf(sk));
+const skillKey = (u, sk) => (sk.id !== undefined ? sk.id : u.skills.indexOf(sk));
 // 技 sk を使ったときの再使用待ち (u の行動回数。スキル加速で短くなる)
 const skillCooldown = (u, sk) => skillRule(u).cooldown(u, sk);
 // 再使用までの残り (0 なら使える)
 const cooldownLeft = (u, sk) => u.skillCd[skillKey(u, sk)] || 0;
 // MP が足りるか
 const enoughMp = (u, sk) => (skillRule(u).mpFloor ? Math.floor(u.mp + 1e-9) : u.mp + 1e-9) >= skillMp(sk);
-// 使えるか (再使用待ちでなく MP が足りる)。覚えているか (解放レベルなど) は呼ぶ側が確かめる
+// 使えるか (再使用待ちでなく MP が足りる)。覚えているか (knowsSkill) は呼ぶ側が確かめる
 const canUseSkill = (u, sk) => cooldownLeft(u, sk) <= 0 && enoughMp(u, sk);
 // 再使用待ちを始める・MP を払う (useSkill)
 function payForSkill(u, sk) {
   u.skillCd[skillKey(u, sk)] = skillCooldown(u, sk);
   u.mp = skillRule(u).mpClamp ? Math.max(0, u.mp - skillMp(sk)) : u.mp - skillMp(sk);
 }
+// ----- 覚えているスキルとスキル欄 (主人公と、data/skills.js の技を持つ仲間) -----
+// u.skills: 覚えられる技 (主人公は SKILLS 全部)。u.knownSkills: 覚えているスキルの id の並び (主人公はセーブに残す)
+// u.skillSlots: スキル欄 [{ key, skill: スキルの id }] (主人公だけ。はじめは data/player.js の skillSlots。セーブには残さない)
+const unitSkill = (u, id) => (typeof id === 'string' ? u.skills.find((s) => s.id === id) : undefined);
+// u がスキル sk を覚えているか (どうやって覚えたかは問わない)
+const knowsSkill = (u, sk) => !!u.knownSkills && u.knownSkills.includes(sk.id);
+// u にスキル id を覚えさせる。スキルを覚えるのはいつもここを通る。u.skills にない id・もう覚えているものは何もしない
+// 新しく覚えたら true
+function teachSkill(u, id) {
+  if (!u.knownSkills || !unitSkill(u, id) || u.knownSkills.includes(id)) return false;
+  u.knownSkills.push(id);
+  return true;
+}
+// スキル欄の並び [{ key, sk }] (u.skills にない id は飛ばす)。覚えていないスキルも入る (画面では暗く出す)
+const skillSlotsOf = (u) => (u.skillSlots || []).map((b) => ({ key: b.key, sk: unitSkill(u, b.skill) })).filter((b) => b.sk);
+// スキル sk を置いたキー (置いていなければ undefined)
+const slotKeyOf = (u, sk) => (skillSlotsOf(u).find((b) => b.sk === sk) || {}).key;
+
 // 再使用待ちを 1 行動ぶん進める (いつ呼ぶかは決まりの tick。src/turn.js)
 function tickCooldowns(u) {
   for (const k in u.skillCd) u.skillCd[k] = Math.max(0, u.skillCd[k] - 1);
@@ -147,6 +169,16 @@ function tickCooldowns(u) {
 
 // ----- 成長 -----
 const DS = P.derivedStats;
+
+// ----- スキルの覚え方 (はじめの決まり): data/player.js の learnAtLevel のレベルになったら自動で覚える -----
+// はじめから遊ぶとき (createPlayer)・レベルアップ (levelUp)・セーブを読んだとき (applySave) に呼ぶ。新しく覚えたスキルの並びを返す
+// ほかの覚え方 (師匠・道具・スキルポイントなど) を足すときは、これと並べて teachSkill を呼ぶ道を作る (この決まりをやめるなら、これを呼ぶ所を置き換える)
+const learnLevelOf = (sk) => PLAYER.learnAtLevel[sk.id];
+function learnSkillsByLevel(u) {
+  const learned = [];
+  for (const [id, lv] of Object.entries(PLAYER.learnAtLevel)) if (u.level >= lv && teachSkill(u, id)) learned.push(unitSkill(u, id));
+  return learned;
+}
 
 // 成長曲線の目安: Lv1 の値 + gain を直線でつないだ増加量
 function growthTarget(k, lv) {
@@ -285,7 +317,8 @@ function levelUp() {
     if (n > 0) gains.push(`${STATS[k].label} +${n}`);
   }
   refreshStats(p, 'full');
-  const learned = SKILLS.filter((s) => s.unlockLevel === p.level).map((s) => `${s.name}（${s.label}）`);
+  // 新しく覚えたスキル (はじめの覚え方)。スキル欄に置いてあればキーも出す
+  const learned = learnSkillsByLevel(p).map((s) => (slotKeyOf(p, s) ? `${s.name}（${slotKeyOf(p, s).toUpperCase()}）` : s.name));
   showMsg(`LEVEL UP!  Lv ${p.level}`, [gains.join('　'), learned.length ? `新しいスキル: ${learned.join('、')}` : ''].filter(Boolean).join('\n'));
   log(`レベルが ${p.level} に上がった！`, '#ffd54f');
   effects.push({ type: 'ring', x: p.x, y: p.y, r0: p.r, r1: p.r * 5, t: 0, life: 0.6, color: '255,213,79' });

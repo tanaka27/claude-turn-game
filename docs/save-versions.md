@@ -17,13 +17,14 @@
 |---|---|
 | v1 | 最初の形 |
 | v2 | 衛兵隊長のクエストの id を倒す敵に合わせた（`goblin` → `c_wolf`、`archer` → `c_bee`、`mage` → `c_salamander`、`king` → `c_wolfKing`、`ogre` → `c_golem`、`treant` → `c_treant`、`warlord` → `c_dragon`）。進み具合（`state` / `count`）はそのまま |
+| v3 | 覚えたスキルの id の並び `player.knownSkills` を足した。v2 まではレベルで自動で覚えるだけだったので、v2 のころの決まり（衝撃波・ダッシュ・闘気 Lv1、旋風斬 Lv3、メテオ Lv6。直し方の中にそのまま書いてある）で保存したレベルから埋める（Lv5 なら `['shockwave', 'whirlwind', 'dash', 'battleAura']`）。レベルが数でなければ Lv1 として埋める |
 
 ## 形を変えるとき（版を足す）
 
 1. `SAVE_VERSION` を 1 上げる
 2. `SAVE_MIGRATIONS` に `[前の版]: (d) => { …; return d; }` を 1 つ足す。ない項目があっても落ちないように書き（`d.player` がないなど）、新しい項目には初めの値を入れる。今のデータ（`QUESTS` / `ITEMS` など）は見ない（あとでデータが変わっても同じ結果になるように。直し方の中の古い id などはその版の記録として書いておく）
 3. `buildSave` / `applySave` を新しい形に合わせ、上の表と [save.md](save.md) の「セーブの形」、`src/save.js` の先頭のコメントを直す
-4. テスト（`tests/migrate.test.js`）に、前の版のセーブ（中身をそのまま書いたもの）が今の形に直って読めることを足す（v1 のもの `V1_SAVE` は残しておけば、v1 → … → 今の形を通して確かめられる）
+4. テスト（`tests/migrate.test.js`）に、前の版のセーブ（中身をそのまま書いたもの）が今の形に直って読めることを足す（v1 のもの `V1_SAVE`・v2 のもの `V2_SAVE` は残しておけば、古い版 → … → 今の形を通して確かめられる）。テストの先頭の `CURRENT`（今の版）も上げる
 
 ## 使えないセーブ
 
@@ -35,5 +36,5 @@
 
 - タイトルを開いただけでは、どちらのセーブも書き換えない（保存するのは遊び始めてから）
 - 使えないブラウザのセーブは、起動時にキー `zankai-turn-save-unread` に写しておく（上書きされても残る）
-- サーバーは、形（`v`）の違うセーブ・読めないファイルを置き換えるとき、`saves/save.json.v<形>.bak` / `saves/save.json.unreadable.bak` にも控えを残す（[save.md](save.md) の「サーバー」）。ふつうに v1 から v2 に上がったときも、最初の保存で `save.json.v1.bak` が残る
+- サーバーは、形（`v`）の違うセーブ・読めないファイルを置き換えるとき、`saves/save.json.v<形>.bak` / `saves/save.json.unreadable.bak` にも控えを残す（[save.md](save.md) の「サーバー」）。ふつうに古い版から今の版に上がったときも、最初の保存で `save.json.v1.bak`（v2 からなら `save.json.v2.bak`）が残る
 - 起動時にサーバーへつながらず、あとでつながったとき（`retryServer`）にサーバーに新しい版のセーブがあったら、サーバーには送らずブラウザだけに保存する

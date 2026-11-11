@@ -3,7 +3,7 @@
 'use strict';
 const assert = require('assert');
 const {
-  newGame, allUnits, livingEnemies, step, wait, press, castAt, runFrames, gateTile, isGate, firstStep,
+  newGame, allUnits, livingEnemies, step, wait, press, castAt, runFrames, gateTile, isGate, firstStep, skill, knows, storedCooldown,
 } = require('./helpers');
 
 function checkInvariants(g, state, where) {
@@ -42,8 +42,8 @@ function decide(g) {
   const e = es.reduce((a, b) => (dist(b) < dist(a) ? b : a));
   const d = dist(e);
   const ready = (key) => {
-    const sk = g.SKILLS.find((s) => s.key === key);
-    return p.level >= sk.unlockLevel && p.skillCd[key] <= 0 && Math.floor(p.mp) >= sk.mp;
+    const sk = skill(g, key);
+    return knows(g, p, sk) && storedCooldown(g, p, sk) <= 0 && Math.floor(p.mp) >= sk.mp;
   };
   if (d <= 2 && ready('5') && !p.buffs.length) return () => press(g, '5');
   if (d <= 2 && ready('2')) return () => castAt(g, '2', p.tx, p.ty);

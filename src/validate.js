@@ -73,13 +73,13 @@ function validateData() {
     check(STATS[b.stat], `data/buffs.js ${id}: stat '${b.stat}' が data/stats.js にない`);
     check(b.mult > 0, `data/buffs.js ${id}: mult は 0 より大きくする`);
   }
-  for (const s of PLAYER.skills.filter((x) => x.type === 'buff')) {
-    check(BUFFS[s.buff], `data/player.js スキル「${s.name}」: buff '${s.buff}' が data/buffs.js にない`);
-    check(s.duration >= 1, `data/player.js スキル「${s.name}」: duration は 1 以上にする`);
+  for (const s of SKILLS.filter((x) => x.type === 'buff')) {
+    check(BUFFS[s.buff], `data/skills.js スキル「${s.name}」: buff '${s.buff}' が data/buffs.js にない`);
+    check(s.duration >= 1, `data/skills.js スキル「${s.name}」: duration は 1 以上にする`);
   }
   // 技の種類: 物理は power、術は base が要る
   const attacks = [['data/player.js', PLAYER.basicAttack],
-    ...PLAYER.skills.filter((s) => s.type !== 'dash' && s.type !== 'buff').map((s) => ['data/player.js', s]),
+    ...SKILLS.filter((s) => s.type !== 'dash' && s.type !== 'buff').map((s) => ['data/skills.js', s]),
     ...Object.entries(ENEMIES).flatMap(([type, d]) => d.attacks.map((a) => [`data/enemies.js ${type}`, a]))];
   for (const [where, a] of attacks) {
     const kind = a.kind || 'physical';
@@ -89,12 +89,26 @@ function validateData() {
   }
   // MP: 主人公は最大 MP と MP 再生を持つ。スキルの消費 MP は 0 以上で、Lv1 の最大 MP を超えない (超えると使えない技になる)
   for (const k of ['maxMp', 'mpRegen']) check(PLAYER.stats[k] >= 0, `data/player.js stats: ${k} がない`);
-  for (const s of PLAYER.skills) {
-    check(s.mp === undefined || s.mp >= 0, `data/player.js のスキル「${s.name}」: mp は 0 以上にする`);
-    check(!(s.mp > PLAYER.stats.maxMp), `data/player.js のスキル「${s.name}」: mp ${s.mp} が Lv1 の maxMp ${PLAYER.stats.maxMp} より大きい`);
+  for (const s of SKILLS) {
+    check(s.mp === undefined || s.mp >= 0, `data/skills.js のスキル「${s.name}」: mp は 0 以上にする`);
+    check(!(s.mp > PLAYER.stats.maxMp), `data/skills.js のスキル「${s.name}」: mp ${s.mp} が Lv1 の maxMp ${PLAYER.stats.maxMp} より大きい`);
   }
-  const keys = PLAYER.skills.map((s) => s.key);
-  check(new Set(keys).size === keys.length, 'data/player.js: スキルのキーが重なっている');
+  // スキルの id (覚えたスキル・スキル欄・セーブが指す)・覚え方 (learnAtLevel)・スキル欄 (skillSlots)
+  const skillIds = SKILLS.map((s) => s.id);
+  for (const s of SKILLS) check(typeof s.id === 'string' && s.id !== '', `data/skills.js のスキル「${s.name}」: id がない`);
+  check(new Set(skillIds).size === skillIds.length, 'data/skills.js: スキルの id が重なっている');
+  for (const [id, lv] of Object.entries(PLAYER.learnAtLevel || {})) {
+    check(skillIds.includes(id), `data/player.js learnAtLevel: スキル '${id}' が data/skills.js にない`);
+    check(Number.isInteger(lv) && lv >= 1 && lv <= P.progression.maxLevel, `data/player.js learnAtLevel.${id}: レベル ${lv} は 1〜${P.progression.maxLevel} の整数にする`);
+  }
+  check(Object.values(PLAYER.learnAtLevel || {}).includes(1), 'data/player.js learnAtLevel: Lv1 で覚えるスキルがない (はじめから遊ぶとスキルがない)');
+  const slots = PLAYER.skillSlots || [];
+  for (const b of slots) check(skillIds.includes(b.skill), `data/player.js skillSlots: キー '${b.key}' のスキル '${b.skill}' が data/skills.js にない`);
+  const slotted = slots.map((b) => b.skill);
+  check(new Set(slotted).size === slotted.length, 'data/player.js skillSlots: 同じスキルを 2 つのキーに置いている');
+  const keys = slots.map((b) => b.key);
+  check(keys.every((k) => typeof k === 'string' && k !== ''), 'data/player.js skillSlots: key がないものがある');
+  check(new Set(keys).size === keys.length, 'data/player.js skillSlots: スキルのキーが重なっている');
   // 移動・待機・画面のキーと重なると、そちらが先に使われてスキルが出ない
   const reserved = [...Object.keys(MOVE_KEYS), ...WAIT_KEYS, 'i', 'f', 'p', 'escape', 'enter'];
   for (const k of keys) check(!reserved.includes(k), `data/player.js: スキルのキー '${k}' は移動や画面のキーと重なっている`);

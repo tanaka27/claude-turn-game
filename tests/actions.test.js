@@ -1,7 +1,7 @@
 // 主人公の行動 (移動・攻撃・待機・スキル・ダッシュ・回復薬)。キー入力の処理を通して試す
 'use strict';
 const assert = require('assert');
-const { newGame, arena, step, wait, press, castAt, messages } = require('./helpers');
+const { newGame, arena, step, wait, press, castAt, messages, skill, storedCooldown } = require('./helpers');
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg || ''} ${a} != ${b}`);
 function open(opts = {}) {
@@ -48,12 +48,12 @@ test('敵のいるマスへ動くと攻撃する (動かない)', () => {
 
 test('スキル: MP を使い、再使用待ちになる', () => {
   const { g, p, es: [e] } = open({ enemies: [{ type: 'golem', at: [9, 7] }] });
-  const sk = g.SKILLS.find((s) => s.key === '1');
+  const sk = skill(g, '1');
   p.mp = 10; p.lastHurt = g.game.time; // 休息の回復を入れない
   g.rng.force(0.99, 0.5);
   castAt(g, '1', 9, 7);
   near(p.mp, 10 - sk.mp + p.stats.mpRegen * 1);
-  assert.strictEqual(p.skillCd['1'], sk.cooldown - 1);
+  assert.strictEqual(storedCooldown(g, p, sk), sk.cooldown - 1);
   // (5.5 − 3.5) × 1.4 = 2.8 → 3
   assert.strictEqual(e.hp, e.stats.maxHp - 3);
 });
@@ -64,7 +64,7 @@ test('スキル: MP が足りないと構えられず、時間も進まない', 
   const t0 = g.game.time;
   castAt(g, '1', 9, 7);
   assert.strictEqual(g.aiming, null);
-  assert.strictEqual(p.skillCd['1'], 0);
+  assert.strictEqual(storedCooldown(g, p, skill(g, '1')), 0);
   assert.strictEqual(p.mp, 2.9);
   assert.strictEqual(g.game.time, t0);
   assert.ok(messages(g).some((m) => m.includes('MP が足りない')));
@@ -111,7 +111,7 @@ test('ダッシュ: 1 マスも進めないときは行動にならない (MP �
   castAt(g, '4', 12, 7);
   assert.deepStrictEqual([p.tx, p.ty], [5, 7]);
   assert.strictEqual(p.mp, mp);
-  assert.strictEqual(p.skillCd['4'], 0);
+  assert.strictEqual(storedCooldown(g, p, skill(g, '4')), 0);
   assert.strictEqual(g.game.time, t);
 });
 

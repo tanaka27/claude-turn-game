@@ -1,7 +1,7 @@
 // ダメージ計算 (物理・会心・ミス・術)
 'use strict';
 const assert = require('assert');
-const { newGame, arena, step, wait, castAt, isHostile, messages } = require('./helpers');
+const { newGame, arena, step, wait, castAt, isHostile, messages, setLevel } = require('./helpers');
 
 // 主人公 (こうげき力 11) のとなりに敵を 1 体置く
 function setup(type, level) {
@@ -49,7 +49,7 @@ test('物理: 基礎ダメージが 1 未満なら 0 (ミス) か 1。ミスで�
 test('術: (固定値 + かしこさ × 0.8) × 50 / (50 + 術防御)。会心なし', () => {
   const g = newGame();
   const [e] = arena(g, { cols: 12, rows: 12, player: [3, 5], enemies: [{ type: 'golem', at: [6, 5], level: 7 }] });
-  g.player.level = 6; // メテオは Lv6 から
+  setLevel(g, 6); // メテオは Lv6 から
   const mp0 = g.player.mp;
   g.rng.force(0.5);
   castAt(g, '3', 6, 5);
@@ -75,7 +75,7 @@ test('敵から主人公へ: ウルフ Lv1 の噛みつきは 1 (2.3 − 5 × 0.
 test('術は会心にならない (乱数が小さくても同じダメージ)', () => {
   const g = newGame();
   const [e] = arena(g, { cols: 12, rows: 12, player: [3, 5], enemies: [{ type: 'golem', at: [6, 5], level: 7 }] });
-  g.player.level = 6;
+  setLevel(g, 6);
   g.rng.force(0.5, 0.0, 0.0);
   castAt(g, '3', 6, 5);
   assert.strictEqual(e.hp, 74 - 12);

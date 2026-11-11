@@ -1,7 +1,7 @@
 # ステータスとダメージ（物理・術）
 
 ステータスの意味、技の種類（物理と術）、ダメージ計算。
-数値は `params.js` の `damage` / `magic` / `derivedStats`、技の `kind` / `power` / `base` は `data/player.js` と `data/enemies.js`。コードは `src/combat.js` の `rollDamage`。
+数値は `params.js` の `damage` / `magic` / `derivedStats`、技の `kind` / `power` / `base` は `data/skills.js`（主人公の通常攻撃は `data/player.js`）と `data/enemies.js`。コードは `src/combat.js` の `rollDamage`。
 技の範囲・予告は [combat.md](combat.md)。
 
 ## ステータス

@@ -42,7 +42,7 @@
 ## 技を使う（どのキャラも同じ）
 
 - 技を使うのはどのキャラも `useSkill(u, sk, tx, ty)`（攻撃・予告ありの技・ダッシュ・強化）。主人公の入力（`castSkill`）と敵の AI（`useEnemyAttack`）は、何をどこへ使うかを決めて呼ぶだけ
-- どのキャラも `skills`（技の並び）、`skillCd`（再使用待ち）、`skillRule`（再使用待ちと MP の決まり: 主人公 `hero`、敵 `enemy`）を持つ。詳しくは [skill-use.md](skill-use.md)
+- どのキャラも `skills`（技の並び）、`skillCd`（再使用待ち）、`skillRule`（再使用待ちと MP の決まり: 主人公 `hero`、敵 `enemy`）を持つ。主人公と仲間は覚えているスキルの id `knownSkills`、主人公はスキル欄 `skillSlots`（キー → スキルの id）も持つ。詳しくは [skill-use.md](skill-use.md)
 
 ## 敵の狙う相手
 
@@ -72,7 +72,7 @@
 
 ## 仲間を作る（まだゲームには出てこない）
 
-- `createAlly(d, control)`: 主人公の陣営のキャラを作る。`d` は `{ name, stats（もとのステータス）, gear, color, radius, glyph, level, skills, skillRule }`（`baseStats` / `gear` として持ち、主人公・敵と同じ `computeStats` で計算する。`skills` は使える技の並び（主人公のスキルも渡せる）、`skillRule` の省略時は `hero`）。`control` の省略時は `wait`
+- `createAlly(d, control)`: 主人公の陣営のキャラを作る。`d` は `{ name, stats（もとのステータス）, gear, color, radius, glyph, level, skills, skillRule }`（`baseStats` / `gear` として持ち、主人公・敵と同じ `computeStats` で計算する。`skills` は使える技の並び（主人公のスキル（`data/skills.js`）も渡せる。`id` のある技は覚えていることになる（`knownSkills`））、`skillRule` の省略時は `hero`）。`control` の省略時は `wait`
 - 仲間も `useSkill` で技を使える（テストが直接呼ぶ。技を選ぶ AI はまだない）
 - `addUnit(u, tx, ty)`: マスに置いて `units` に足す
 - 描くときは敵と同じ形（丸い体と字）で、頭上の HP バーは緑（`THEME.allyHp`）。行動順の枠は主人公と同じ青、ミニマップは小さな水色の四角

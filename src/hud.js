@@ -80,9 +80,9 @@ function drawHUD() {
   party.forEach((u, i) => drawPartyCard(u, 16, 16 + i * (CARD.h + CARD.gap)));
   const partyBottom = 16 + party.length * (CARD.h + CARD.gap);
 
-  // スキルバー
-  const slots = SKILLS.map((s) => ({ label: s.label, name: s.name, cd: cooldownLeft(p, s), max: skillCooldown(p, s), active: aiming === s,
-      lock: p.level < s.unlockLevel ? s.unlockLevel : 0, mp: skillMp(s), short: !enoughMp(p, s) }))
+  // スキルバー (主人公のスキル欄の並び。覚えていないスキルは lock に出す文)
+  const slots = skillSlotsOf(p).map(({ key, sk: s }) => ({ label: key.toUpperCase(), name: s.name, cd: cooldownLeft(p, s), max: skillCooldown(p, s), active: aiming === s,
+      lock: knowsSkill(p, s) ? '' : learnLevelOf(s) ? `Lv${learnLevelOf(s)} で解放` : '未習得', mp: skillMp(s), short: !enoughMp(p, s) }))
     .concat(Object.entries(IT.potions).map(([id, po]) => ({ label: po.key.toUpperCase(), name: po.name, cd: 0, max: 1, count: p.potions[id] || 0 })))
     .concat([{ label: 'I', name: '道具', cd: 0, max: 1, button: 'items' }]);
   const sz = 62, gap = 12, total = slots.length * sz + (slots.length - 1) * gap;
@@ -97,11 +97,11 @@ function drawHUD() {
     ctx.lineWidth = 2; ctx.strokeStyle = s.button ? '#ffd54f' : s.cd > 0 || s.lock || s.short ? '#30363d' : '#4fc3f7'; ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = '#e6edf3'; ctx.font = 'bold 14px sans-serif';
     if (s.lock) {
-      // まだ使えないスキルは名前を暗くし、使えるようになるレベルを出す
+      // まだ覚えていないスキルは名前を暗くし、使えるようになるレベルを出す
       ctx.fillStyle = '#6e7681'; ctx.font = 'bold 12px sans-serif';
       ctx.fillText(s.name, sx + sz / 2, sy + sz / 2 - 6);
       ctx.fillStyle = '#9da7b3'; ctx.font = 'bold 11px sans-serif';
-      ctx.fillText(`Lv${s.lock} で解放`, sx + sz / 2, sy + sz / 2 + 14);
+      ctx.fillText(s.lock, sx + sz / 2, sy + sz / 2 + 14);
     } else {
       ctx.fillText(s.name, sx + sz / 2, sy + sz / 2 + 5);
     }

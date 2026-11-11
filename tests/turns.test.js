@@ -1,7 +1,7 @@
 // ターンの進み方 (速度による行動順) と、時間で進むもの
 'use strict';
 const assert = require('assert');
-const { newGame, arena, traceTurns, setNextAction, setPlayerBase, wait, press, castAt, livingEnemies, lootsOnGround, messages } = require('./helpers');
+const { newGame, arena, traceTurns, setNextAction, setPlayerBase, wait, press, castAt, livingEnemies, lootsOnGround, messages, skill, storedCooldown } = require('./helpers');
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg || ''} ${a} != ${b}`);
 
@@ -71,18 +71,18 @@ test('敵の MP も時間で回復する', () => {
 test('スキルの再使用待ちは主人公の行動ごとに 1 減る (使った行動でも 1 減る)', () => {
   const g = newGame();
   arena(g, { cols: 15, rows: 15, player: [2, 7] });
-  const sk = g.SKILLS.find((s) => s.key === '1');
+  const sk = skill(g, '1');
   castAt(g, '1', 8, 7);
-  assert.strictEqual(g.player.skillCd['1'], sk.cooldown - 1);
+  assert.strictEqual(storedCooldown(g, g.player, sk), sk.cooldown - 1);
   press(g, '1');
   assert.strictEqual(g.aiming, null, '再使用待ちの間は構えられない');
   assert.ok(messages(g).some((m) => m.includes(`あと ${sk.cooldown - 1} 行動`)));
   wait(g, sk.cooldown - 2);
-  assert.strictEqual(g.player.skillCd['1'], 1);
+  assert.strictEqual(storedCooldown(g, g.player, sk), 1);
   wait(g);
-  assert.strictEqual(g.player.skillCd['1'], 0);
+  assert.strictEqual(storedCooldown(g, g.player, sk), 0);
   press(g, '1');
-  assert.strictEqual(g.aiming && g.aiming.key, '1');
+  assert.strictEqual(g.aiming, sk);
 });
 
 test('湧き場所: 倒した敵は respawn ターン後に出現予告を挟んで湧き直す', () => {

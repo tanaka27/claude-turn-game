@@ -101,6 +101,8 @@ const statPartsOf = (g, u) => { const s = g.statParts(u); return { bare: plain(s
 const strengthHtml = (g) => g.strengthHtml();
 // レベルを 1 上げる (経験値を通さずに)
 function levelUp(g) { g.levelUp(); }
+// 主人公のレベルを lv にする (成長もレベルアップの演出もなし)。はじめの覚え方でそのレベルなら覚えているスキルは覚える
+function setLevel(g, lv) { g.player.level = lv; g.learnSkillsByLevel(g.player); }
 // 予告中の技の範囲 (画面の赤いマス) を 'x,y' の集合で
 const telegraphTiles = (g) => new Set(g.hazards.flatMap((h) => h.tiles.map(([x, y]) => `${x},${y}`)));
 const lootsOnGround = (g) => g.loots.length;
@@ -149,7 +151,27 @@ function castAt(g, key, tx, ty) {
   g.mouse.tx = tx; g.mouse.ty = ty;
   press(g, key);
 }
-const skill = (g, key) => g.SKILLS.find((s) => s.key === key);
+// 主人公のスキル欄でキー key に置いてあるスキル (覚えていないものも)
+const skill = (g, key) => g.skillByKey(key);
+// スキルの id で (data/skills.js の定義)
+const skillById = (g, id) => g.SKILLS.find((s) => s.id === id);
+// 主人公のスキル欄で sk を置いたキー
+const keyOf = (g, sk) => g.slotKeyOf(g.player, sk);
+// キャラ u が覚えているか / 覚えているスキルの id の並び / 覚えさせる (レベルを通さずに)
+const knows = (g, u, sk) => g.knowsSkill(u, sk);
+const knownSkillIds = (u) => Array.from(u.knownSkills || []);
+const teach = (g, u, id) => g.teachSkill(u, id);
+// テストだけで使うスキルを data/skills.js の SKILLS に足す (主人公が覚えられる技になる)
+function defineSkill(g, def) { g.SKILLS.push(def); return def; }
+// 主人公のスキル欄のキー key にスキル id を置く (なければ欄を足す)
+function bindSkill(g, key, id) {
+  const slots = g.player.skillSlots, b = slots.find((x) => x.key === key);
+  if (b) b.skill = id; else slots.push({ key, skill: id });
+}
+// 再使用待ちの入れ物に入っている値 (技を使っていなければ 0。入れ物の名札は skillKey)
+const storedCooldown = (g, u, sk) => u.skillCd[g.skillKey(u, sk)];
+// データの確認をもう一度して、見つかった食い違いの文の並び (データを書き換えたあとに)
+const dataProblems = (g) => Array.from(g.validateData());
 // 技の範囲を 'x,y' の並び (ソート済み) で
 function attackTiles(g, u, atk, tx, ty) {
   return Array.from(g.planAttack(u, atk, tx, ty).tiles, ([x, y]) => `${x},${y}`).sort();
@@ -171,7 +193,8 @@ function runFrames(g, sec, dt = 0.05) { for (let t = 0; t < sec; t += dt) { g.ga
 
 module.exports = {
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
-  recompute, setPlayerBase, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns,
+  recompute, setPlayerBase, setLevel, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns,
   press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,
   useSkillBy, cooldownLeftOf, cooldownLengthOf, canUseSkillOf, setCooldown, enemyAttack,
+  skillById, keyOf, knows, knownSkillIds, teach, defineSkill, bindSkill, storedCooldown, dataProblems,
 };

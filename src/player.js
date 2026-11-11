@@ -12,7 +12,8 @@ const MOVE_KEYS = {
 const NUMPAD = { Numpad8: [0, -1], Numpad2: [0, 1], Numpad4: [-1, 0], Numpad6: [1, 0],
   Numpad7: [-1, -1], Numpad9: [1, -1], Numpad1: [-1, 1], Numpad3: [1, 1] };
 const WAIT_KEYS = [' ', '.'];
-const skillByKey = (k) => SKILLS.find((s) => s.key === k);
+// キー k に置いたスキル (主人公のスキル欄 player.skillSlots から。覚えていないスキルも返す)
+const skillByKey = (k) => (skillSlotsOf(player).find((b) => b.key === k) || {}).sk;
 const potionByKey = (k) => Object.keys(IT.potions).find((id) => IT.potions[id].key === k);
 
 // 主人公が行動できるか (主人公の番で、画面を開いていない)
@@ -44,7 +45,7 @@ window.addEventListener('keydown', (e) => {
   const dir = NUMPAD[e.code] || (e.code === 'Numpad5' ? null : MOVE_KEYS[k]);
   player.travel = null;
   if (aiming) {
-    if (k === 'enter' || k === aiming.key) { castSkill(aiming, mouse.tx, mouse.ty); return; }
+    if (k === 'enter' || skillByKey(k) === aiming) { castSkill(aiming, mouse.tx, mouse.ty); return; }
     if (dir || WAIT_KEYS.includes(k)) aiming = null; // 動いたら狙うのをやめる
     else return;
   }
@@ -57,8 +58,9 @@ window.addEventListener('keydown', (e) => {
   const potion = potionByKey(k);
   if (potion) { act(() => usePotion(potion)); return; }
   const sk = skillByKey(k);
-  if (sk && player.level < sk.unlockLevel) {
-    log(`${sk.name}は Lv${sk.unlockLevel} で使えるようになる。`, '#9da7b3');
+  if (sk && !knowsSkill(player, sk)) {
+    // まだ覚えていない (はじめの覚え方で覚えるレベルがあれば、それを知らせる)
+    log(learnLevelOf(sk) ? `${sk.name}は Lv${learnLevelOf(sk)} で使えるようになる。` : `${sk.name}はまだ覚えていない。`, '#9da7b3');
   } else if (sk && cooldownLeft(player, sk) > 0) {
     log(`${sk.name}はあと ${Math.ceil(cooldownLeft(player, sk))} 行動で使える。`, '#9da7b3');
   } else if (sk && !enoughMp(player, sk)) {
