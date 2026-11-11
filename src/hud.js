@@ -81,8 +81,8 @@ function drawHUD() {
   const partyBottom = 16 + party.length * (CARD.h + CARD.gap);
 
   // スキルバー
-  const slots = SKILLS.map((s) => ({ label: s.label, name: s.name, cd: p.skillCd[s.key], max: skillCooldown(s), active: aiming === s,
-      lock: p.level < s.unlockLevel ? s.unlockLevel : 0, mp: skillMp(s), short: !enoughMp(s) }))
+  const slots = SKILLS.map((s) => ({ label: s.label, name: s.name, cd: cooldownLeft(p, s), max: skillCooldown(p, s), active: aiming === s,
+      lock: p.level < s.unlockLevel ? s.unlockLevel : 0, mp: skillMp(s), short: !enoughMp(p, s) }))
     .concat(Object.entries(IT.potions).map(([id, po]) => ({ label: po.key.toUpperCase(), name: po.name, cd: 0, max: 1, count: p.potions[id] || 0 })))
     .concat([{ label: 'I', name: '道具', cd: 0, max: 1, button: 'items' }]);
   const sz = 62, gap = 12, total = slots.length * sz + (slots.length - 1) * gap;

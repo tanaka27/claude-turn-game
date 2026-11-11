@@ -1,6 +1,7 @@
 # 戦闘（技・予告）
 
 技の定義形式、主人公の技、敵の技の予告、判定の仕組み。
+技を使う道（どのキャラも同じ `useSkill`）と、再使用待ち・MP の決まり（主人公と敵で違う）は [skill-use.md](skill-use.md)。
 ステータスとダメージ計算（物理・術）は [damage.md](damage.md)。
 主人公の技は `data/player.js`、敵の技は `data/enemies.js`。コードは `src/combat.js`。
 行動の順番は [turn.md](turn.md)。
@@ -17,7 +18,7 @@
 | angle | fan の角度（度） |
 | width | line / projectile の幅（マス。今は 1 だけ） |
 | charge | 0 なら使ったその場で判定。1 なら予告を出し、使った者の次の行動で判定 |
-| cooldown | 再使用までの行動回数（N なら N 回の行動に 1 回使える）。スキル加速で短くなる（敵は四捨五入して最低 1） |
+| cooldown | 再使用までの行動回数（N なら N 回の行動に 1 回使える）。スキル加速で短くなる（敵は四捨五入して最低 1。[skill-use.md](skill-use.md)） |
 | mp | 技が使う MP（主人公も敵も。省略時 0）。足りないと使えない |
 | kind | `physical`（物理、省略時）/ `magic`（術） |
 | power | 物理の威力倍率 |
@@ -38,12 +39,12 @@
 | 4 | ダッシュ | 狙った向き（8 方向）へ最大 4 マス一気に進む（1 行動） | 6 | 2 | - | Lv1 |
 | 5 | 闘気 | 自分に「攻撃力アップ」（こうげき力 ×1.3）を 6 行動のあいだかける。キーを押すとすぐ使う（狙わない） | 12 | 4 | 強化 | Lv1 |
 
-主人公のスキルはどれも予告なし（使ったその場で当たる）。
+主人公のスキルはどれも予告なし（使ったその場で当たる）。技を使う道はどのキャラも同じなので、仲間・敵も同じ形の技（ダッシュ・強化を含む）を使える（[skill-use.md](skill-use.md)）。
 
 ### 強化・弱体（バフ・デバフ。コードではまとめて buff）
 
 - 種類は `data/buffs.js` の `BUFFS`（表示名・変えるステータス `stat`・倍率 `mult`・アイコンの字 `icon` と色 `color`）。`mult` が 1 より大きいと強化（アイコンに緑の ▲）、1 より小さいと弱体（赤の ▼）。どれをかけて何行動続くかは技（`type: 'buff'`、`buff`、`duration`）に書く
-- 今のデータにあるのは強化 1 つだけで、かける手段も主人公が自分にかける技だけ。弱体の種類・敵や仲間にかける技はまだない（しくみはどのキャラにも効く。テストは `tests/effects.test.js` で自分の弱体を足して確かめている）
+- 今のデータにあるのは強化 1 つだけで、かける手段も自分にかける技（`type: 'buff'`）だけ。データにあるのは主人公の闘気だけだが、技を使う道は同じなので敵・仲間も強化の技を自分に使える（`castBuff`。主人公以外は文の頭に名前が付く。テストは `tests/skills.test.js`）。弱体の種類・相手にかける技はまだない（しくみはどのキャラにも効く。テストは `tests/effects.test.js` で自分の弱体を足して確かめている）
 
 | キー | 名前 | 効果 | アイコン |
 |---|---|---|---|
@@ -59,13 +60,13 @@
 
 ### MP
 
-- スキルを使うと `mp` だけ MP が減る（`castSkill`）。今の MP（切り捨て）が足りないと使えず、キーを押したとき・使おうとしたときにメッセージ欄に「MP が足りない（〇〇は MP N、今 M）。」と出る（`enoughMp` / `logNoMp`、`src/player.js`）。再使用待ちの判定が先
+- スキルを使うと `mp` だけ MP が減る（`useSkill`）。主人公は今の MP（切り捨て）が足りないと使えず、キーを押したとき・使おうとしたときにメッセージ欄に「MP が足りない（〇〇は MP N、今 M）。」と出る（`enoughMp` / `logNoMp`、文は `src/player.js`）。再使用待ちの判定が先。敵の比べ方は [skill-use.md](skill-use.md)
 - 再使用待ちはそのまま残す。MP を入れたときに、MP でも回数が限られるようになったので、旋風斬を 7 → 6、メテオを 14 → 10 に短くした
 - 最大 MP は Lv1 で 12（レベルで上がる。[progression.md](progression.md)）。MP は時間で回復する（MP再生 0.2 / ターン、休息中はさらに最大MP の 2% / ターン。[turn.md](turn.md)）。Lv1 なら衝撃波を 4 回続けて撃つと尽き、休息中なら 1 発分を約 7 ターンで取り戻す
 
 ## 敵の技の予告
 
-`charge: 1` の技は、使うと範囲のマスが赤く塗られ（予告）、**その敵の次の行動**で判定する。
+`charge: 1` の技は、使うと範囲のマスが赤く塗られ（予告）、**その敵の次の行動**で判定する（今のデータでは敵の技だけにあるが、しくみはどのキャラにも効く。出すのは `runUntilInput` の `releaseCharge`。[skill-use.md](skill-use.md)）。
 その間に範囲の外へ出れば当たらない。予告には「あと N」（それまでに主人公が動ける回数）を出し、1 のときは点滅する。
 予告中の敵は頭上に「!」が付き、メッセージ欄に「〇〇は△△の構えをとった。」と出る。
 
@@ -78,7 +79,7 @@
   - line / projectile: `rayTiles` で直線のマス（攻撃を遮る地形の手前まで）
   - lob: 射程より遠ければ同じ向きで射程いっぱいのマスにする。着弾点の半径内で、着弾点から視線が通るマス（着弾点が壁の中なら視線は見ない）
 - `resolveAttack(h)`: 判定。範囲のマスにいる相手（使った者の陣営から見た敵 `opponents(h.faction)`。敵の技なら主人公の陣営のキャラ全員）に `dealDamage`（同じ相手には 1 回だけ）。projectile は弾の通り道を近い順に見て、`pierce` でなければ最初に当たった相手で止まる
-- `startCharge` / `cancelCharge`: 予告を `hazards` に出す・消す。敵の `charging` に持つ
+- `startCharge` / `cancelCharge` / `releaseCharge`: 予告を `hazards` に出す・消す・出す（判定する）。使った者の `charging` に持つ
 - `rollDamage(src, tgt, a)`: 技 `a` の `kind` で物理か術の式を選び、`{ dmg, crit }` を返す
 - `dealDamage(src, tgt, a, what)`: `rollDamage` でダメージを決め、浮かぶ数字、メッセージ欄（`damageLine`）。待機中の敵は追跡を始める（`aggro`）。HP が 0 以下なら `kill`（主人公・敵・仲間で分かれる）。色・文・倒れたときの分かれ方は [units.md](units.md)
-- 主人公のスキルは `castSkill`（`src/player.js`）が MP を確かめ → `planAttack` → `resolveAttack`（強化の技は `castBuff`、ダッシュは `dash`）→ 再使用を設定・MP を減らす → `endPlayerAction`。狙っている間は同じ `planAttack` の範囲を白く表示する
+- 技を使うのはどのキャラも `useSkill(u, sk, tx, ty, plan)`（[skill-use.md](skill-use.md)）。主人公のスキルは `castSkill`（`src/player.js`）が再使用待ち・MP を確かめて（足りなければ文を出す）`useSkill` を呼び、使えたら `endPlayerAction`。狙っている間は同じ `planAttack` の範囲を白く表示する

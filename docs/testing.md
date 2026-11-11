@@ -32,6 +32,7 @@ node tests/run.js damage     （名前に damage を含むものだけ。「フ�
 | `tests/effects.test.js` | 強化・弱体がどのキャラにも同じしくみで効くか（弱体の種類はテストの中で `defineEffect` で足す）: 効果なしなら敵（全種類・いくつかのレベル）・仲間を計算し直しても作ったときと同じ、敵の守備ダウンで受けるダメージが増える・敵自身の行動回数で切れて元に戻る、攻撃ダウンで与えるダメージが減る、鈍足・加速で行動の回数が変わる（敵・仲間）、最大 HP ダウンで HP が切られ切れても戻らない、敵の gear は倍率を受けない、帰り着いた敵・倒れた敵と仲間は消える、主人公の弱体とつよさの画面、装備の付け替え・レベルアップの HP・MP の合わせ方 |
 | `tests/allies.test.js` | 主人公の陣営のほかのキャラ（仲間。`addAlly` で置く）: マスをふさぐ、速度どおりに行動順に入る、仲間しか見えない敵が仲間を狙って近づき攻撃する、予告の技が当たる、倒れても主人公の倒れた流れにならず経験値も入らない、仲間がいても敵を倒せば経験値 |
 | `tests/actions.test.js` | 移動・攻撃・待機・スキル（MP・再使用待ち・解放レベル）・ダッシュ・回復薬 |
+| `tests/skills.test.js` | 技を使う道（`useSkill`）がどのキャラにも同じか: 仲間が主人公のスキル（弾・まわり・投げる・ダッシュ・強化）を使い MP を払って再使用待ちになる、仲間の予告ありの技（テストの中で足した技）が次の行動で範囲の敵に当たる、再使用待ち・MP 不足では使えない、敵が強化の技を自分に使う、主人公と敵で違う再使用待ち・MP の決まり（[skill-use.md](skill-use.md)）、主人公の文が今までどおり |
 | `tests/save.test.js` | セーブの往復（`buildSave` → `migrateSave` → `applySave`）、ないゾーン、版の違い、おかしな値 |
 | `tests/smoke.test.js` | 通し試験。はじめから草原へ出て、簡単な方針（近づいて殴る・スキル・HP が減ったら回復薬）で 400 行動 × 3 つの種。毎行動、不変条件（HP・MP・ステータスに NaN がない、HP が 0〜最大、同じマスに 2 体いない、通れないマスにいない、時間が戻らない）を確かめる |
 
@@ -81,8 +82,8 @@ test('となりの敵を殴ると HP が減る', () => {
 ## テストが頼っている内部の名前（作りを変えたら `tests/helpers.js` を直す）
 
 - 試験場: `WORLD.zones` にゾーンを足して `enterZone`、湧いた敵は `camps[i].slots[j].enemy` から取り、`placeUnit` と `e.home` で置き直す。`computeFlow(…, flow)`
-- キャラ: `player` / `units`（主人公も入る。敵は `faction === 'enemy'`）、`unitAt`、仲間は `createAlly` / `addUnit`（`addAlly`）、敵の狙う相手 `e.target`（`targetOf`）、`u.stats` / `u.hp` / `u.mp` / `u.tx` / `u.ty` / `u.dead` / `u.level` / `u.exp` / `u.base` / `u.buffs` / `u.skillCd`、敵の `e.state`（`'idle'` / `'chase'` / `'return'`）と `e.invuln`、`e.next`（行動順のテストで時刻を合わせる）
+- キャラ: `player` / `units`（主人公も入る。敵は `faction === 'enemy'`）、`unitAt`、仲間は `createAlly` / `addUnit`（`addAlly`）、敵の狙う相手 `e.target`（`targetOf`）、`u.stats` / `u.hp` / `u.mp` / `u.tx` / `u.ty` / `u.dead` / `u.level` / `u.exp` / `u.base` / `u.buffs` / `u.skillCd`（主人公はスキルのキー `'1'` などで引く。テスト本体が直接見る）/ `u.baseStats`（敵）、仲間の種類の `skills`、敵の `e.def.attacks`（`enemyAttack`）、敵の `e.state`（`'idle'` / `'chase'` / `'return'`）と `e.invuln`、`e.next`（行動順のテストで時刻を合わせる）
 - ステータス: `deriveStats`、`refreshStats`（計算し直し）、`statParts`（`statPartsOf`）、`addBuff`（技を使わずに強化・弱体をかける。かけた者 `src` も渡せる）、`BUFFS`（`defineEffect` でテスト用の種類を足す）、`createEnemy`（`makeEnemy`。湧き場所を通さずに作る）、`levelUp`、`strengthHtml`（キャラクターの画面のつよさ）、`equipItem` / `unequipItem`
 - 行動の記録: どのキャラも行動のあとに通る `endTurn` を包んで、誰がいつ行動したかを数える（`traceTurns`）
-- 技: `planAttack`（範囲）、`resolveAttack`（判定）、`hazards`（予告中の範囲）、`SKILLS`
+- 技: `planAttack`（範囲）、`resolveAttack`（判定）、`hazards`（予告中の範囲）、`SKILLS`、どのキャラも同じ技を使う道 `useSkill`（`useSkillBy`）、`cooldownLeft` / `skillCooldown` / `canUseSkill`（`cooldownLeftOf` / `cooldownLengthOf` / `canUseSkillOf`）、`skillKey`（`setCooldown`）
 - そのほか: `loots`（落とし物）、`logLines`（メッセージ欄）、`aiming` / `mouse`（スキルを構える）、`updateWorld`（倒れてから復活するまでの実時間）、`findPath` / `gateAt` / `zone.gates`（通し試験の道案内）、セーブの `buildSave` / `migrateSave` / `applySave`（`startGame(save)` 経由）/ `saveGame` / `readLocalSave`

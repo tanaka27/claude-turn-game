@@ -59,9 +59,9 @@ window.addEventListener('keydown', (e) => {
   const sk = skillByKey(k);
   if (sk && player.level < sk.unlockLevel) {
     log(`${sk.name}は Lv${sk.unlockLevel} で使えるようになる。`, '#9da7b3');
-  } else if (sk && player.skillCd[sk.key] > 0) {
-    log(`${sk.name}はあと ${Math.ceil(player.skillCd[sk.key])} 行動で使える。`, '#9da7b3');
-  } else if (sk && !enoughMp(sk)) {
+  } else if (sk && cooldownLeft(player, sk) > 0) {
+    log(`${sk.name}はあと ${Math.ceil(cooldownLeft(player, sk))} 行動で使える。`, '#9da7b3');
+  } else if (sk && !enoughMp(player, sk)) {
     logNoMp(sk);
   } else if (sk && sk.type === 'buff') {
     castSkill(sk, player.tx, player.ty); // 強化は狙わずにすぐ使う
@@ -128,59 +128,14 @@ function bumpAttack(e) {
 
 function waitTurn() { return true; }
 
-// スキルを (tx, ty) のマスへ向けて使う
+// スキルを (tx, ty) のマスへ向けて使う。使うのはどのキャラも同じ useSkill (src/combat.js)
+// ここは主人公だけのこと: 狙うのをやめる、入力の時刻、MP が足りないときの文、使えたら主人公の行動を終える
 function castSkill(sk, tx, ty) {
-  const p = player;
   aiming = null;
-  if (!canAct() || p.skillCd[sk.key] > 0) return;
-  if (!enoughMp(sk)) { logNoMp(sk); return; }
+  if (!canAct() || cooldownLeft(player, sk) > 0) return;
+  if (!enoughMp(player, sk)) { logNoMp(sk); return; }
   game.inputT = game.rt;
-  if (sk.type === 'dash') {
-    if (!dash(sk, tx, ty)) return;
-  } else if (sk.type === 'buff') {
-    castBuff(sk);
-  } else {
-    const h = planAttack(p, sk, tx, ty);
-    p.facing = h.dir;
-    log(`${sk.name}！`, '#80d8ff');
-    resolveAttack(h);
-  }
-  p.skillCd[sk.key] = skillCooldown(sk);
-  p.mp = Math.max(0, p.mp - skillMp(sk));
-  endPlayerAction();
+  if (useSkill(player, sk, tx, ty)) endPlayerAction();
 }
 
-// 自分を強化する (data/buffs.js)
-function castBuff(sk) {
-  const p = player, b = BUFFS[sk.buff];
-  addBuff(p, sk.buff, sk.duration);
-  log(`${sk.name}！ ${b.name}（${sk.duration} 行動）`, '#ffab91');
-  floatText(p.x, p.y - p.r - 30, `${STATS[b.stat].label}↑`, b.color, 17);
-  effects.push({ type: 'ring', x: p.x, y: p.y, r0: p.r, r1: p.r * 3, t: 0, life: 0.45, color: '255,138,101' });
-  burst(p.x, p.y, '#ffab91', 16, 180);
-}
-
-// MP が足りるか (MP は小数で回復していくので、表示と同じく切り捨てで比べる)
-const enoughMp = (sk) => Math.floor(player.mp + 1e-9) >= skillMp(sk);
 const logNoMp = (sk) => log(`MP が足りない（${sk.name}は MP ${skillMp(sk)}、今 ${Math.floor(player.mp)}）。`, '#9da7b3');
-
-// ダッシュ: 狙ったマスの向き (8 方向) へ、ふさがるまで distance マス一気に進む。進めなければ false
-function dash(sk, tx, ty) {
-  const p = player;
-  const a = Math.atan2(ty - p.ty, tx - p.tx);
-  const oct = Math.round(a / (Math.PI / 4));
-  const dx = Math.round(Math.cos(oct * Math.PI / 4)), dy = Math.round(Math.sin(oct * Math.PI / 4));
-  if (tx === p.tx && ty === p.ty) return false;
-  let moved = 0;
-  for (let i = 0; i < sk.distance; i++) {
-    if (!canStep(p.tx, p.ty, dx, dy) || !isFree(p.tx + dx, p.ty + dy)) break;
-    effects.push({ type: 'ghost', x: center(p.tx), y: center(p.ty), r: p.r, t: 0, life: 0.25, color: p.color });
-    moveUnitTo(p, p.tx + dx, p.ty + dy);
-    pickUpAt(p.tx, p.ty);
-    moved++;
-    if (gateAt[idx(p.tx, p.ty)] >= 0) break;
-  }
-  if (!moved) { log('その方向には進めない。', '#9da7b3'); return false; }
-  checkGate();
-  return true;
-}

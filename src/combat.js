@@ -108,6 +108,72 @@ function cancelCharge(u) {
   if (i >= 0) hazards.splice(i, 1);
   u.charging = null;
 }
+// 予告していた技を出す。使った者の次の行動がこれになる (どのキャラも。src/turn.js の runUntilInput が control の代わりに呼ぶ)
+function releaseCharge(u) {
+  const h = u.charging;
+  cancelCharge(u);
+  u.facing = h.dir;
+  resolveAttack(h);
+}
+
+// ----- 技を使う (どのキャラも、どの種類の技も同じ道) -----
+// キャラ u が技 sk を (tx, ty) のマスへ向けて使う。使えたら true (行動したことになる。後始末 endTurn は呼ぶ側)
+//   覚えているか (解放レベルなど) は呼ぶ側が確かめる。再使用待ちと MP はここで確かめ、使えたら再使用待ちを始めて MP を払う
+//   plan: 先に planAttack で決めた範囲 (敵の AI が届くか確かめたもの。lob の散らばりを引き直さないため)
+//   予告あり (charge) の技は予告を出し、u の次の行動で判定する (releaseCharge)
+//   払うのは技を出したあと (主人公は技で倒した敵の経験値でレベルが上がると MP が満タンになり、そこから払う)
+function useSkill(u, sk, tx, ty, plan) {
+  if (!canUseSkill(u, sk)) return false;
+  if (sk.type === 'dash') {
+    if (!dash(u, sk, tx, ty)) return false;
+  } else if (sk.type === 'buff') {
+    castBuff(u, sk);
+  } else {
+    const h = plan || planAttack(u, sk, tx, ty);
+    u.facing = h.dir;
+    if (sk.charge) {
+      startCharge(u, h);
+      log(`${u.name}は${sk.name}の構えをとった。`, '#ffab40');
+    } else {
+      if (u === player) log(`${sk.name}！`, '#80d8ff'); // ほかのキャラはダメージの文に名前が出る
+      resolveAttack(h);
+    }
+  }
+  payForSkill(u, sk);
+  return true;
+}
+
+// 自分を強化する (data/buffs.js)。主人公以外はメッセージ欄の文の頭に名前が付く
+function castBuff(u, sk) {
+  const b = BUFFS[sk.buff];
+  addBuff(u, sk.buff, sk.duration);
+  log(`${u === player ? '' : u.name + 'の'}${sk.name}！ ${b.name}（${sk.duration} 行動）`, '#ffab91');
+  floatText(u.x, u.y - u.r - 30, `${STATS[b.stat].label}${b.mult < 1 ? '↓' : '↑'}`, b.color, 17);
+  effects.push({ type: 'ring', x: u.x, y: u.y, r0: u.r, r1: u.r * 3, t: 0, life: 0.45, color: '255,138,101' });
+  burst(u.x, u.y, '#ffab91', 16, 180);
+}
+
+// ダッシュ: 狙ったマスの向き (8 方向) へ、ふさがるまで distance マス一気に進む。進めなければ false
+//   落とし物を拾う・門をくぐる・「進めない」の文は主人公だけ
+function dash(u, sk, tx, ty) {
+  const hero = u === player;
+  const a = Math.atan2(ty - u.ty, tx - u.tx);
+  const oct = Math.round(a / (Math.PI / 4));
+  const dx = Math.round(Math.cos(oct * Math.PI / 4)), dy = Math.round(Math.sin(oct * Math.PI / 4));
+  if (tx === u.tx && ty === u.ty) return false;
+  let moved = 0;
+  for (let i = 0; i < sk.distance; i++) {
+    if (!canStep(u.tx, u.ty, dx, dy) || !isFree(u.tx + dx, u.ty + dy)) break;
+    effects.push({ type: 'ghost', x: center(u.tx), y: center(u.ty), r: u.r, t: 0, life: 0.25, color: u.color });
+    moveUnitTo(u, u.tx + dx, u.ty + dy);
+    if (hero) pickUpAt(u.tx, u.ty);
+    moved++;
+    if (gateAt[idx(u.tx, u.ty)] >= 0) break;
+  }
+  if (!moved) { if (hero) log('その方向には進めない。', '#9da7b3'); return false; }
+  if (hero) checkGate();
+  return true;
+}
 
 // 技 a (kind / power / base / intRate) のダメージ。戻り値 { dmg, crit }
 function rollDamage(src, tgt, a) {

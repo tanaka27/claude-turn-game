@@ -24,7 +24,7 @@ function createPlayer() {
     stats: null, base: growthBase(1), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: EC.startGold, potions: startPotions(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null, control: 'input',
-    skillCd, buffs: [], hitFlash: 0, dead: false,
+    skills: SKILLS, skillRule: 'hero', skillCd, buffs: [], hitFlash: 0, dead: false,
   };
 }
 
@@ -45,7 +45,8 @@ function createEnemy(type, tx, ty, camp, slot) {
     type, def: d, faction: 'enemy', name: d.name, isBoss: !!d.isBoss, tx, ty, x: 0, y: 0, r: d.radius, color: d.color,
     level: camp.level, exp: Math.round(d.exp * (1 + EL.expGrowth * g)), camp, slot, home: { tx, ty },
     state: 'idle', baseStats: b, gear, buffs: [], stats: null, hp: 0, mp: 0, facing: rand(0, TAU),
-    cd: d.attacks.map(() => randInt(...AI.firstAttackDelay)), charging: null,
+    // 技の並び・再使用待ちの決まり・再使用待ち (名札 = 技の並びでの位置。湧いてすぐは 0〜2 回待つ)
+    skills: d.attacks, skillRule: 'enemy', skillCd: Object.fromEntries(d.attacks.map((a, i) => [i, randInt(...AI.firstAttackDelay)])), charging: null,
     // 基本の技 (MP を使わない技のうち下のもの。なければ -1) と、次に狙う技 (src/ai.js の chooseIntent)
     basic: d.attacks.map((a) => !skillMp(a)).lastIndexOf(true), intent: null, intentT: 0,
     invuln: false, hitFlash: 0, dead: false, returnT: 0, control: 'ai', target: null,
@@ -57,14 +58,17 @@ function createEnemy(type, tx, ty, camp, slot) {
 }
 
 // 主人公の陣営のキャラ (仲間) を作る。今のゲームにはまだ出てこない (テストで使う)。置くのは addUnit
-//   d: 種類 { name, stats (もとのステータス), gear (固定値。省略可), color, radius, glyph (描くときの字), level (省略時 1) }
+//   d: 種類 { name, stats (もとのステータス), gear (固定値。省略可), color, radius, glyph (描くときの字), level (省略時 1),
+//            skills (使える技の並び。省略時なし), skillRule (再使用待ちと MP の決まり SKILL_RULES のキー。省略時 'hero') }
 //   control: 行動の決め方 (src/turn.js の CONTROLLERS。省略時 'wait')
 function createAlly(d, control) {
   const a = {
     def: d, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
     level: d.level || 1, baseStats: { ...d.stats }, gear: d.gear, buffs: [], stats: null, hp: 0, mp: 0, facing: -Math.PI / 2, lastHurt: -99,
     next: game.time, control: control || 'wait', charging: null, hitFlash: 0, dead: false,
+    skills: d.skills || [], skillRule: d.skillRule || 'hero', skillCd: {},
   };
+  for (const s of a.skills) a.skillCd[skillKey(a, s)] = 0;
   refreshStats(a, 'full');
   return a;
 }
@@ -107,10 +111,39 @@ const actionCost = (u) => TN.baseSpeed / Math.max(TN.minSpeed, u.stats.speed);
 
 // 陣営 faction から見た敵 (倒れていない units。units の順)
 const opponents = (faction) => units.filter((u) => !u.dead && hostileTo(faction, u.faction));
-const skillCooldown = (sk) => sk.cooldown * 100 / (100 + player.stats.skillHaste);
 const skillMp = (sk) => sk.mp || 0;
-// 敵の技の再使用待ち (その敵の行動回数)。主人公と同じくスキル加速で変わる。四捨五入、最低 1
-const enemyCooldown = (e, a) => Math.max(1, Math.round(a.cooldown * 100 / (100 + e.stats.skillHaste)));
+
+// ----- 技の再使用待ちと MP (どのキャラも同じ形。決まりだけキャラごとに名前を付けて持つ) -----
+// 戦うキャラはみな u.skills (使える技の並び)、u.skillCd = { 技の名札: 再使用までの残りの行動回数 }、u.skillRule (下のどれか) を持つ
+// 技の名札 (skillKey): 技に key があればそれ (主人公のスキル。キー = 名札)、なければ u.skills の中の位置 (敵の技)
+// 主人公と敵で違う決まりは、遊び方を変えないためにそのまま残している (1 つにそろえない)
+const SKILL_RULES = {
+  // 主人公 (と仲間の省略時): 再使用待ちは小数のまま。使った行動も含めて、自分の行動の後始末 (endTurn) ごとに 1 減る
+  //   MP は表示と同じく切り捨てで比べる (MP は小数で回復していくため)。払ったあとは 0 より下げない
+  hero: { cooldown: (u, sk) => sk.cooldown * 100 / (100 + u.stats.skillHaste), tick: 'afterAction', mpFloor: true, mpClamp: true },
+  // 敵: 再使用待ちは四捨五入して最低 1。自分の行動の初め (control を呼ぶ前) に 1 減り、予告していた技を出す行動では減らない
+  //   MP は小数のまま比べ、払ったあとも 0 で止めない
+  enemy: { cooldown: (u, sk) => Math.max(1, Math.round(sk.cooldown * 100 / (100 + u.stats.skillHaste))), tick: 'beforeAction', mpFloor: false, mpClamp: false },
+};
+const skillRule = (u) => SKILL_RULES[u.skillRule];
+const skillKey = (u, sk) => (sk.key !== undefined ? sk.key : u.skills.indexOf(sk));
+// 技 sk を使ったときの再使用待ち (u の行動回数。スキル加速で短くなる)
+const skillCooldown = (u, sk) => skillRule(u).cooldown(u, sk);
+// 再使用までの残り (0 なら使える)
+const cooldownLeft = (u, sk) => u.skillCd[skillKey(u, sk)] || 0;
+// MP が足りるか
+const enoughMp = (u, sk) => (skillRule(u).mpFloor ? Math.floor(u.mp + 1e-9) : u.mp + 1e-9) >= skillMp(sk);
+// 使えるか (再使用待ちでなく MP が足りる)。覚えているか (解放レベルなど) は呼ぶ側が確かめる
+const canUseSkill = (u, sk) => cooldownLeft(u, sk) <= 0 && enoughMp(u, sk);
+// 再使用待ちを始める・MP を払う (useSkill)
+function payForSkill(u, sk) {
+  u.skillCd[skillKey(u, sk)] = skillCooldown(u, sk);
+  u.mp = skillRule(u).mpClamp ? Math.max(0, u.mp - skillMp(sk)) : u.mp - skillMp(sk);
+}
+// 再使用待ちを 1 行動ぶん進める (いつ呼ぶかは決まりの tick。src/turn.js)
+function tickCooldowns(u) {
+  for (const k in u.skillCd) u.skillCd[k] = Math.max(0, u.skillCd[k] - 1);
+}
 
 // ----- 成長 -----
 const DS = P.derivedStats;

@@ -38,9 +38,9 @@
 ## 仕組み
 
 - 戦うキャラは `units`（主人公が先頭）にまとめてあり、キャラの `control` が行動の決め方（`CONTROLLERS`: `input` = 主人公、番が来たら止まって入力を待つ / `ai` = 敵の AI `enemyAct` / `wait` = 何もしない）。詳しくは [units.md](units.md)
-- `endTurn(u)`: 行動 1 回ぶんの後始末。どのキャラもここを通る。`next` を進め（`max(next, 今の時刻) + 100 / 速度`）、`skillCd` を持っていればスキルの再使用までの行動回数を 1 減らし、`buffs` を持っていれば（戦うキャラはみな持つ）強化・弱体の残りを 1 減らす（[combat.md](combat.md)）。速度が強化・弱体で変わると、次の `next` から間隔が変わる。敵の技の再使用待ち（`cd`）は今までどおり `enemyAct` の中で減らす（技を出す予告の行動では減らさない）
+- `endTurn(u)`: 行動 1 回ぶんの後始末。どのキャラもここを通る。`next` を進め（`max(next, 今の時刻) + 100 / 速度`）、再使用待ちの決まりが行動の後のキャラ（`hero`: 主人公・仲間）なら技の再使用までの行動回数を 1 減らし、`buffs` を持っていれば（戦うキャラはみな持つ）強化・弱体の残りを 1 減らす（[combat.md](combat.md)）。速度が強化・弱体で変わると、次の `next` から間隔が変わる。敵（決まり `enemy`）の再使用待ちは `runUntilInput` が行動の初めに減らす（予告した技を出す行動では減らさない。[skill-use.md](skill-use.md)）
 - `endPlayerAction`: 主人公が行動したあとに呼ぶ。`endTurn(player)`、主人公までの経路（`flow`）を作り直してから `runUntilInput`
-- `runUntilInput`: `nextUnit()`（`next` が一番早いキャラ）まで時間を進め、そのキャラの `control` で 1 回行動させて `endTurn`。倒れたキャラ（主人公以外）は `units` から外す。`input` のキャラ（主人公）の番が来たら止まる。主人公が倒れていたら止まる
+- `runUntilInput`: `nextUnit()`（`next` が一番早いキャラ）まで時間を進め、そのキャラを 1 回行動させて `endTurn`。1 回の行動は: 予告した技があれば（`charging`）それを出す（`releaseCharge`。どの `control` のキャラも。これが行動になる）。なければ、`input` のキャラ（主人公）なら止まって入力を待つ。ほかは、再使用待ちが行動の初めに減る決まり（`enemy`）なら減らしてから `control` を呼ぶ。倒れたキャラ（主人公以外）は `units` から外す。主人公が倒れていたら止まる
 - `turnOrder(n)`: HUD の「行動順」。主人公の陣営と、画面に入っているか追ってきている敵の `next` を写して、早い順に n 回ぶん並べる（`turn.orderCount` = 8）
 - `actionsBefore(u)`: 敵 u が次に行動するまでに主人公が何回動けるか（予告の「あと N」）
 - キャラの位置はマス（`tx`, `ty`）。描く位置（`x`, `y`、px）は毎フレーム、いるマスへ少し遅れて追いつく（`updateFx`。`turn.animTime`）

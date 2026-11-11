@@ -58,17 +58,8 @@ function chooseTarget(e) {
   return best;
 }
 
+// 敵の 1 回の行動。予告していた技を出す行動と、技の再使用待ちを減らすのは、ここを呼ぶ前に src/turn.js の runUntilInput がする
 function enemyAct(e) {
-  // 予告していた技を出す
-  if (e.charging) {
-    const h = e.charging;
-    cancelCharge(e);
-    e.facing = h.dir;
-    resolveAttack(h);
-    return;
-  }
-  for (let i = 0; i < e.cd.length; i++) e.cd[i] = Math.max(0, e.cd[i] - 1);
-
   const t = e.target = chooseTarget(e);
   const alive = !!t;
   const d = alive ? dist(e.tx, e.ty, t.tx, t.ty) : Infinity;
@@ -114,7 +105,7 @@ function enemyAct(e) {
   if (e.intent.far && canSee && d < kd * AI.retreatRatio &&
     stepBest(e, (x, y) => dist(x, y, t.tx, t.ty))) return;
   // 狙っている技が使えて、相手が範囲に入っていれば使う
-  if (canSee && e.cd[e.intent.i] <= 0 && e.mp + 1e-9 >= skillMp(a) && d <= attackReach(a) + 0.01) {
+  if (canSee && canUseSkill(e, a) && d <= attackReach(a) + 0.01) {
     const h = planAttack(e, a, t.tx, t.ty);
     if (h.keys.has(tileKey(t.tx, t.ty))) {
       useEnemyAttack(e, e.intent.i, h);
@@ -123,7 +114,7 @@ function enemyAct(e) {
     }
   }
   // 技を待っている (近づく) 間でも、となりにいれば基本の技で攻撃する。遠くから撃つつもりのときは殴らない
-  if (canSee && !e.intent.far && e.intent.i !== e.basic && e.basic >= 0 && e.cd[e.basic] <= 0) {
+  if (canSee && !e.intent.far && e.intent.i !== e.basic && e.basic >= 0 && cooldownLeft(e, e.def.attacks[e.basic]) <= 0) {
     const h = planAttack(e, e.def.attacks[e.basic], t.tx, t.ty);
     if (h.keys.has(tileKey(t.tx, t.ty))) { useEnemyAttack(e, e.basic, h); return; }
   }
@@ -180,7 +171,7 @@ function attackWeight(e, a, c) {
 function chooseIntent(e, t) {
   const atks = e.def.attacks;
   const opts = [];
-  atks.forEach((a, i) => { if (i !== e.basic && e.cd[i] <= 0 && e.mp + 1e-9 >= skillMp(a)) opts.push(i); });
+  atks.forEach((a, i) => { if (i !== e.basic && canUseSkill(e, a)) opts.push(i); });
   let i = e.basic;
   if (opts.length) {
     const chance = e.def.skillChance ?? AI.skillChance;
@@ -250,16 +241,10 @@ function closeIn(e, t) {
   approach(e, t);
 }
 
-// 技を出す (予告ありなら構える)。再使用待ちと MP を減らす
+// i 番目の技を、範囲 h (planAttack で決めて相手が入っていると確かめたもの) で出す。使うのはどのキャラも同じ useSkill (src/combat.js)
+// (予告ありなら構える。再使用待ちと MP もそこで)
 function useEnemyAttack(e, i, h) {
-  const a = e.def.attacks[i];
-  e.cd[i] = enemyCooldown(e, a);
-  e.mp -= skillMp(a);
-  e.facing = h.dir;
-  if (a.charge) {
-    startCharge(e, h);
-    log(`${e.name}は${a.name}の構えをとった。`, '#ffab40');
-  } else resolveAttack(h);
+  useSkill(e, e.def.attacks[i], e.target.tx, e.target.ty, h);
 }
 
 // ----- 湧き場所 -----

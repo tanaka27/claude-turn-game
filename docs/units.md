@@ -35,7 +35,14 @@
 | `ai` | 敵 | `enemyAct`（[enemy-ai.md](enemy-ai.md)） |
 | `wait` | テスト用の仲間 | 何もしない |
 
-どのキャラも行動のあとは `endTurn(u)`（次の時刻・スキルの再使用待ち・強化と弱体）を通る。キャラごとの「行動 1 回ぶん進めるもの」はここに足す（毒のような行動ごとの効果は、そこから呼ばれる `tickBuffs` に）。スタンのような「行動できない」効果を足すときは、`runUntilInput` で `control` を呼ぶ前に判定する。
+予告した技があるキャラ（`charging`）は、`control` を呼ぶ代わりにそれを出す（`releaseCharge`。どの `control` でも）。再使用待ちが行動の初めに減る決まり（敵）のキャラは、`control` を呼ぶ前に減らす（[skill-use.md](skill-use.md)）。
+
+どのキャラも行動のあとは `endTurn(u)`（次の時刻・スキルの再使用待ち（決まりが `hero` のキャラ）・強化と弱体）を通る。キャラごとの「行動 1 回ぶん進めるもの」はここに足す（毒のような行動ごとの効果は、そこから呼ばれる `tickBuffs` に）。スタンのような「行動できない」効果を足すときは、`runUntilInput` で `control` を呼ぶ前に判定する。
+
+## 技を使う（どのキャラも同じ）
+
+- 技を使うのはどのキャラも `useSkill(u, sk, tx, ty)`（攻撃・予告ありの技・ダッシュ・強化）。主人公の入力（`castSkill`）と敵の AI（`useEnemyAttack`）は、何をどこへ使うかを決めて呼ぶだけ
+- どのキャラも `skills`（技の並び）、`skillCd`（再使用待ち）、`skillRule`（再使用待ちと MP の決まり: 主人公 `hero`、敵 `enemy`）を持つ。詳しくは [skill-use.md](skill-use.md)
 
 ## 敵の狙う相手
 
@@ -65,7 +72,8 @@
 
 ## 仲間を作る（まだゲームには出てこない）
 
-- `createAlly(d, control)`: 主人公の陣営のキャラを作る。`d` は `{ name, stats（もとのステータス）, gear, color, radius, glyph, level }`（`baseStats` / `gear` として持ち、主人公・敵と同じ `computeStats` で計算する）。`control` の省略時は `wait`
+- `createAlly(d, control)`: 主人公の陣営のキャラを作る。`d` は `{ name, stats（もとのステータス）, gear, color, radius, glyph, level, skills, skillRule }`（`baseStats` / `gear` として持ち、主人公・敵と同じ `computeStats` で計算する。`skills` は使える技の並び（主人公のスキルも渡せる）、`skillRule` の省略時は `hero`）。`control` の省略時は `wait`
+- 仲間も `useSkill` で技を使える（テストが直接呼ぶ。技を選ぶ AI はまだない）
 - `addUnit(u, tx, ty)`: マスに置いて `units` に足す
 - 描くときは敵と同じ形（丸い体と字）で、頭上の HP バーは緑（`THEME.allyHp`）。行動順の枠は主人公と同じ青、ミニマップは小さな水色の四角
 - 強化・弱体も主人公・敵と同じようにかかる（頭上にアイコン）。左上の仲間の欄（`partyMembers`）・キャラクターの画面はまだ主人公だけ

@@ -156,6 +156,16 @@ function attackTiles(g, u, atk, tx, ty) {
 }
 // 技をその場で出す (予告なしで判定まで)
 function performAttack(g, u, atk, tx, ty) { g.resolveAttack(g.planAttack(u, atk, tx, ty)); }
+// キャラ u に技 sk を (tx, ty) へ向けて使わせる (どのキャラも同じ道 useSkill。行動の後始末はしない)。使えたら true
+const useSkillBy = (g, u, sk, tx, ty) => g.useSkill(u, sk, tx, ty);
+// 技の再使用までの残り / 使ったときの再使用待ちの長さ / 使えるか (再使用待ちと MP)
+const cooldownLeftOf = (g, u, sk) => g.cooldownLeft(u, sk);
+const cooldownLengthOf = (g, u, sk) => g.skillCooldown(u, sk);
+const canUseSkillOf = (g, u, sk) => g.canUseSkill(u, sk);
+// 再使用待ちを決める (技を使わずに)
+function setCooldown(g, u, sk, n) { u.skillCd[g.skillKey(u, sk)] = n; }
+// 敵の技を名前で
+const enemyAttack = (e, name) => e.def.attacks.find((a) => a.name === name);
 // 実時間を進める (倒れてから復活するまでなど)。sec 秒ぶんフレームの更新を回す
 function runFrames(g, sec, dt = 0.05) { for (let t = 0; t < sec; t += dt) { g.game.rt += dt; g.updateWorld(dt); } }
 
@@ -163,4 +173,5 @@ module.exports = {
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
   recompute, setPlayerBase, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns,
   press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,
+  useSkillBy, cooldownLeftOf, cooldownLengthOf, canUseSkillOf, setCooldown, enemyAttack,
 };

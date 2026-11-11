@@ -13,10 +13,10 @@ const CONTROLLERS = {
   wait: () => {},             // 何もしない (テスト用の仲間など)
 };
 
-// 行動 1 回ぶんの後始末 (どのキャラも同じ)。次に行動できる時刻を進め、持っていればスキルの再使用待ちと強化を 1 進める
+// 行動 1 回ぶんの後始末 (どのキャラも同じ)。次に行動できる時刻を進め、技の再使用待ち (決まりが行動の後のキャラ: 主人公) と強化を 1 進める
 function endTurn(u) {
   u.next = Math.max(u.next, game.time) + actionCost(u);
-  if (u.skillCd) for (const k in u.skillCd) u.skillCd[k] = Math.max(0, u.skillCd[k] - 1);
+  if (u.skillCd && skillRule(u).tick === 'afterAction') tickCooldowns(u);
   if (u.buffs) tickBuffs(u);
 }
 
@@ -44,9 +44,14 @@ function runUntilInput() {
     const u = nextUnit();
     if (!u) return;
     advanceTime(u.next);
-    const control = CONTROLLERS[u.control];
-    if (!control) return; // 入力を待つ
-    control(u);
+    if (u.charging) {
+      releaseCharge(u); // 予告していた技を出す。これがこの行動 (どの control のキャラも)
+    } else {
+      const control = CONTROLLERS[u.control];
+      if (!control) return; // 入力を待つ
+      if (skillRule(u).tick === 'beforeAction') tickCooldowns(u); // 再使用待ちが行動の初めに減るキャラ (敵)
+      control(u);
+    }
     endTurn(u);
     units = units.filter((o) => !o.dead || o === player);
   }
