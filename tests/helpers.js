@@ -191,7 +191,177 @@ const enemyAttack = (e, name) => e.def.attacks.find((a) => a.name === name);
 // 実時間を進める (倒れてから復活するまでなど)。sec 秒ぶんフレームの更新を回す
 function runFrames(g, sec, dt = 0.05) { for (let t = 0; t < sec; t += dt) { g.game.rt += dt; g.updateWorld(dt); } }
 
+// ----- 画面 (index.html の #menu / #itemPop / #quest / #talk / #pause) -----
+// 土台の document は HTML を解釈しないので、画面の中身 (innerHTML) をここで小さく解釈して、クリックの的を作る。
+// 的は本物の要素と同じく dataset / disabled / id / closest(選び方) を持ち、親 (入れ物の要素) へたどれる
+const el = (g, id) => g.document.getElementById(id);
+const shown = (g, id) => el(g, id).classList.contains('show');
+const textOf = (g, id) => el(g, id).textContent;
+const htmlOf = (g, id) => el(g, id).innerHTML;
+// 入れ物の要素 → 親の要素 (index.html の入れ子)
+const PARENT_OF = {
+  itemPop: 'menu', itemPopBody: 'itemPop', profile: 'menu', equipList: 'menu', shopList: 'menu', toolList: 'menu', invList: 'menu',
+  matSellAll: 'menu', matList: 'menu', detail: 'menu', questList: 'quest', questDetail: 'quest', talkName: 'talk', talkText: 'talk', talkNext: 'talk',
+};
+// 画面ごとの、中身を作り直す入れ物 / index.html に直接書いてあるボタン
+const CONTAINERS = {
+  menu: ['profile', 'equipList', 'shopList', 'toolList', 'invList', 'matSellAll', 'matList', 'detail', 'itemPopBody'],
+  quest: ['questList', 'questDetail'], talk: [], pause: [],
+};
+const STATIC_BUTTONS = {
+  menu: [['close', '閉じる（Esc）']], quest: [['close', '閉じる（Esc）']], talk: [['close', '閉じる（Esc）']],
+  pause: [['resume', '再開'], ['char', 'キャラクター（C）']],
+};
+function selectorMatches(n, sel) {
+  return sel.split(',').some((s) => {
+    const m = /^([a-z]*)(.*)$/i.exec(s.trim());
+    if (m[1] && n.tag !== m[1].toLowerCase()) return false;
+    const re = /#([\w-]+)|\.([\w-]+)|\[([\w-]+)(?:="([^"]*)")?\]/g;
+    let p;
+    while ((p = re.exec(m[2]))) {
+      if (p[1] && n.id !== p[1]) return false;
+      if (p[2] && !n.classes.includes(p[2])) return false;
+      if (p[3] && (!(p[3] in n.attrs) || (p[4] !== undefined && n.attrs[p[3]] !== p[4]))) return false;
+    }
+    return true;
+  });
+}
+function makeNode(tag, attrs, parent) {
+  const dataset = {};
+  for (const k in attrs) if (k.startsWith('data-')) dataset[k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = attrs[k];
+  const node = { tag, tagName: tag.toUpperCase(), id: attrs.id || '', attrs, dataset, classes: (attrs.class || '').split(/\s+/).filter(Boolean),
+    disabled: 'disabled' in attrs, parent, text: '' };
+  node.closest = (sel) => { for (let n = node; n; n = n.parent) if (selectorMatches(n, sel)) return n; return null; };
+  return node;
+}
+// 入れ物の要素 (id) の的 (親をたどれる)
+const staticNode = (id) => makeNode('div', { id }, PARENT_OF[id] ? staticNode(PARENT_OF[id]) : null);
+const VOID_TAGS = new Set(['img', 'br', 'input', 'hr']);
+function parseHtml(html, root) {
+  const nodes = [], stack = [root];
+  const re = /<(\/?)([a-zA-Z0-9]+)((?:[^>"]|"[^"]*")*)>|([^<]+)/g;
+  let m;
+  while ((m = re.exec(html))) {
+    if (m[4] !== undefined) { for (const n of stack.slice(1)) n.text += m[4]; continue; }
+    const tag = m[2].toLowerCase();
+    if (m[1]) { for (let i = stack.length - 1; i > 0; i--) if (stack[i].tag === tag) { stack.length = i; break; } continue; }
+    const attrs = {}, are = /([\w-]+)(?:="([^"]*)")?/g;
+    let a;
+    while ((a = are.exec(m[3]))) attrs[a[1]] = a[2] === undefined ? '' : a[2];
+    const node = makeNode(tag, attrs, stack[stack.length - 1]);
+    nodes.push(node);
+    if (!VOID_TAGS.has(tag)) stack.push(node);
+  }
+  return nodes;
+}
+// 画面 screen ('menu' | 'quest' | 'talk' | 'pause') の中の要素 (今の中身から作る)
+function screenNodes(g, screen) {
+  const out = [];
+  for (const id of CONTAINERS[screen]) out.push(...parseHtml(htmlOf(g, id), staticNode(id)));
+  for (const [act, label] of STATIC_BUTTONS[screen]) {
+    const b = makeNode('button', { 'data-act': act }, staticNode(screen));
+    b.text = label;
+    out.push(b);
+  }
+  return out;
+}
+const hasData = (n, data) => Object.entries(data).every(([k, v]) => n.dataset[k] === String(v));
+// data-act が act で、data-* が data と同じボタン (なければ null)。{ label, disabled } も読める
+function findButton(g, screen, act, data = {}) {
+  return screenNodes(g, screen).find((n) => n.tag === 'button' && n.dataset.act === act && hasData(n, data)) || null;
+}
+const buttonLabels = (g, screen) => screenNodes(g, screen).filter((n) => n.tag === 'button').map((n) => n.text.trim());
+// 要素をクリックする (画面の要素に登録された click の処理に渡す)
+function clickNode(g, screen, node) {
+  for (const f of el(g, screen)._listeners.click || []) f({ target: node, preventDefault() {} });
+}
+// ボタンを押す。ブラウザと同じく押せない (disabled) ボタンはクリックが届かない (opts.force なら届ける。画面の処理の見張りを試す)
+function clickButton(g, screen, act, data = {}, opts = {}) {
+  const b = findButton(g, screen, act, data);
+  if (!b) throw new Error(`ボタン ${act} ${JSON.stringify(data)} が ${screen} にない`);
+  if (b.disabled && !opts.force) return false;
+  clickNode(g, screen, b);
+  return true;
+}
+// 今の画面にはないボタン (古い画面に残ったもの) が押されたことにする。画面の処理の見張り (お金・持ち物・画面の種類) を試す
+function clickStaleButton(g, screen, act, data = {}) {
+  const attrs = { 'data-act': act };
+  for (const [k, v] of Object.entries(data)) attrs[`data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`] = String(v);
+  clickNode(g, screen, makeNode('button', attrs, staticNode(CONTAINERS[screen][0] || screen)));
+}
+// 道具一覧・店の画面のアイテムをクリックする: 装備 (from: 'inv' | 'equip' | 'shop') / 道具 / 素材
+function clickGear(g, from, id) {
+  const n = screenNodes(g, 'menu').find((x) => x.classes.includes('item') && x.dataset.from === from && x.dataset.id === String(id));
+  if (!n) throw new Error(`装備 ${from} ${id} が画面にない`);
+  clickNode(g, 'menu', n);
+}
+function clickTool(g, id) {
+  const n = screenNodes(g, 'menu').find((x) => x.tag === 'div' && x.classes.includes('item') && x.dataset.tool === id);
+  if (!n) throw new Error(`道具 ${id} が画面にない`);
+  clickNode(g, 'menu', n);
+}
+function clickMat(g, id) {
+  const n = screenNodes(g, 'menu').find((x) => x.tag === 'div' && x.classes.includes('item') && x.dataset.mat === id);
+  if (!n) throw new Error(`素材 ${id} が画面にない`);
+  clickNode(g, 'menu', n);
+}
+// 詳細のポップアップの外 (暗い幕) をクリックする
+const clickPopBackdrop = (g) => clickNode(g, 'menu', staticNode('itemPop'));
+// 会話の枠の文のところをクリックする
+const clickTalkText = (g) => clickNode(g, 'talk', staticNode('talkText'));
+// クエストの画面の一覧: 並び [{ id, state, sel }] / クリックで選ぶ
+const questRows = (g) => screenNodes(g, 'quest').filter((n) => n.dataset.qid).map((n) => ({
+  id: n.dataset.qid, state: (n.classes.find((c) => c.startsWith('q-')) || '').slice(2), sel: n.classes.includes('sel'),
+}));
+function clickQuestRow(g, qid) {
+  const n = screenNodes(g, 'quest').find((x) => x.dataset.qid === qid);
+  if (!n) throw new Error(`クエスト ${qid} が一覧にない`);
+  clickNode(g, 'quest', n);
+}
+// 開いている画面 (game.state が 'menu' のときの画面の名前。開いていなければ null)
+const openScreen = (g) => (g.game.state === 'menu' ? g.menu.mode : null);
+// HUD のボタン (id: 'items' | 'char' | 'map') を左クリックする (画面の描画は動かないので、ボタンの場所を置いてから押す)
+function clickHud(g, id) {
+  g.hudButtons.length = 0;
+  g.hudButtons.push({ id, x: 0, y: 0, w: 10, h: 10 });
+  for (const f of el(g, 'game')._listeners.mousedown || []) f({ button: 0, clientX: 5, clientY: 5, preventDefault() {} });
+}
+// セーブ (saveGame) を呼んだ回数を数える。戻り値 { count }。stop() でやめる
+function trackSaves(g) {
+  const ctx = g.context, orig = ctx.saveGame, t = { count: 0 };
+  ctx.saveGame = function () { t.count++; return orig.apply(this, arguments); };
+  t.stop = () => { ctx.saveGame = orig; };
+  return t;
+}
+// NPC (world.js の id) のいるゾーンへ入り、そのとなりのマスに主人公を置く。戻り値: 主人公から NPC への向き [dx, dy]
+function nextToNpc(g, id) {
+  const zid = Object.keys(g.WORLD.zones).find((z) => (g.WORLD.zones[z].npcs || []).some((n) => n.id === id));
+  const n0 = g.WORLD.zones[zid].npcs.find((n) => n.id === id);
+  const ntx = g.tileOf(n0.x), nty = g.tileOf(n0.y);
+  g.enterZone(zid, ntx, nty + 1);
+  const npcAt = (x, y) => g.zone.npcs.some((n) => n.tx === x && n.ty === y);
+  for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0], [-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+    const x = ntx + dx, y = nty + dy;
+    if (g.isBlocked(x, y) || npcAt(x, y) || g.gateAt[g.idx(x, y)] >= 0) continue;
+    g.placeUnit(g.player, x, y);
+    g.player.travel = null;
+    return [-dx, -dy];
+  }
+  throw new Error(`NPC ${id} のとなりに空いたマスがない`);
+}
+// 装備を作って持ち物に入れる / 持ち物をいっぱいにする
+function giveItem(g, slot = 'weapon', level = 1, rarity = 'common') {
+  const it = g.makeItem(slot, level, rarity);
+  g.player.inventory.push(it);
+  return it;
+}
+function fillInventory(g) { while (g.player.inventory.length < g.EC.inventorySize) giveItem(g); }
+// 鍛冶屋の今の品ぞろえ (開いたときに作られる)
+const smithStock = (g, id) => (g.shopStocks[id] ? Array.from(g.shopStocks[id].items) : []);
+
 module.exports = {
+  el, shown, textOf, htmlOf, screenNodes, findButton, buttonLabels, clickNode, clickButton, clickStaleButton, clickGear, clickTool, clickMat, clickPopBackdrop, clickTalkText,
+  questRows, clickQuestRow, openScreen, clickHud, trackSaves, nextToNpc, giveItem, fillInventory, smithStock,
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
   recompute, setPlayerBase, setLevel, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns,
   press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,

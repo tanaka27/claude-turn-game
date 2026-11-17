@@ -81,8 +81,10 @@ function anything() {
 function makeElement(id) {
   const listeners = {};
   const classes = new Set();
+  // style.setProperty: CSS の変数 (--rc など) を置く。画面のテストで読めるように style に残す
+  const style = { setProperty(k, v) { style[k] = v; } };
   return {
-    id, style: {}, dataset: {}, textContent: '', innerHTML: '', className: '', value: '', disabled: false, children: [],
+    id, style, dataset: {}, textContent: '', innerHTML: '', className: '', value: '', disabled: false, children: [],
     width: 0, height: 0, onclick: null,
     classList: {
       add: (...c) => c.forEach((x) => classes.add(x)), remove: (...c) => c.forEach((x) => classes.delete(x)),
