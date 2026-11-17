@@ -257,8 +257,9 @@ function parseHtml(html, root) {
 // 画面 screen ('menu' | 'quest' | 'talk' | 'pause') の中の要素 (今の中身から作る)
 function screenNodes(g, screen) {
   const out = [];
-  for (const id of CONTAINERS[screen]) out.push(...parseHtml(htmlOf(g, id), staticNode(id)));
-  for (const [act, label] of STATIC_BUTTONS[screen]) {
+  // 下の表にない画面 (テストで足した画面) は、画面の要素そのものの中身を読む
+  for (const id of CONTAINERS[screen] || [screen]) out.push(...parseHtml(htmlOf(g, id), staticNode(id)));
+  for (const [act, label] of STATIC_BUTTONS[screen] || []) {
     const b = makeNode('button', { 'data-act': act }, staticNode(screen));
     b.text = label;
     out.push(b);
@@ -287,7 +288,7 @@ function clickButton(g, screen, act, data = {}, opts = {}) {
 function clickStaleButton(g, screen, act, data = {}) {
   const attrs = { 'data-act': act };
   for (const [k, v] of Object.entries(data)) attrs[`data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`] = String(v);
-  clickNode(g, screen, makeNode('button', attrs, staticNode(CONTAINERS[screen][0] || screen)));
+  clickNode(g, screen, makeNode('button', attrs, staticNode((CONTAINERS[screen] || [])[0] || screen)));
 }
 // 道具一覧・店の画面のアイテムをクリックする: 装備 (from: 'inv' | 'equip' | 'shop') / 道具 / 素材
 function clickGear(g, from, id) {
@@ -356,12 +357,19 @@ function giveItem(g, slot = 'weapon', level = 1, rarity = 'common') {
   return it;
 }
 function fillInventory(g) { while (g.player.inventory.length < g.EC.inventorySize) giveItem(g); }
+// テストだけで使う画面・NPC の役目を足す (src/ui.js の registerScreen / NPC_ROLES。施設を足すときと同じ道)
+//   def の関数はテスト側のもの。overlay の要素は土台がどの id でも作る
+function defineScreen(g, name, def) { g.registerScreen(name, def); }
+function defineRole(g, role, def) { g.NPC_ROLES[role] = def; }
+// 画面の登録表にある画面の名前 / NPC の役目の名前
+const screenNames = (g) => Object.keys(g.SCREENS);
+const roleNames = (g) => Object.keys(g.NPC_ROLES);
 // 鍛冶屋の今の品ぞろえ (開いたときに作られる)
 const smithStock = (g, id) => (g.shopStocks[id] ? Array.from(g.shopStocks[id].items) : []);
 
 module.exports = {
   el, shown, textOf, htmlOf, screenNodes, findButton, buttonLabels, clickNode, clickButton, clickStaleButton, clickGear, clickTool, clickMat, clickPopBackdrop, clickTalkText,
-  questRows, clickQuestRow, openScreen, clickHud, trackSaves, nextToNpc, giveItem, fillInventory, smithStock,
+  questRows, clickQuestRow, openScreen, clickHud, trackSaves, nextToNpc, giveItem, fillInventory, smithStock, defineScreen, defineRole, screenNames, roleNames,
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
   recompute, setPlayerBase, setLevel, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns,
   press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,

@@ -44,4 +44,5 @@ NPC にマウスを重ねると、名前・種類とステータスが出る（`
 
 - `world.js` の NPC に `role: 'talk'` と `lines`（話す言葉の配列）を書く
 - 話しかける（F、または NPC のマスへ移動）と、画面の下に会話の枠（`index.html` の `#talk`）が出る。`menu.mode = 'talk'` で時間は止まる
-- F / Enter / スペース / クリックで次の言葉へ進み、最後の言葉のあとで閉じる。Esc か「閉じる」でいつでも閉じる（`openTalk` / `nextTalk` / `closeMenu`）
+- F / Enter / スペース / クリックで次の言葉へ進み、最後の言葉のあとで閉じる。Esc か「閉じる」でいつでも閉じる（画面の登録表の `talk`。`nextTalk` / `closeMenu`。[screens.md](screens.md)）
+- 話しかけたときに何を開くかは、NPC の `role` を `NPC_ROLES`（`src/ui.js`）で引いて決める（`talkTo`）。役目を足すときは [screens.md](screens.md) の「施設の足し方」

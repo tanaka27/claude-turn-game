@@ -39,9 +39,11 @@ function validateData() {
     for (const n of z.npcs || []) {
       check(NPC_KINDS[n.kind], `world.js ${zid} の NPC '${n.id}': kind '${n.kind}' が data/npcs.js にない`);
       npcIds.push(n.id);
-      check(n.role !== 'shop' || ITEMS.shops[n.shop], `world.js ${zid} の NPC '${n.id}': 店 '${n.shop}' が data/items.js の shops にない`);
-      check(n.role !== 'talk' || (Array.isArray(n.lines) && n.lines.length > 0), `world.js ${zid} の NPC '${n.id}': 話す言葉 lines がない`);
-      check(n.role !== 'smith' || ITEMS.smiths[n.smith], `world.js ${zid} の NPC '${n.id}': 鍛冶屋 '${n.smith}' が data/items.js の smiths にない`);
+      // 役目 (role) は src/ui.js の NPC_ROLES にあり、開く画面が SCREENS にあるか。役目ごとに書くもの (店のキーなど) は役目の check で調べる
+      const role = NPC_ROLES[n.role];
+      check(role, `world.js ${zid} の NPC '${n.id}': 役目 role '${n.role}' が NPC_ROLES (src/ui.js) にない`);
+      check(!role || SCREENS[role.screen], `world.js ${zid} の NPC '${n.id}': 役目 '${n.role}' の画面 '${role && role.screen}' が SCREENS にない`);
+      for (const msg of (role && role.check ? role.check(n) : [])) check(false, `world.js ${zid} の NPC '${n.id}': ${msg}`);
     }
   }
   check(WORLD.zones[WORLD.start] && WORLD.zones[WORLD.start].respawn, `world.js: start のゾーン '${WORLD.start}' に respawn がない`);

@@ -22,7 +22,7 @@
 //               door: true なら建物の入口 (家の下の辺のまん中の 1 マスに置く。家の中でも通れるようになる。名前だけを小さく出す)
 //   camps     : 敵の湧き場所。name / 中心(x, y) / level: 敵レベル / respawn: 再出現までのターン数 /
 //               spread: 湧く範囲の半径(px) / members: 敵 (モンスター) の種類 (data/enemies.js の ENEMIES のキー)
-//   npcs      : 話しかけられる人 (NPC)。id / name / glyph: 体に書く字 / color / x, y / role: 'shop'(商人) / 'smith'(鍛冶屋) / 'quest'(クエスト) / 'talk'(話すだけ)
+//   npcs      : 話しかけられる人 (NPC)。id / name / glyph: 体に書く字 / color / x, y / role: 'shop'(商人) / 'smith'(鍛冶屋) / 'quest'(クエスト) / 'talk'(話すだけ)。role は src/ui.js の NPC_ROLES にあるもの (足し方は docs/screens.md)
 //               話すだけの NPC は lines: 話す言葉の配列 (1 つずつ順に出す)
 //               商人は shop: data/items.js の ITEMS.shops のキー、鍛冶屋は smith: ITEMS.smiths のキー (町ごとに品ぞろえが違う)
 //               NPC のマスは通れない。となりのマスから話しかける (NPC のマスへ移動しようとしても話しかける)

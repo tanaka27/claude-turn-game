@@ -22,23 +22,13 @@ const canAct = () => game.state === 'play' && !game.paused && player && !player.
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
-  if (game.state === 'menu') {
-    // アイテムの詳細 (ポップアップ) を開いているときは、Esc でそれだけ閉じる
-    if (menu.pop && !e.repeat && k === 'escape') { closePop(); return; }
-    // 会話: F / Enter / スペースで次の言葉へ (最後なら閉じる)
-    if (menu.mode === 'talk' && !e.repeat && (k === 'f' || k === 'enter' || k === ' ')) { nextTalk(); return; }
-    // クエストの画面: ↑↓ で選び、Enter で受ける・報告する
-    if (menu.mode === 'quest' && (k === 'arrowup' || k === 'arrowdown')) { moveQuestSel(k === 'arrowup' ? -1 : 1); return; }
-    if (menu.mode === 'quest' && k === 'enter' && !e.repeat) { questAction(questById(questSel)); return; }
-    if (!e.repeat && (k === 'escape' || (k === 'i' && menu.mode === 'inv') || ((k === 'c' || k === 'tab') && menu.mode === 'char') ||
-      (k === 'f' && (menu.mode === 'shop' || menu.mode === 'smith' || menu.mode === 'quest')))) closeMenu();
-    return;
-  }
+  // 画面を開いている間のキーは、その画面のもの (src/ui.js の SCREENS の keys と closeKeys)。フィールドには渡さない
+  if (game.state === 'menu') { screenKey(k, e); return; }
   if (game.state !== 'play') return;
   if (k === 'escape' && aiming) { aiming = null; return; }
   if (!e.repeat && (k === 'escape' || k === 'p')) { togglePause(); return; }
   if (!e.repeat && k === 'm') { toggleWorldMap(); return; }
-  if (game.paused) { if (k === 'c') openMenu('char'); return; }
+  if (game.paused) { if (k === 'c') openScreen('char'); return; }
   if (!canAct()) return;
   // 押しっぱなしのときは、少し間をあけて次の行動をする
   if (e.repeat && game.rt - game.inputT < TN.repeatDelay) return;
@@ -52,8 +42,8 @@ window.addEventListener('keydown', (e) => {
   if (dir) { act(() => tryMove(dir[0], dir[1])); return; }
   if (WAIT_KEYS.includes(k) || e.code === 'Numpad5') { act(waitTurn); return; }
   if (e.repeat) return;
-  if (k === 'i') { openMenu('inv'); return; }
-  if (k === 'tab') { openMenu('char'); return; }
+  if (k === 'i') { openScreen('inv'); return; }
+  if (k === 'tab') { openScreen('char'); return; }
   if (k === 'f') { interact(); return; }
   const potion = potionByKey(k);
   if (potion) { act(() => usePotion(potion)); return; }
@@ -84,7 +74,7 @@ canvas.addEventListener('mousedown', (e) => {
   // HUD のボタン (左上の仲間の欄、画面下の「道具」、右下の地図) を押したら、マスへの操作はしない
   const hb = hudButtonAt(e.clientX, e.clientY);
   if (hb) {
-    if (hb.id === 'items') openMenu('inv'); else if (hb.id === 'char') openMenu('char'); else if (hb.id === 'map') toggleWorldMap();
+    if (hb.id === 'items') openScreen('inv'); else if (hb.id === 'char') openScreen('char'); else if (hb.id === 'map') toggleWorldMap();
     return;
   }
   updateMouseTile();

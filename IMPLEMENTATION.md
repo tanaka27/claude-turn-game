@@ -25,6 +25,7 @@
 | [docs/progression.md](docs/progression.md) | 経験値とレベル、ステータスの成長（成長曲線）、クエスト、スキルを覚える決まり（今はレベルで覚える `learnAtLevel`） | 成長・クエスト・スキルの覚え方を変える |
 | [docs/items.md](docs/items.md) | 素材とお金、落とし物、装備とレア度、回復薬、商人と鍛冶屋の品ぞろえ | 装備・経済・店を変える |
 | [docs/menu.md](docs/menu.md) | 道具一覧・店（商人・鍛冶屋）・キャラクターの画面（開き方、道具を使う、装備の付け替え、素材を売る） | 画面の中身・道具の種類を変える |
+| [docs/screens.md](docs/screens.md) | 画面の登録表（`SCREENS`。開く・閉じる・キー・ボタンの振り分け）、NPC の役目（`NPC_ROLES`）、施設（宿屋・倉庫・新しい店など）の足し方 | 画面や NPC の役目を足す・キーや閉じ方を変える |
 | [docs/save.md](docs/save.md) | セーブの中身と保存先（ブラウザ・サーバー）、`server.py` の API | 保存する項目を増やす・変える、サーバーを直す |
 | [docs/save-versions.md](docs/save-versions.md) | セーブの形の版と移し替え（`SAVE_MIGRATIONS`）、版の足し方、使えないセーブ（新しい版・壊れたもの）の扱い | 保存する項目を増やす・形を変える。セーブが読めないときの動きを変える |
 | [docs/ui.md](docs/ui.md) | HUD と描画 | 画面の表示を変える |
@@ -49,7 +50,7 @@
 | `src/player.js` | 入力と主人公の行動（移動・通常攻撃・スキル欄のキーからスキルを引く `skillByKey`・スキルを狙って使う `castSkill`） |
 | `src/ai.js` | 敵の AI（狙う相手の選び方、1 回の行動、狙う技の選び方）、湧き場所 |
 | `src/turn.js` | ターンの進め方（速度による行動順、キャラごとの行動の決め方 `CONTROLLERS`、予告した技を出す・再使用待ちを減らすとき、行動の後始末 `endTurn`、時間を進める、行動順の表示用） |
-| `src/ui.js` / `src/quests.js` | 道具一覧と店とキャラクター・NPC（会話）・一時停止の画面 / クエスト |
+| `src/ui.js` / `src/quests.js` | 画面の登録表（`SCREENS` / `registerScreen` / `openScreen` / `closeMenu`・画面のキー `screenKey`）、道具一覧と店とキャラクター・NPC の役目（`NPC_ROLES` / `talkTo`）・会話・一時停止の画面 / クエスト（クエストの画面も登録表に入れる） |
 | `src/render.js` / `src/hud.js` | ワールドの描画 / HUD・行動順・メッセージ欄・ミニマップ・ツールチップ |
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |

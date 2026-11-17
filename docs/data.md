@@ -25,7 +25,7 @@
 
 - 敵を足す: `data/enemies.js` に 1 つ足し、`world.js` の湧き場所の `members` にキーを書く。新しい素材を落とすなら `data/items.js` の `materials` にも足す
 - 装備の名前・性能を変える: `data/items.js` の `slots` / `affixes`
-- 店を足す: 商人は `data/items.js` の `shops` に 1 つ足し、`world.js` の NPC に `role: 'shop', shop: '店のキー'` を書く。鍛冶屋は `smiths` に足し、NPC に `role: 'smith', smith: '鍛冶屋のキー'` を書く
+- 店を足す: 商人は `data/items.js` の `shops` に 1 つ足し、`world.js` の NPC に `role: 'shop', shop: '店のキー'` を書く。鍛冶屋は `smiths` に足し、NPC に `role: 'smith', smith: '鍛冶屋のキー'` を書く。新しい種類の施設（役目）を足すときは [screens.md](screens.md) の「施設の足し方」
 - 入れる建物を足す・話すだけの NPC を足す: [buildings.md](buildings.md)
 - NPC を足す: `world.js` の `npcs` に足し、`kind` に `data/npcs.js` の種類を書く。合う種類がなければ `NPC_KINDS` に 1 つ足す
 - クエストを足す: `data/quests.js` に 1 つ足す（`giver` は `world.js` の NPC の `id`。くり返し受けられるものは `repeatable: true`）。`id` はセーブに残るので、あとから変えるときはセーブの版を上げて古い id を直す（[save-versions.md](save-versions.md)）

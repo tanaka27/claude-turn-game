@@ -1,6 +1,6 @@
 # 道具一覧・店・キャラクターの画面
 
-HTML で作る画面（`index.html` の `#menu`）のしくみ。コードは `src/ui.js`。装備・回復薬・素材・店の中身（数値）は [items.md](items.md)。クエストの画面は [progression.md](progression.md)。
+HTML で作る画面（`index.html` の `#menu`）のしくみ。コードは `src/ui.js`。画面の開き方・閉じ方・キー・ボタンの振り分け（画面の登録表 `SCREENS`）と NPC の役目（`NPC_ROLES`）、施設の足し方は [screens.md](screens.md)。装備・回復薬・素材・店の中身（数値）は [items.md](items.md)。クエストの画面は [progression.md](progression.md)。
 
 ## 開き方
 
@@ -16,7 +16,7 @@ HTML で作る画面（`index.html` の `#menu`）のしくみ。コードは `s
 
 ## 仕組み
 
-- 道具一覧（自分が持っている物の一覧）・店・キャラクターの画面は HTML（`index.html` の `#menu`）。`openMenu('inv' | 'shop' | 'smith' | 'char', 店のキー)` で開き（商人・鍛冶屋のときは `menu.shop` に店のキー。`shopDef` が `ITEMS.shops` か `ITEMS.smiths` から引く）、`renderMenu` が中身を作る。ボタンの処理は `#menu` のクリックをまとめて受けて振り分ける
+- 道具一覧（自分が持っている物の一覧）・店・キャラクターの画面は HTML（`index.html` の `#menu`）。どれも画面の登録表 `SCREENS` の 1 つで（`menuScreen` で作る。[screens.md](screens.md)）、`openScreen('inv' | 'shop' | 'smith' | 'char', 店のキー)` で開き（商人・鍛冶屋のときは `menu.shop` に店のキー。`shopDef` が開いている画面の `defs()`（`ITEMS.shops` / `ITEMS.smiths`）から引く）、`renderMenu` が中身を作る。画面ごとの違い（見出し・「商品」の欄・素材を売るボタン・道具の「使う」・「捨てる」か「売る」か）は画面の定義に書く。ボタンは `#menu` のクリックを 1 か所で受け、開いている画面の `actions`（共通のものは `MENU_ACTIONS`）から引いて呼ぶ
 - 道具一覧（`'inv'`）は I キーか HUD の「道具」ボタンで開く。中央の列の上から 道具（使う物）・装備品（持っている装備）・素材
 - **道具一覧とキャラクターの画面では、アイテム（装備・道具・素材）をクリックすると詳細がポップアップで開く**（`menu.pop`、`openPop` / `renderPop`。`usesPop()` が true の画面）。メニューの上に暗い幕をかけ、中央に詳細の箱（ふちはレア度の色）を出す。「閉じる」ボタン・幕のクリック・Esc（ポップアップだけ閉じる）で閉じる（`closePop`）。右の欄はいつも「つよさ」で、ポップアップで付け替えるとすぐ変わる
   - 装備（`{ kind: 'gear' }`。どれかは `menu.sel`）: 下の装備の詳細（`detailHtml`）と「装備する」「捨てる」「外す」。付け替えたあともポップアップは開いたまま（装備した物は「外す」の表示に変わる）。捨てると閉じる

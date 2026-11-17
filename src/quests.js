@@ -62,17 +62,6 @@ function claimQuest(q) {
 // ----- クエストの画面 (依頼の一覧から選び、右で内容を見て受ける・報告する) -----
 // questSel: 選んでいるクエストの id
 let questNpc = null, questNote = '', questSel = null;
-function openQuest(n) {
-  game.state = 'menu';
-  aiming = null;
-  player.travel = null;
-  menu.mode = 'quest';
-  questNpc = n;
-  questNote = '';
-  questSel = null;
-  renderQuest();
-  $('quest').classList.add('show');
-}
 
 const QUEST_TAG = { available: '受けられる', active: '受けている', ready: '報告できる', claimed: '報告済み' };
 // 一覧に出すクエスト (前のクエストがまだのものは出さない)。報告できる → 受けている → 受けられる → レベル不足 → 報告済み の順
@@ -132,14 +121,23 @@ function moveQuestSel(d) {
   if (el) el.scrollIntoView({ block: 'nearest' });
 }
 
-$('quest').addEventListener('click', (e) => {
-  if (game.state !== 'menu' || menu.mode !== 'quest') return;
-  const act = e.target.closest('[data-act]');
-  if (act) {
-    if (act.dataset.act === 'close') closeMenu();
-    else questAction(questById(act.dataset.id));
-    return;
-  }
-  const item = e.target.closest('[data-qid]');
-  if (item) { questSel = item.dataset.qid; renderQuest(); }
+// クエストの画面 (role: 'quest' の NPC に話しかけて開く。arg: その NPC)。画面の登録表は src/ui.js の SCREENS
+// ↑↓ で選び、Enter・ボタンで受ける・報告する。F でも閉じる
+registerScreen('quest', {
+  overlay: 'quest', render: renderQuest, closeKeys: ['f'],
+  open: (n) => { questNpc = n; questNote = ''; questSel = null; },
+  keys: (k, e) => {
+    if (k === 'arrowup' || k === 'arrowdown') { moveQuestSel(k === 'arrowup' ? -1 : 1); return true; }
+    if (k === 'enter' && !e.repeat) { questAction(questById(questSel)); return true; }
+    return false;
+  },
+  actions: {
+    close: () => closeMenu(),
+    accept: (btn) => questAction(questById(btn.dataset.id)),
+    claim: (btn) => questAction(questById(btn.dataset.id)),
+  },
+  click: (e) => {
+    const item = e.target.closest('[data-qid]');
+    if (item) { questSel = item.dataset.qid; renderQuest(); }
+  },
 });

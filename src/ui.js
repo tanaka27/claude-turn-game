@@ -3,21 +3,76 @@
 // =====================================================================
 'use strict';
 
-// ----- 道具一覧・店の画面 -----
-// menu.mode: 'inv' (道具一覧。I キーか HUD の「道具」ボタンで開く) / 'shop' (商人: 回復薬を買う・素材を売る) /
-//   'smith' (鍛冶屋: 装備を買う・売る) / 'char' (キャラクター。一時停止から開き、閉じると一時停止に戻る) /
-//   'quest' (クエスト。src/quests.js) / 'talk' (話すだけの NPC との会話)
-// shop: 開いている店のキー (商人は data/items.js の ITEMS.shops、鍛冶屋は ITEMS.smiths) / sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
-// pop: 開いているアイテムの詳細 (ポップアップ。道具一覧とキャラクターの画面だけ) null / { kind: 'gear' } (装備。どれかは sel) /
+// ----- 画面の登録表 -----
+// 画面 (game.state === 'menu' のときに出す HTML の画面) は SCREENS[名前] に 1 つずつ登録する (registerScreen)。
+// 開いている画面の名前は menu.mode。足し方は docs/menu.md の「施設（画面と NPC の役目）の足し方」
+//   overlay   : 出す要素の id (index.html)。閉じるときは登録された全部の画面の overlay を隠す
+//   open(arg) : その画面だけの開くときの準備 (共通の準備 = 時間を止める・構えと歩く道を消す・menu.mode は openScreen がする)
+//   render()  : 中身を作る (開いたとき。ボタンを押したあとは afterAction)
+//   keys(k, e): その画面のキー (k は小文字)。処理したら true。処理しなかったら、Esc と closeKeys で閉じる (押しっぱなしは除く)
+//   closeKeys : Esc のほかに閉じるキー
+//   actions   : { data-act の値: (ボタン) => ... } ボタンのクリック。true を返したら afterAction をしない (閉じたときなど)
+//   afterAction(): ボタンを押したあと (合わない data-act でも呼ぶ)
+//   click(e)  : ボタン (data-act) 以外のところのクリック
+//   onClose() : 閉じたあと (セーブの前)
+const SCREENS = {};
+const screenNow = () => SCREENS[menu.mode];
+const hasAction = (s, a) => Object.prototype.hasOwnProperty.call(s.actions || {}, a);
+// 画面を登録する。overlay の要素のクリックはここで 1 度だけ受けて、開いている画面に渡す
+function registerScreen(name, def) {
+  const known = Object.values(SCREENS).some((s) => s.overlay === def.overlay);
+  SCREENS[name] = def;
+  if (known) return;
+  $(def.overlay).addEventListener('click', (e) => {
+    const s = screenNow();
+    if (game.state !== 'menu' || !s || s.overlay !== def.overlay) return;
+    const btn = e.target.closest('[data-act]');
+    if (btn && !btn.disabled) {
+      const a = btn.dataset.act;
+      if (!(hasAction(s, a) && s.actions[a](btn) === true) && s.afterAction) s.afterAction();
+      return;
+    }
+    if (s.click) s.click(e);
+  });
+}
+// 画面を開く (NPC に話しかける・キー・HUD のボタンから)。arg はその画面の open に渡す (店のキー・NPC など)
+function openScreen(name, arg) {
+  const s = SCREENS[name];
+  game.state = 'menu';
+  aiming = null;
+  player.travel = null;
+  menu.mode = name;
+  if (s.open) s.open(arg);
+  s.render();
+  $(s.overlay).classList.add('show');
+}
+// 開いている画面のキー (src/player.js の keydown から、画面を開いている間だけ呼ぶ)
+function screenKey(k, e) {
+  const s = screenNow();
+  if (s.keys && s.keys(k, e)) return;
+  if (!e.repeat && (k === 'escape' || (s.closeKeys || []).includes(k))) closeMenu();
+}
+function closeMenu() {
+  const s = screenNow();
+  for (const x of Object.values(SCREENS)) $(x.overlay).classList.remove('show');
+  game.state = 'play';
+  if (s && s.onClose) s.onClose();
+  saveGame();
+}
+
+// ----- 道具一覧・店・キャラクターの画面 (どれも index.html の #menu。menuScreen で作る) -----
+// shop: 開いている店のキー (その画面の defs() の表のキー。商人は data/items.js の ITEMS.shops、鍛冶屋は ITEMS.smiths) /
+//   sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
+// pop: 開いているアイテムの詳細 (ポップアップ。画面の pop が true のときだけ) null / { kind: 'gear' } (装備。どれかは sel) /
 //   { kind: 'tool', id: 回復薬のキー } / { kind: 'mat', id: 素材のキー }
 const menu = { mode: 'inv', shop: null, sel: null, pop: null };
 // アイテムをクリックしたときにポップアップで詳細を出す画面か (店では今までどおり右の欄に出す)
-const usesPop = () => menu.mode === 'inv' || menu.mode === 'char';
+const usesPop = () => !!screenNow().pop;
 // 鍛冶屋ごとの品ぞろえ { 鍛冶屋のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
 const shopStocks = {};
-const shopDef = () => (menu.mode === 'smith' ? IT.smiths : IT.shops)[menu.shop];
-const shopStock = () => (menu.mode === 'smith' && shopStocks[menu.shop] ? shopStocks[menu.shop].items : []);
-const isStore = () => menu.mode === 'shop' || menu.mode === 'smith';
+// 開いている店の定義 (その画面の defs() の表から) / 商品の装備 (その画面の stock()。なければ空)
+const shopDef = () => screenNow().defs()[menu.shop];
+const shopStock = () => (screenNow().stock ? screenNow().stock() : []);
 
 // 鍛冶屋の品ぞろえ: その鍛冶屋の gear を 1 つずつ。自分のレベルが変わったら入れ替える
 function refreshSmith(id) {
@@ -28,29 +83,33 @@ function refreshSmith(id) {
   shopStocks[id] = { level: player.level, items: d.gear.map(([slot, r]) => makeItem(slot, lv, r)) };
 }
 
-function openMenu(mode, shop) {
-  game.state = 'menu';
-  aiming = null;
-  player.travel = null;
-  menu.mode = mode;
-  menu.shop = mode === 'shop' || mode === 'smith' ? shop : null;
-  menu.sel = null;
-  menu.pop = null;
-  if (mode === 'smith') refreshSmith(shop);
-  if (mode === 'char') $('pause').classList.remove('show');
-  renderMenu();
-  $('menu').classList.add('show');
+// #menu を使う画面を作る。def に書いたもので共通のものを上書き・追加する
+//   title(): 見出し / profile: 左上に profileHtml を出す / pop: アイテムの詳細をポップアップで出す /
+//   toolUse: 道具の「使う」を出す / sellMaterials: 素材を売るボタンを出す /
+//   defs(): 店の定義の表 (data/items.js) / stock(): 商品の装備 / shopList(): 「商品」の欄の中身 (あれば「商品」の欄を出す) /
+//   invGearButton(it): 持ち物の装備を選んだときの「装備する」の横のボタン (なければ「捨てる」) /
+//   open(arg): menu.shop・menu.sel・menu.pop を消したあとの準備 / actions: MENU_ACTIONS に足すボタン / onClose()
+function menuScreen(def) {
+  return {
+    overlay: 'menu', render: renderMenu, afterAction: renderMenu, keys: menuKeys, click: menuClick, ...def,
+    open(arg) {
+      menu.shop = null;
+      menu.sel = null;
+      menu.pop = null;
+      if (def.open) def.open(arg);
+    },
+    actions: { ...MENU_ACTIONS, ...(def.actions || {}) },
+    onClose() {
+      menu.pop = null;
+      $('itemPop').classList.remove('show');
+      if (def.onClose) def.onClose();
+    },
+  };
 }
-function closeMenu() {
-  menu.pop = null;
-  $('itemPop').classList.remove('show');
-  $('menu').classList.remove('show');
-  $('quest').classList.remove('show');
-  $('talk').classList.remove('show');
-  game.state = 'play';
-  // キャラクターの画面は一時停止のまま開いているので、一時停止の画面に戻す
-  if (menu.mode === 'char' && game.paused) showPause();
-  saveGame();
+// アイテムの詳細 (ポップアップ) を開いているときは、Esc でそれだけ閉じる
+function menuKeys(k, e) {
+  if (menu.pop && !e.repeat && k === 'escape') { closePop(); return true; }
+  return false;
 }
 
 function findSel() {
@@ -87,14 +146,14 @@ function detailHtml(it, from) {
     <div class="stats">${keys.length ? keys.map(row).join('') : `<div class="row none">${empty}</div>`}</div>`;
   const rows = section('基本性能', baseKeys, 'なし') +
     section(`追加性能（${own.length}）`, [...own, ...lost], 'なし');
-  const btn = (act, label, ok = true) => `<button data-act="${act}"${ok ? '' : ' disabled'}>${label}</button>`;
+  const btn = actButton, s = screenNow();
   const full = p.inventory.length >= EC.inventorySize;
   let btns = '';
   if (from === 'equip') btns = btn('unequip', '外す', !full);
   else if (from === 'shop') btns = btn('buy', `買う（${itemValue(it)} G）`, p.gold >= itemValue(it) && !full);
   else {
     btns = btn('equip', '装備する');
-    btns += menu.mode === 'smith' ? btn('sell', `売る（${sellPrice(it)} G）`) : btn('drop', '捨てる');
+    btns += s.invGearButton ? s.invGearButton(it) : btn('drop', '捨てる');
   }
   return `<div class="dname" style="color:${r.color}">${it.name}</div>
     <div class="dsub">${r.name}・${IT.slots[it.slot].label}・Lv${it.level}</div>
@@ -102,10 +161,12 @@ function detailHtml(it, from) {
     ${rows}<div class="btns">${btns}</div>`;
 }
 
+const actButton = (act, label, ok = true) => `<button data-act="${act}"${ok ? '' : ' disabled'}>${label}</button>`;
+
 function renderMenu() {
-  const p = player;
-  $('menuTitle').textContent = isStore() ? shopDef().name : menu.mode === 'char' ? 'キャラクター' : '道具一覧';
-  $('profile').innerHTML = menu.mode === 'char' ? profileHtml() : '';
+  const p = player, s = screenNow();
+  $('menuTitle').textContent = s.title();
+  $('profile').innerHTML = s.profile ? profileHtml() : '';
   $('menuGold').textContent = `所持金 ${p.gold} G`;
   renderTools();
   $('equipList').innerHTML = Object.keys(IT.slots).map((slot) => {
@@ -114,18 +175,8 @@ function renderMenu() {
   }).join('');
   $('invCount').textContent = `${p.inventory.length} / ${EC.inventorySize}`;
   $('invList').innerHTML = p.inventory.map((it) => itemChip(it, 'inv')).join('') || '<p class="hint">何も持っていない</p>';
-  $('shopCol').style.display = isStore() ? '' : 'none';
-  if (menu.mode === 'shop') {
-    $('shopList').innerHTML = shopDef().potions.map((id) => {
-      const po = IT.potions[id], ok = canBuyPotion(id);
-      return `<div class="item potion" style="--rc:${rarityOf(po.rarity).color}"><b>${po.name}</b><span>${rarityOf(po.rarity).name}・最大HPの ${Math.round(po.heal * 100)}% 回復（${po.key.toUpperCase()} で使う）</span>
-        <button data-act="potion" data-potion="${id}"${ok ? '' : ' disabled'}>買う（${po.price} G）</button></div>`;
-    }).join('') || '<p class="hint">売り物はない</p>';
-  } else if (menu.mode === 'smith') {
-    const items = shopStock();
-    $('shopList').innerHTML = items.map((it) => itemChip(it, 'shop')).join('') ||
-      '<p class="hint">装備は売り切れ（レベルが上がると入れ替わる）</p>';
-  }
+  $('shopCol').style.display = s.shopList ? '' : 'none';
+  if (s.shopList) $('shopList').innerHTML = s.shopList();
   renderMaterials();
   const it = findSel();
   if (usesPop()) {
@@ -165,7 +216,7 @@ function renderPop() {
 }
 // 道具 (回復薬) の詳細。道具一覧で、一時停止していなければ「使う」(画面を閉じて 1 行動)
 function toolPopHtml(t) {
-  const r = rarityOf(t.rarity), canUse = menu.mode === 'inv' && !game.paused;
+  const r = rarityOf(t.rarity), canUse = !!screenNow().toolUse && !game.paused;
   const reason = t.count <= 0 ? '持っていない' : player.hp >= player.stats.maxHp ? 'HP が満タン' : '';
   return `<div class="dname" style="color:${r.color}">${t.name}</div>
     <div class="dsub">${r.name}・道具</div>
@@ -236,7 +287,7 @@ function toolEntries() {
 }
 // 道具の一覧。道具一覧の画面 (inv) では「使う」で画面を閉じて使う (1 行動)
 function renderTools() {
-  const inv = menu.mode === 'inv';
+  const inv = !!screenNow().toolUse;
   $('toolList').innerHTML = toolEntries().map((t) => {
     const btn = inv ? `<button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>使う</button>` : '';
     const r = rarityOf(t.rarity);
@@ -250,7 +301,7 @@ const canBuyPotion = (id) => player.gold >= IT.potions[id].price && (player.poti
 // 素材の一覧。店では 1 つずつ・種類ごと・全部を売れる
 const materialTotal = () => Object.entries(player.materials).reduce((s, [id, n]) => s + IT.materials[id].price * n, 0);
 function renderMaterials() {
-  const p = player, shop = menu.mode === 'shop';
+  const p = player, shop = !!screenNow().sellMaterials;
   const ids = Object.keys(IT.materials).filter((id) => p.materials[id] > 0);
   $('matList').innerHTML = ids.map((id) => {
     const m = IT.materials[id], n = p.materials[id];
@@ -287,38 +338,44 @@ function unequipItem(it) {
   menu.sel = { from: 'inv', id: it.id };
 }
 
-$('menu').addEventListener('click', (e) => {
-  if (game.state !== 'menu') return;
-  const p = player;
-  const btn = e.target.closest('[data-act]');
-  if (btn && !btn.disabled) {
-    const it = findSel(), a = btn.dataset.act;
-    if (a === 'close') { closeMenu(); return; }
-    if (a === 'popClose') { closePop(); return; }
-    if (a === 'use' && menu.mode === 'inv') {
-      const t = toolEntries().find((x) => x.id === btn.dataset.tool);
-      if (t && t.usable) { closeMenu(); act(t.use); }
-      return;
-    }
-    const pid = btn.dataset.potion;
-    if (a === 'potion' && menu.mode === 'shop' && shopDef().potions.includes(pid) && canBuyPotion(pid)) {
-      p.gold -= IT.potions[pid].price;
-      p.potions[pid] = (p.potions[pid] || 0) + 1;
-    } else if (a === 'equip' && it) equipItem(it);
-    else if (a === 'unequip' && it && p.inventory.length < EC.inventorySize) unequipItem(it);
-    else if (a === 'drop' && it) { p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
-    else if (a === 'sellMat' && menu.mode === 'shop') sellMaterial(btn.dataset.mat, !!btn.dataset.all);
-    else if (a === 'sellAllMat' && menu.mode === 'shop') for (const id in p.materials) sellMaterial(id, true);
-    else if (a === 'sell' && it && menu.mode === 'smith' && menu.sel.from === 'inv') { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
-    else if (a === 'buy' && it && menu.mode === 'smith' && p.gold >= itemValue(it) && p.inventory.length < EC.inventorySize) {
-      p.gold -= itemValue(it);
-      shopStocks[menu.shop].items = shopStock().filter((x) => x !== it);
-      p.inventory.push(it);
-      menu.sel = { from: 'inv', id: it.id };
-    }
-    renderMenu();
-    return;
+// ----- #menu のボタン (data-act) -----
+// どの #menu の画面でも使えるボタン。画面ごとのボタンは menuScreen の actions に足す (押したあとは renderMenu)
+const MENU_ACTIONS = {
+  close: () => { closeMenu(); return true; },
+  popClose: () => { closePop(); return true; },
+  equip: () => { const it = findSel(); if (it) equipItem(it); },
+  unequip: () => { const it = findSel(); if (it && player.inventory.length < EC.inventorySize) unequipItem(it); },
+  drop: () => { const it = findSel(); if (it) { player.inventory = player.inventory.filter((x) => x !== it); menu.sel = null; } },
+};
+// 道具を使う (画面を閉じて 1 行動)。使えなくても画面は作り直さない
+function useToolAction(btn) {
+  const t = toolEntries().find((x) => x.id === btn.dataset.tool);
+  if (t && t.usable) { closeMenu(); act(t.use); }
+  return true;
+}
+function buyPotionAction(btn) {
+  const p = player, pid = btn.dataset.potion;
+  if (shopDef().potions.includes(pid) && canBuyPotion(pid)) {
+    p.gold -= IT.potions[pid].price;
+    p.potions[pid] = (p.potions[pid] || 0) + 1;
   }
+}
+function sellGearAction() {
+  const p = player, it = findSel();
+  if (it && menu.sel.from === 'inv') { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
+}
+function buyGearAction() {
+  const p = player, it = findSel();
+  if (it && p.gold >= itemValue(it) && p.inventory.length < EC.inventorySize) {
+    p.gold -= itemValue(it);
+    shopStocks[menu.shop].items = shopStock().filter((x) => x !== it);
+    p.inventory.push(it);
+    menu.sel = { from: 'inv', id: it.id };
+  }
+}
+
+// #menu のボタン以外のクリック: アイテムを選ぶ・詳細を出す
+function menuClick(e) {
   // ポップアップの外 (暗いところ) をクリックしたら閉じる
   if (e.target.id === 'itemPop') { closePop(); return; }
   if (e.target.closest('#itemPop')) return;
@@ -331,31 +388,67 @@ $('menu').addEventListener('click', (e) => {
   // 道具・素材は、道具一覧とキャラクターの画面でだけクリックで詳細を出す
   const other = usesPop() && e.target.closest('.item[data-tool], .item[data-mat]');
   if (other) openPop(other.dataset.tool ? { kind: 'tool', id: other.dataset.tool } : { kind: 'mat', id: other.dataset.mat });
-});
+}
+
+// 道具一覧 (I キーか HUD の「道具」ボタン)
+registerScreen('inv', menuScreen({
+  title: () => '道具一覧', pop: true, toolUse: true, closeKeys: ['i'],
+  actions: { use: useToolAction },
+}));
+// キャラクター (Tab・HUD の仲間の欄・一時停止の画面から)。一時停止の画面は隠し、閉じると一時停止の画面に戻す
+registerScreen('char', menuScreen({
+  title: () => 'キャラクター', profile: true, pop: true, closeKeys: ['c', 'tab'],
+  open: () => $('pause').classList.remove('show'),
+  onClose: () => { if (game.paused) showPause(); },
+}));
+// 商人: 回復薬を買う・素材を売る (arg: data/items.js の ITEMS.shops のキー)
+registerScreen('shop', menuScreen({
+  title: () => shopDef().name, sellMaterials: true, closeKeys: ['f'],
+  defs: () => IT.shops,
+  open: (id) => { menu.shop = id; },
+  shopList: () => shopDef().potions.map((id) => {
+    const po = IT.potions[id], ok = canBuyPotion(id);
+    return `<div class="item potion" style="--rc:${rarityOf(po.rarity).color}"><b>${po.name}</b><span>${rarityOf(po.rarity).name}・最大HPの ${Math.round(po.heal * 100)}% 回復（${po.key.toUpperCase()} で使う）</span>
+        <button data-act="potion" data-potion="${id}"${ok ? '' : ' disabled'}>買う（${po.price} G）</button></div>`;
+  }).join('') || '<p class="hint">売り物はない</p>',
+  actions: {
+    potion: buyPotionAction,
+    sellMat: (btn) => sellMaterial(btn.dataset.mat, !!btn.dataset.all),
+    sellAllMat: () => { for (const id in player.materials) sellMaterial(id, true); },
+  },
+}));
+// 鍛冶屋: 装備を買う・売る (arg: data/items.js の ITEMS.smiths のキー)。品ぞろえは開いたときに自分のレベルで作り直す
+registerScreen('smith', menuScreen({
+  title: () => shopDef().name, closeKeys: ['f'],
+  defs: () => IT.smiths,
+  stock: () => (shopStocks[menu.shop] ? shopStocks[menu.shop].items : []),
+  open: (id) => { menu.shop = id; refreshSmith(id); },
+  shopList: () => shopStock().map((it) => itemChip(it, 'shop')).join('') ||
+    '<p class="hint">装備は売り切れ（レベルが上がると入れ替わる）</p>',
+  invGearButton: (it) => actButton('sell', `売る（${sellPrice(it)} G）`),
+  actions: { sell: sellGearAction, buy: buyGearAction },
+}));
 
 // 話しかけられる NPC (となりのマスにいる人)
 function nearNpc() {
   if (!player || player.dead) return null;
   return (zone.npcs || []).find((n) => steps(n.tx, n.ty, player.tx, player.ty) <= 1) || null;
 }
+// NPC の役目 (world.js の NPC の role) → 話しかけたときに開く画面 (SCREENS の名前) と、その画面の open に渡すもの。
+//   check(n): 役目ごとに NPC に書くもの (店のキーなど) の食い違いの文の並び (起動時に validateData が調べる)
+const NPC_ROLES = {
+  shop: { screen: 'shop', arg: (n) => n.shop, check: (n) => (IT.shops[n.shop] ? [] : [`店 '${n.shop}' が data/items.js の shops にない`]) },
+  smith: { screen: 'smith', arg: (n) => n.smith, check: (n) => (IT.smiths[n.smith] ? [] : [`鍛冶屋 '${n.smith}' が data/items.js の smiths にない`]) },
+  quest: { screen: 'quest', arg: (n) => n },
+  talk: { screen: 'talk', arg: (n) => n, check: (n) => (Array.isArray(n.lines) && n.lines.length > 0 ? [] : ['話す言葉 lines がない']) },
+};
 function talkTo(n) {
-  if (n.role === 'shop') openMenu('shop', n.shop);
-  else if (n.role === 'smith') openMenu('smith', n.smith);
-  else if (n.role === 'quest') openQuest(n);
-  else if (n.role === 'talk') openTalk(n);
+  const r = NPC_ROLES[n.role];
+  if (r) openScreen(r.screen, r.arg(n));
 }
 
 // ----- 会話 (role: 'talk' の NPC。world.js の lines を 1 つずつ出す) -----
 const talk = { npc: null, line: 0 };
-function openTalk(n) {
-  game.state = 'menu';
-  aiming = null;
-  player.travel = null;
-  menu.mode = 'talk';
-  talk.npc = n; talk.line = 0;
-  renderTalk();
-  $('talk').classList.add('show');
-}
 function renderTalk() {
   const n = talk.npc, last = talk.line >= n.lines.length - 1;
   $('talkName').textContent = n.name;
@@ -368,10 +461,16 @@ function nextTalk() {
   talk.line++;
   renderTalk();
 }
-$('talk').addEventListener('click', (e) => {
-  if (game.state !== 'menu' || menu.mode !== 'talk') return;
-  if (e.target.closest('[data-act="close"]')) closeMenu();
-  else nextTalk();
+// F / Enter / スペース・クリックで次の言葉へ (最後なら閉じる)。Esc か「閉じる」でいつでも閉じる
+registerScreen('talk', {
+  overlay: 'talk', render: renderTalk,
+  open: (n) => { talk.npc = n; talk.line = 0; },
+  keys: (k, e) => {
+    if (!e.repeat && (k === 'f' || k === 'enter' || k === ' ')) { nextTalk(); return true; }
+    return false;
+  },
+  actions: { close: () => closeMenu() },
+  click: () => nextTalk(),
 });
 function interact() {
   const n = nearNpc();
@@ -394,5 +493,5 @@ $('pause').addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]');
   if (!act || game.state !== 'play' || !game.paused) return;
   if (act.dataset.act === 'resume') togglePause();
-  else if (act.dataset.act === 'char') openMenu('char');
+  else if (act.dataset.act === 'char') openScreen('char');
 });
