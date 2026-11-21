@@ -115,13 +115,27 @@ function validateData() {
   check(keys.every((k) => typeof k === 'string' && k !== ''), 'data/player.js skillSlots: key がないものがある');
   check(new Set(keys).size === keys.length, 'data/player.js skillSlots: スキルのキーが重なっている');
   // 移動・待機・画面のキーと重なると、そちらが先に使われてスキルが出ない
-  const reserved = [...Object.keys(MOVE_KEYS), ...WAIT_KEYS, 'i', 'f', 'p', 'escape', 'enter'];
+  const reserved = [...Object.keys(MOVE_KEYS), ...WAIT_KEYS, 'i', 'f', 'p', 'm', 'tab', 'escape', 'enter'];
   for (const k of keys) check(!reserved.includes(k), `data/player.js: スキルのキー '${k}' は移動や画面のキーと重なっている`);
-  // 回復薬のキーも、移動・画面・スキルのキーと重ならないようにする
-  const potionKeys = Object.values(ITEMS.potions).map((po) => po.key);
-  check(new Set(potionKeys).size === potionKeys.length, 'data/items.js potions: 回復薬のキーが重なっている');
-  for (const k of potionKeys) check(!reserved.includes(k) && !keys.includes(k), `data/items.js potions: キー '${k}' は移動・画面・スキルのキーと重なっている`);
-  check(ITEMS.potions.potion, 'data/items.js potions: クエストの報酬に使う potion がない');
+  // 道具 (consumables): キーは移動・画面・スキルのキーと重ならない。効果の種類は src/items.js の ITEM_EFFECTS にある
+  const itemKeys = Object.values(ITEMS.consumables).map((c) => c.key);
+  check(itemKeys.every((k) => typeof k === 'string' && k !== ''), 'data/items.js consumables: key がないものがある');
+  check(new Set(itemKeys).size === itemKeys.length, 'data/items.js consumables: 道具のキーが重なっている');
+  for (const k of itemKeys) check(!reserved.includes(k) && !keys.includes(k), `data/items.js consumables: キー '${k}' は移動・画面・スキルのキーと重なっている`);
+  for (const [id, c] of Object.entries(ITEMS.consumables)) {
+    const at = `data/items.js consumables.${id}`;
+    check(typeof c.name === 'string' && c.name !== '', `${at}: name がない`);
+    check(Number.isInteger(c.max) && c.max >= 1, `${at}: max は 1 以上の整数にする`);
+    check(Number.isInteger(c.start) && c.start >= 0 && c.start <= c.max, `${at}: start は 0〜max の整数にする`);
+    check(Number.isInteger(c.price) && c.price >= 1, `${at}: price は 1 以上の整数にする`);
+    check(Array.isArray(c.effects) && c.effects.length > 0, `${at}: effects (効果の並び) がない`);
+    for (const e of Array.isArray(c.effects) ? c.effects : []) {
+      const K = e && ITEM_EFFECTS[e.kind];
+      check(K, `${at}: 効果の種類 '${e && e.kind}' が src/items.js の ITEM_EFFECTS にない`);
+      const bad = K ? K.check(e) : '';
+      check(!bad, `${at}: ${e && e.kind}: ${bad}`);
+    }
+  }
   // NPC の種類も主人公と同じステータスを持つ (計算で決まるものは書かない)
   for (const [kind, k] of Object.entries(NPC_KINDS)) {
     for (const st in PLAYER.stats) check(Number.isFinite(k.stats[st]) && k.stats[st] >= 0, `data/npcs.js ${kind}: stats に ${st} がない`);
@@ -178,12 +192,12 @@ function validateData() {
   }
   for (const k in ITEMS.affixes) check(STATS[k], `data/items.js: 追加性能 '${k}' が data/stats.js にない`);
   for (const [id, sh] of Object.entries(ITEMS.shops)) {
-    for (const po of sh.potions) check(ITEMS.potions[po], `data/items.js shops.${id}: 回復薬 '${po}' が potions にない`);
+    for (const c of sh.consumables || []) check(ITEMS.consumables[c], `data/items.js shops.${id}: 道具 '${c}' が consumables にない`);
   }
   for (const [id, sm] of Object.entries(ITEMS.smiths)) {
     for (const [slot, r] of sm.gear) check(ITEMS.slots[slot] && rarityIds.includes(r), `data/items.js smiths.${id}: 部位 '${slot}' かレア度 '${r}' がない`);
   }
-  for (const [id, po] of Object.entries(ITEMS.potions)) check(rarityIds.includes(po.rarity), `data/items.js potions.${id}: レア度 '${po.rarity}' がない`);
+  for (const [id, c] of Object.entries(ITEMS.consumables)) check(rarityIds.includes(c.rarity), `data/items.js consumables.${id}: レア度 '${c.rarity}' がない`);
   for (const [id, m] of Object.entries(ITEMS.materials)) check(rarityIds.includes(m.rarity), `data/items.js materials.${id}: レア度 '${m.rarity}' がない`);
   for (const [type, d] of Object.entries(ENEMIES)) {
     const drops = (d.drops || []).filter((m) => ITEMS.materials[m.id]);
@@ -205,6 +219,10 @@ function validateData() {
     check(!q.requires || !(questById(q.requires) || {}).repeatable, `data/quests.js '${q.id}': requires '${q.requires}' はくり返しのクエストなので使えない`);
     const it = q.reward.item;
     check(!it || (ITEMS.slots[it.slot] && rarityIds.includes(it.rarity)), `data/quests.js '${q.id}': 報酬の装備の部位かレア度がない`);
+    for (const c of q.reward.consumables || []) {
+      check(ITEMS.consumables[c.id], `data/quests.js '${q.id}': 報酬の道具 '${c.id}' が data/items.js の consumables にない`);
+      check(Number.isInteger(c.count) && c.count >= 1, `data/quests.js '${q.id}': 報酬の道具 '${c.id}' の count は 1 以上の整数にする`);
+    }
   }
 
   for (let n = SAVE_OLDEST; n < SAVE_VERSION; n++) {

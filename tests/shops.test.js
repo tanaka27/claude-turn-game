@@ -4,7 +4,7 @@
 const assert = require('assert');
 const {
   newGame, press, el, shown, textOf, htmlOf, openScreen, findButton, buttonLabels, clickButton, clickGear, clickTool, clickMat, clickPopBackdrop,
-  nextToNpc, giveItem, fillInventory, smithStock, setLevel, trackSaves, screenNodes, clickNode, clickStaleButton, staleSelect,
+  nextToNpc, giveItem, fillInventory, smithStock, setLevel, trackSaves, screenNodes, clickNode, clickStaleButton, staleSelect, bagOf, consumableDef, buyButton,
 } = require('./helpers');
 
 function openNpc(g, id) { nextToNpc(g, id); press(g, 'f'); }
@@ -13,35 +13,35 @@ const label = (b) => b && b.text.trim();
 // ----- 商人 -----
 test('商人: 回復薬を買うとお金が減って数が増え、お金が足りなくなるとボタンが押せない', () => {
   const g = newGame();
-  const p = g.player, po = g.IT.potions.potion;
+  const p = g.player, po = consumableDef(g, 'potion');
   openNpc(g, 'merchant');
   assert.strictEqual(textOf(g, 'menuGold'), `所持金 ${p.gold} G`);
-  const b = findButton(g, 'menu', 'potion', { potion: 'potion' });
+  const b = findButton(g, 'menu', ...buyButton('potion'));
   assert.strictEqual(label(b), `買う（${po.price} G）`);
   assert.strictEqual(b.disabled, false);
-  assert.strictEqual(findButton(g, 'menu', 'potion', { potion: 'hiPotion' }), null, '始まりの町の商店に上回復薬はない');
-  const gold = p.gold, n = p.potions.potion, t = g.game.time;
-  assert.ok(clickButton(g, 'menu', 'potion', { potion: 'potion' }));
+  assert.strictEqual(findButton(g, 'menu', ...buyButton('hiPotion')), null, '始まりの町の商店に上回復薬はない');
+  const gold = p.gold, n = bagOf(p).potion, t = g.game.time;
+  assert.ok(clickButton(g, 'menu', ...buyButton('potion')));
   assert.strictEqual(p.gold, gold - po.price);
-  assert.strictEqual(p.potions.potion, n + 1);
+  assert.strictEqual(bagOf(p).potion, n + 1);
   assert.strictEqual(g.game.time, t, '買うのは行動にならない');
   assert.strictEqual(textOf(g, 'menuGold'), `所持金 ${p.gold} G`);
   assert.ok(p.gold < po.price);
-  assert.strictEqual(findButton(g, 'menu', 'potion', { potion: 'potion' }).disabled, true);
-  clickButton(g, 'menu', 'potion', { potion: 'potion' }, { force: true });
-  assert.strictEqual(p.potions.potion, n + 1, '押せないボタンが押されても買えない');
+  assert.strictEqual(findButton(g, 'menu', ...buyButton('potion')).disabled, true);
+  clickButton(g, 'menu', ...buyButton('potion'), { force: true });
+  assert.strictEqual(bagOf(p).potion, n + 1, '押せないボタンが押されても買えない');
   assert.strictEqual(p.gold, gold - po.price);
 });
 
 test('商人: 持てる上限まで持っていると買えない', () => {
   const g = newGame();
-  const p = g.player, po = g.IT.potions.potion;
+  const p = g.player, po = consumableDef(g, 'potion');
   p.gold = 1000;
-  p.potions.potion = po.max;
+  bagOf(p).potion = po.max;
   openNpc(g, 'merchant');
-  assert.strictEqual(findButton(g, 'menu', 'potion', { potion: 'potion' }).disabled, true);
-  clickButton(g, 'menu', 'potion', { potion: 'potion' }, { force: true });
-  assert.strictEqual(p.potions.potion, po.max);
+  assert.strictEqual(findButton(g, 'menu', ...buyButton('potion')).disabled, true);
+  clickButton(g, 'menu', ...buyButton('potion'), { force: true });
+  assert.strictEqual(bagOf(p).potion, po.max);
   assert.strictEqual(p.gold, 1000);
 });
 
@@ -50,9 +50,9 @@ test('隠れ里の薬師は上回復薬も売る', () => {
   const p = g.player;
   p.gold = 1000;
   openNpc(g, 'herbalist');
-  clickButton(g, 'menu', 'potion', { potion: 'hiPotion' });
-  assert.strictEqual(p.potions.hiPotion, 1);
-  assert.strictEqual(p.gold, 1000 - g.IT.potions.hiPotion.price);
+  clickButton(g, 'menu', ...buyButton('hiPotion'));
+  assert.strictEqual(bagOf(p).hiPotion, 1);
+  assert.strictEqual(p.gold, 1000 - consumableDef(g, 'hiPotion').price);
 });
 
 test('商人: 素材を 1 つ・種類ごと全部・全部売る', () => {
@@ -295,7 +295,7 @@ test('道具一覧: 回復薬を「使う」と画面を閉じて 1 行動 (一�
     const g = newGame();
     const p = g.player;
     p.hp = 5;
-    const n = p.potions.potion, t = g.game.time;
+    const n = bagOf(p).potion, t = g.game.time;
     press(g, 'i');
     const saves = trackSaves(g), s0 = saves.count;
     if (where === 'pop') clickTool(g, 'potion');
@@ -305,7 +305,7 @@ test('道具一覧: 回復薬を「使う」と画面を閉じて 1 行動 (一�
     assert.strictEqual(openScreen(g), null, where);
     assert.strictEqual(shown(g, 'menu'), false);
     assert.strictEqual(shown(g, 'itemPop'), false);
-    assert.strictEqual(p.potions.potion, n - 1);
+    assert.strictEqual(bagOf(p).potion, n - 1);
     assert.ok(p.hp > 5);
     assert.ok(g.game.time > t, '1 行動した');
     assert.ok(saves.count > s0);
@@ -324,7 +324,7 @@ test('道具一覧: HP が満タン・持っていない回復薬の「使う」
   assert.ok(htmlOf(g, 'itemPopBody').includes('HP が満タンなので使えない'));
   clickButton(g, 'menu', 'use', { tool: 'potion' }, { force: true });
   assert.strictEqual(openScreen(g), 'inv');
-  assert.strictEqual(p.potions.potion, g.IT.potions.potion.start);
+  assert.strictEqual(bagOf(p).potion, consumableDef(g, 'potion').start);
 });
 
 test('キャラクターの画面でも装備の付け替えはできるが、道具は使えない', () => {
@@ -348,17 +348,17 @@ test('画面の処理の見張り: 開いている画面に合わないボタン
   p.hp = 5;
   // 鍛冶屋で回復薬を買う・道具を使う
   openNpc(g, 'townSmith');
-  const n = p.potions.potion;
-  clickStaleButton(g, 'menu', 'potion', { potion: 'potion' });
+  const n = bagOf(p).potion;
+  clickStaleButton(g, 'menu', ...buyButton('potion'));
   clickStaleButton(g, 'menu', 'use', { tool: 'potion' });
-  assert.strictEqual(p.potions.potion, n);
+  assert.strictEqual(bagOf(p).potion, n);
   assert.strictEqual(openScreen(g), 'smith');
   press(g, 'f');
   // 商人で、その店にない回復薬を買う・装備を買う・売る
   const it = giveItem(g);
   openNpc(g, 'merchant');
-  clickStaleButton(g, 'menu', 'potion', { potion: 'hiPotion' });
-  assert.ok(!p.potions.hiPotion);
+  clickStaleButton(g, 'menu', ...buyButton('hiPotion'));
+  assert.ok(!bagOf(p).hiPotion);
   clickGear(g, 'inv', it.id);
   clickStaleButton(g, 'menu', 'sell');
   clickStaleButton(g, 'menu', 'buy');
@@ -369,7 +369,7 @@ test('画面の処理の見張り: 開いている画面に合わないボタン
   press(g, 'Tab');
   clickStaleButton(g, 'menu', 'use', { tool: 'potion' });
   assert.strictEqual(openScreen(g), 'char');
-  assert.strictEqual(p.potions.potion, n);
+  assert.strictEqual(bagOf(p).potion, n);
   // 何も選んでいないときの装備する・捨てる・外す
   clickStaleButton(g, 'menu', 'equip');
   clickStaleButton(g, 'menu', 'drop');
@@ -379,7 +379,7 @@ test('画面の処理の見張り: 開いている画面に合わないボタン
   // 閉じたあとのクリック
   clickStaleButton(g, 'menu', 'use', { tool: 'potion' });
   clickStaleButton(g, 'menu', 'close');
-  assert.strictEqual(p.potions.potion, n);
+  assert.strictEqual(bagOf(p).potion, n);
   assert.strictEqual(g.game.state, 'play');
 });
 

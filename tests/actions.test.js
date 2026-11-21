@@ -1,7 +1,7 @@
 // 主人公の行動 (移動・攻撃・待機・スキル・ダッシュ・回復薬)。キー入力の処理を通して試す
 'use strict';
 const assert = require('assert');
-const { newGame, arena, step, wait, press, castAt, messages, skill, storedCooldown } = require('./helpers');
+const { newGame, arena, step, wait, press, castAt, messages, skill, storedCooldown, bagOf, healRatio } = require('./helpers');
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg || ''} ${a} != ${b}`);
 function open(opts = {}) {
@@ -119,14 +119,14 @@ test('回復薬: 最大 HP の 4 割回復して 1 つ減る (1 行動)。満タ
   const { g, p } = open();
   p.lastHurt = g.game.time;
   p.hp = 5;
-  const heal = Math.round(p.stats.maxHp * g.ITEMS.potions.potion.heal);
+  const heal = Math.round(p.stats.maxHp * healRatio(g, 'potion'));
   press(g, 'r');
   near(p.hp, 5 + heal + p.stats.hpRegen);
-  assert.strictEqual(p.potions.potion, 2);
+  assert.strictEqual(bagOf(p).potion, 2);
   p.hp = p.stats.maxHp;
   const t = g.game.time;
   press(g, 'r');
-  assert.strictEqual(p.potions.potion, 2);
+  assert.strictEqual(bagOf(p).potion, 2);
   assert.strictEqual(g.game.time, t);
   // 持っていない上回復薬
   p.hp = 5;

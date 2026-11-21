@@ -64,7 +64,7 @@ function closeMenu() {
 // shop: 開いている店のキー (その画面の defs() の表のキー。商人は data/items.js の ITEMS.shops、鍛冶屋は ITEMS.smiths) /
 //   sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
 // pop: 開いているアイテムの詳細 (ポップアップ。画面の pop が true のときだけ) null / { kind: 'gear' } (装備。どれかは sel) /
-//   { kind: 'tool', id: 回復薬のキー } / { kind: 'mat', id: 素材のキー }
+//   { kind: 'tool', id: 道具のキー (data/items.js の consumables) } / { kind: 'mat', id: 素材のキー }
 const menu = { mode: 'inv', shop: null, sel: null, pop: null };
 // アイテムをクリックしたときにポップアップで詳細を出す画面か (店では今までどおり右の欄に出す)
 const usesPop = () => !!screenNow().pop;
@@ -214,10 +214,9 @@ function renderPop() {
   $('itemPopBody').style.setProperty('--rc', rc || '#30363d');
   $('itemPop').classList.toggle('show', !!html);
 }
-// 道具 (回復薬) の詳細。道具一覧で、一時停止していなければ「使う」(画面を閉じて 1 行動)
+// 道具の詳細。道具一覧で、一時停止していなければ「使う」(画面を閉じて 1 行動。使えないときは理由)
 function toolPopHtml(t) {
-  const r = rarityOf(t.rarity), canUse = !!screenNow().toolUse && !game.paused;
-  const reason = t.count <= 0 ? '持っていない' : player.hp >= player.stats.maxHp ? 'HP が満タン' : '';
+  const r = rarityOf(t.rarity), canUse = !!screenNow().toolUse && !game.paused, reason = t.reason;
   return `<div class="dname" style="color:${r.color}">${t.name}</div>
     <div class="dsub">${r.name}・道具</div>
     <div class="ptext">${t.desc}</div>
@@ -274,16 +273,20 @@ function strengthHtml() {
   return `<div class="dname">つよさ</div><div class="dsub">Lv${p.level}　（ ）は装備で上がっている分。<span class="buffed">この色</span>は強化（バフ）中</div><div class="stats">${rows}</div>`;
 }
 
-// ----- 道具 (使うもの。今は回復薬だけ) -----
-// 道具の種類を増やすときは toolEntries に足す (rarity: data/items.js のレア度)。use() は 1 行動を返す関数 (act に渡す。行動したら true)
+// ----- 道具 (使うもの。data/items.js の ITEMS.consumables) -----
+// 道具の種類を増やすときは data/items.js の consumables に足す (効果の種類は src/items.js の ITEM_EFFECTS)
+//   usable / reason: 使えるか・使えない理由 (どちらも consumableBlock。使うときと同じ判定) /
+//   use(): 1 行動を返す関数 (act に渡す。行動したら true)。今は主人公が自分に使う
 function toolEntries() {
   const p = player;
-  return Object.entries(IT.potions).map(([id, po]) => ({
-    id, name: po.name, rarity: po.rarity, count: p.potions[id] || 0, max: po.max, key: po.key,
-    desc: `最大HPの ${Math.round(po.heal * 100)}% 回復（今なら ${Math.round(p.stats.maxHp * po.heal)}）`,
-    usable: (p.potions[id] || 0) > 0 && p.hp < p.stats.maxHp,
-    use: () => usePotion(id),
-  }));
+  return Object.entries(IT.consumables).map(([id, c]) => {
+    const block = consumableBlock(p, id);
+    return {
+      id, name: c.name, rarity: c.rarity, count: consumableCount(p, id), max: c.max, key: c.key,
+      desc: consumableDesc(id, p), usable: !block, reason: block ? block.reason : '',
+      use: () => useConsumable(p, id),
+    };
+  });
 }
 // 道具の一覧。道具一覧の画面 (inv) では「使う」で画面を閉じて使う (1 行動)
 function renderTools() {
@@ -296,7 +299,7 @@ function renderTools() {
   }).join('');
 }
 
-const canBuyPotion = (id) => player.gold >= IT.potions[id].price && (player.potions[id] || 0) < IT.potions[id].max;
+const canBuyConsumable = (id) => player.gold >= IT.consumables[id].price && consumableCount(player, id) < IT.consumables[id].max;
 
 // 素材の一覧。店では 1 つずつ・種類ごと・全部を売れる
 const materialTotal = () => Object.entries(player.materials).reduce((s, [id, n]) => s + IT.materials[id].price * n, 0);
@@ -359,11 +362,11 @@ function useToolAction(btn) {
   if (t && t.usable) { closeMenu(); act(t.use); }
   return true;
 }
-function buyPotionAction(btn) {
-  const p = player, pid = btn.dataset.potion;
-  if (shopDef().potions.includes(pid) && canBuyPotion(pid)) {
-    p.gold -= IT.potions[pid].price;
-    p.potions[pid] = (p.potions[pid] || 0) + 1;
+function buyConsumableAction(btn) {
+  const p = player, id = btn.dataset.item;
+  if (shopDef().consumables.includes(id) && canBuyConsumable(id)) {
+    p.gold -= IT.consumables[id].price;
+    p.consumables[id] = consumableCount(p, id) + 1;
   }
 }
 function sellGearAction() {
@@ -408,18 +411,18 @@ registerScreen('char', menuScreen({
   open: () => $('pause').classList.remove('show'),
   onClose: () => { if (game.paused) showPause(); },
 }));
-// 商人: 回復薬を買う・素材を売る (arg: data/items.js の ITEMS.shops のキー)
+// 商人: 道具を買う・素材を売る (arg: data/items.js の ITEMS.shops のキー)
 registerScreen('shop', menuScreen({
   title: () => shopDef().name, sellMaterials: true, closeKeys: ['f'],
   defs: () => IT.shops,
   open: (id) => { menu.shop = id; },
-  shopList: () => shopDef().potions.map((id) => {
-    const po = IT.potions[id], ok = canBuyPotion(id);
-    return `<div class="item potion" style="--rc:${rarityOf(po.rarity).color}"><b>${po.name}</b><span>${rarityOf(po.rarity).name}・最大HPの ${Math.round(po.heal * 100)}% 回復（${po.key.toUpperCase()} で使う）</span>
-        <button data-act="potion" data-potion="${id}"${ok ? '' : ' disabled'}>買う（${po.price} G）</button></div>`;
+  shopList: () => shopDef().consumables.map((id) => {
+    const c = IT.consumables[id], ok = canBuyConsumable(id);
+    return `<div class="item potion" style="--rc:${rarityOf(c.rarity).color}"><b>${c.name}</b><span>${rarityOf(c.rarity).name}・${consumableDesc(id)}（${c.key.toUpperCase()} で使う）</span>
+        <button data-act="buyItem" data-item="${id}"${ok ? '' : ' disabled'}>買う（${c.price} G）</button></div>`;
   }).join('') || '<p class="hint">売り物はない</p>',
   actions: {
-    potion: buyPotionAction,
+    buyItem: buyConsumableAction,
     sellMat: (btn) => sellMaterial(btn.dataset.mat, !!btn.dataset.all),
     sellAllMat: () => { for (const id in player.materials) sellMaterial(id, true); },
   },

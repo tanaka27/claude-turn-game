@@ -18,13 +18,14 @@
 | v1 | 最初の形 |
 | v2 | 衛兵隊長のクエストの id を倒す敵に合わせた（`goblin` → `c_wolf`、`archer` → `c_bee`、`mage` → `c_salamander`、`king` → `c_wolfKing`、`ogre` → `c_golem`、`treant` → `c_treant`、`warlord` → `c_dragon`）。進み具合（`state` / `count`）はそのまま |
 | v3 | 覚えたスキルの id の並び `player.knownSkills` を足した。v2 まではレベルで自動で覚えるだけだったので、v2 のころの決まり（衝撃波・ダッシュ・闘気 Lv1、旋風斬 Lv3、メテオ Lv6。直し方の中にそのまま書いてある）で保存したレベルから埋める（Lv5 なら `['shockwave', 'whirlwind', 'dash', 'battleAura']`）。レベルが数でなければ Lv1 として埋める |
+| v4 | 回復薬の数 `player.potions` を、道具の数 `player.consumables`（`{ 道具のキー: 数 }`）にした（キーと数はそのまま。今はない道具・上限を超える数は読むとき `applySave` で捨てる・切る）。v1 より前の、数だけのもの（回復薬 `potion` の数）は `{ potion: 数 }` にする。数でもオブジェクトでもなければ `{}` |
 
 ## 形を変えるとき（版を足す）
 
 1. `SAVE_VERSION` を 1 上げる
 2. `SAVE_MIGRATIONS` に `[前の版]: (d) => { …; return d; }` を 1 つ足す。ない項目があっても落ちないように書き（`d.player` がないなど）、新しい項目には初めの値を入れる。今のデータ（`QUESTS` / `ITEMS` など）は見ない（あとでデータが変わっても同じ結果になるように。直し方の中の古い id などはその版の記録として書いておく）
 3. `buildSave` / `applySave` を新しい形に合わせ、上の表と [save.md](save.md) の「セーブの形」、`src/save.js` の先頭のコメントを直す
-4. テスト（`tests/migrate.test.js`）に、前の版のセーブ（中身をそのまま書いたもの）が今の形に直って読めることを足す（v1 のもの `V1_SAVE`・v2 のもの `V2_SAVE` は残しておけば、古い版 → … → 今の形を通して確かめられる）。テストの先頭の `CURRENT`（今の版）も上げる
+4. テスト（`tests/migrate.test.js`）に、前の版のセーブ（中身をそのまま書いたもの）が今の形に直って読めることを足す（v1 のもの `V1_SAVE`・v2 のもの `V2_SAVE`・v3 のもの `V3_SAVE` は残しておけば、古い版 → … → 今の形を通して確かめられる）。テストの先頭の `CURRENT`（今の版）も上げる
 
 ## 使えないセーブ
 

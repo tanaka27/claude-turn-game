@@ -2,10 +2,10 @@
 'use strict';
 const assert = require('assert');
 const { loadGame } = require('./harness');
-const { plain } = require('./helpers');
+const { plain, bagOf } = require('./helpers');
 
 // 今のセーブの形の版 (src/save.js の SAVE_VERSION。版を上げたらここも上げる)
-const CURRENT = 3;
+const CURRENT = 4;
 // 形 v1 のセーブ (クエストの id が古い名前のころ)。そのまま書いておく
 const V1_SAVE = {
   v: 1, savedAt: 1794000000000,
@@ -57,6 +57,24 @@ const V2_SAVE = {
   location: { zone: 'plains', tx: 31, ty: 32 },
   home: 'town',
 };
+// 形 v3 のセーブ (道具の数がまだ player.potions だったころ)。今はない道具の id も入っている。そのまま書いておく
+const V3_SAVE = {
+  v: 3, savedAt: 1795000000000,
+  player: {
+    level: 6, exp: 300,
+    base: { maxHp: 32, maxMp: 19, str: 14, vit: 6, agi: 28, int: 20 },
+    hp: 25, mp: 12, gold: 480,
+    potions: { potion: 12, hiPotion: 4, oldElixir: 2 },
+    inventory: [],
+    materials: { stoneShard: 3 },
+    equip: { weapon: null, armor: null, accessory: null },
+    quests: { c_wolf: { state: 'claimed', count: 8 } },
+    knownSkills: ['shockwave', 'whirlwind', 'meteor', 'dash', 'battleAura'],
+  },
+  progress: { kills: 120, time: 2400 },
+  location: { zone: 'forest', tx: 10, ty: 10 },
+  home: 'hamlet',
+};
 const copy = (x) => JSON.parse(JSON.stringify(x));
 // 起動時の initSave → refreshTitle が終わるまで待つ
 const settle = () => new Promise((r) => setTimeout(r, 0));
@@ -69,6 +87,8 @@ test('v1 のセーブは今の形に直して読め、クエストの進み具�
   assert.strictEqual(d.v, CURRENT);
   assert.deepStrictEqual(plain(d.player.quests), V2_QUESTS);
   assert.deepStrictEqual(plain(d.player.knownSkills), ['shockwave', 'whirlwind', 'dash', 'battleAura'], 'Lv5 なのでメテオ (Lv6) 以外');
+  assert.deepStrictEqual(plain(d.player.consumables), { potion: 5, hiPotion: 1 }, 'v4: 回復薬の数は道具の数に移る');
+  assert.ok(!('potions' in d.player));
   g.startGame(d);
   const p = g.player;
   assert.strictEqual(p.level, 5);
@@ -77,7 +97,7 @@ test('v1 のセーブは今の形に直して読め、クエストの進み具�
   assert.strictEqual(p.hp, 21);
   assert.strictEqual(p.mp, 9);
   assert.strictEqual(p.gold, 210);
-  assert.deepStrictEqual(plain(p.potions), { potion: 5, hiPotion: 1 });
+  assert.deepStrictEqual(plain(bagOf(p)), { potion: 5, hiPotion: 1 });
   assert.deepStrictEqual(plain(p.inventory), V1_SAVE.player.inventory);
   assert.deepStrictEqual(plain(p.equip), V1_SAVE.player.equip);
   assert.deepStrictEqual(plain(p.materials), { wolfPelt: 6, beeStinger: 4 });
@@ -141,6 +161,7 @@ test('v2 のセーブは、保存したレベルではじめの覚え方 (レベ
     const d = g.readLocalSave();
     assert.strictEqual(d.v, CURRENT);
     assert.deepStrictEqual(plain(d.player.knownSkills), expected[lv], `Lv${lv}`);
+    assert.deepStrictEqual(plain(d.player.consumables), V2_SAVE.player.potions);
     g.startGame(d);
     const p = g.player;
     assert.strictEqual(p.level, lv);
@@ -163,6 +184,54 @@ test('v2 のセーブは、保存したレベルではじめの覚え方 (レベ
   const g = loadGame();
   assert.doesNotThrow(() => g.SAVE_MIGRATIONS[2]({ v: 2 }));
   assert.deepStrictEqual(plain(g.SAVE_MIGRATIONS[2]({ v: 2, player: { level: 'x' } }).player.knownSkills), expected[1]);
+});
+
+test('v3 のセーブは、回復薬の数 (potions) が道具の数 (consumables) に移る。今はない道具は読むときに捨て、上限までにする', () => {
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V3_SAVE) } });
+  const d = g.readLocalSave();
+  assert.strictEqual(d.v, CURRENT);
+  assert.deepStrictEqual(plain(d.player.consumables), { potion: 12, hiPotion: 4, oldElixir: 2 }, '直し方は今のデータを見ない');
+  assert.ok(!('potions' in d.player));
+  assert.deepStrictEqual(plain(d.player.knownSkills), V3_SAVE.player.knownSkills);
+  g.startGame(d);
+  const p = g.player;
+  assert.deepStrictEqual(plain(bagOf(p)), { potion: 12, hiPotion: 4 });
+  assert.strictEqual(p.gold, 480);
+  assert.strictEqual(g.zone.id, 'forest');
+  // 書いたものは今の形で、読み直してまた書いても同じ
+  const saved = JSON.parse(g.storage.get('zankai-turn-save'));
+  assert.strictEqual(saved.v, CURRENT);
+  assert.deepStrictEqual(saved.player.consumables, { potion: 12, hiPotion: 4 });
+  assert.ok(!('potions' in saved.player));
+  const g2 = loadGame();
+  const d2 = g2.migrateSave(copy(saved));
+  assert.deepStrictEqual(plain(d2), saved, '今の形のセーブはそのまま読める');
+  g2.startGame(d2);
+  const again = plain(g2.buildSave());
+  delete again.savedAt; delete saved.savedAt;
+  assert.deepStrictEqual(again, saved, '読んでからまた書いても同じ');
+  // 持てる数を超えていたら上限まで
+  const g3 = loadGame();
+  g3.startGame(g3.migrateSave({ ...copy(V3_SAVE), player: { ...copy(V3_SAVE.player), potions: { potion: 99, hiPotion: -3 } } }));
+  assert.deepStrictEqual(plain(bagOf(g3.player)), { potion: g3.ITEMS.consumables.potion.max, hiPotion: 0 });
+});
+
+test('v3 → v4: 数だけ (v1 より前の形) は回復薬 potion の数にし、ない・おかしいときは空にする', () => {
+  const g = loadGame();
+  const m = (player) => plain(g.SAVE_MIGRATIONS[3]({ v: 3, player }).player);
+  assert.deepStrictEqual(m({ potions: 7 }), { consumables: { potion: 7 } });
+  assert.deepStrictEqual(m({ potions: { potion: 1, hiPotion: 2 } }), { consumables: { potion: 1, hiPotion: 2 } });
+  assert.deepStrictEqual(m({}), { consumables: {} });
+  assert.deepStrictEqual(m({ potions: 'a' }), { consumables: {} });
+  assert.deepStrictEqual(m({ potions: null }), { consumables: {} });
+  assert.deepStrictEqual(m({ potions: [3] }), { consumables: {} });
+  assert.doesNotThrow(() => g.SAVE_MIGRATIONS[3]({ v: 3 }));
+  assert.doesNotThrow(() => g.SAVE_MIGRATIONS[3]({ v: 3, player: null }));
+  // v1 のセーブに数だけ書いてあっても、版の移し替えを通って読める
+  const d = g.migrateSave({ ...copy(V1_SAVE), player: { ...copy(V1_SAVE.player), potions: 6 } });
+  assert.deepStrictEqual(plain(d.player.consumables), { potion: 6 });
+  g.startGame(d);
+  assert.deepStrictEqual(plain(bagOf(g.player)), { potion: 6, hiPotion: 0 });
 });
 
 test('読むときに渡されたセーブは書き換えない', () => {

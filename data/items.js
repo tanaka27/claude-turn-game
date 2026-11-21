@@ -1,5 +1,5 @@
 // =====================================================================
-//  装備と回復薬 (レア度・部位・追加性能・回復薬・店ごとの品ぞろえ)
+//  装備と道具 (レア度・部位・追加性能・道具 (回復薬など)・店ごとの品ぞろえ)
 //  お金・持ち物の数・売値などは params.js の economy。
 // =====================================================================
 
@@ -8,7 +8,7 @@
 //   名前は nameTierEvery レベルごとに次のものになる
 const ITEMS = {
   nameTierEvery: 2,
-  // レア度 (装備・回復薬・素材で共通。並びが低い順)。名前と色は回復薬・素材にも使う
+  // レア度 (装備・道具・素材で共通。並びが低い順)。名前と色は道具・素材にも使う
   //   以下は装備だけに使う: weight: 敵が落とすときの出やすさ / bossWeight: ボスが落とすときの出やすさ /
   //   mult: 基本性能の倍率 / affixes: 追加性能の数 / value: 価値の倍率
   rarities: [
@@ -31,18 +31,23 @@ const ITEMS = {
     agi: [4, 0.4], int: [10, 2], hpRegen: [0.05, 0.015],
   },
   value: [10, 8],       // 価値 (= 店の買値) [Lv1 の値, 1 レベルごとの増加] × レア度の value
-  // 回復薬。rarity: レア度 / key: 使うキー / heal: 最大HP比 / max: 持てる数 / start: 最初の数。使うと 1 行動
-  //   クエストの報酬の potions は先頭の回復薬 (potion) でもらう
-  potions: {
-    potion: { name: '回復薬', rarity: 'common', key: 'r', price: 25, heal: 0.4, max: 20, start: 3 },
-    hiPotion: { name: '上回復薬', rarity: 'rare', key: 't', price: 80, heal: 0.8, max: 10, start: 0 },
+  // 道具 (使うとなくなるもの。回復薬など)。使うと 1 行動。キーはセーブ (player.consumables)・店・クエストの報酬が指す
+  //   name / rarity: レア度 / key: フィールドで使うキー / price: 商人での値段 / max: 持てる数 / start: 最初の数
+  //   effects: 使ったときの効果の並び (1 つ以上)。どれか 1 つでも効くときだけ使える (効かないものはとばす)
+  //     { kind: 'healHp', ratio }        最大HP × ratio だけ HP を回復する
+  //     { kind: 'healMp', ratio }        最大MP × ratio だけ MP を回復する
+  //     { kind: 'addBuff', buff, actions } data/buffs.js の buff を、使った相手に actions 行動のあいだかける
+  //   効果の種類 (kind) は src/items.js の ITEM_EFFECTS。足し方は docs/consumables.md
+  consumables: {
+    potion: { name: '回復薬', rarity: 'common', key: 'r', price: 25, max: 20, start: 3, effects: [{ kind: 'healHp', ratio: 0.4 }] },
+    hiPotion: { name: '上回復薬', rarity: 'rare', key: 't', price: 80, max: 10, start: 0, effects: [{ kind: 'healHp', ratio: 0.8 }] },
   },
   // 商人の店。world.js の NPC (role: 'shop') の shop にキーを書く
-  //   name: 画面の見出し / potions: 売る回復薬。素材はどの商人でも売れる (装備の売買は鍛冶屋)
+  //   name: 画面の見出し / consumables: 売る道具 (consumables のキー)。素材はどの商人でも売れる (装備の売買は鍛冶屋)
   shops: {
-    townGeneral: { name: '始まりの町の商店', potions: ['potion'] },
-    wayTools: { name: '宿場の道具屋', potions: ['potion'] },
-    hamletHerbs: { name: '隠れ里の薬師', potions: ['potion', 'hiPotion'] },
+    townGeneral: { name: '始まりの町の商店', consumables: ['potion'] },
+    wayTools: { name: '宿場の道具屋', consumables: ['potion'] },
+    hamletHerbs: { name: '隠れ里の薬師', consumables: ['potion', 'hiPotion'] },
   },
   // 鍛冶屋。world.js の NPC (role: 'smith') の smith にキーを書く。装備を買う・売る (町ごとに品ぞろえが違う)
   //   name: 画面の見出し / gear: 売る装備 [部位, レア度] (1 つずつ並ぶ)

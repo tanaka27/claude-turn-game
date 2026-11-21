@@ -3,7 +3,7 @@
 'use strict';
 const assert = require('assert');
 const {
-  newGame, press, step, el, shown, textOf, openScreen, clickHud, clickButton, clickTool, clickTalkText, trackSaves, nextToNpc, skill, arena, messages,
+  newGame, press, step, el, shown, textOf, openScreen, clickHud, clickButton, clickTool, clickTalkText, trackSaves, nextToNpc, skill, arena, messages, bagOf,
 } = require('./helpers');
 
 const OVERLAYS = ['menu', 'quest', 'talk', 'pause', 'itemPop'];
@@ -154,12 +154,12 @@ test('スキルを構えているときの回復薬のキーは構えをやめ�
   arena(g);
   const p = g.player;
   p.hp = 5;
-  const n = p.potions.potion;
+  const n = bagOf(p).potion;
   let t = g.game.time;
   press(g, '1');
   press(g, 'r');
   assert.strictEqual(g.aiming, null);
-  assert.strictEqual(p.potions.potion, n - 1);
+  assert.strictEqual(bagOf(p).potion, n - 1);
   assert.ok(p.hp > 5);
   assert.ok(g.game.time > t);
   t = g.game.time;

@@ -3,7 +3,7 @@
 'use strict';
 const assert = require('assert');
 const {
-  newGame, allUnits, livingEnemies, step, wait, press, castAt, runFrames, gateTile, isGate, firstStep, skill, knows, storedCooldown,
+  newGame, allUnits, livingEnemies, step, wait, press, castAt, runFrames, gateTile, isGate, firstStep, skill, knows, storedCooldown, bagOf,
 } = require('./helpers');
 
 function checkInvariants(g, state, where) {
@@ -29,7 +29,7 @@ function checkInvariants(g, state, where) {
 // 1 回ぶんの方針: HP が少なければ回復薬、となりに敵がいれば殴る、届けばスキル、それ以外は近づく
 function decide(g) {
   const p = g.player;
-  if (p.hp < p.stats.maxHp * 0.4 && p.potions.potion > 0) return () => press(g, 'r');
+  if (p.hp < p.stats.maxHp * 0.4 && bagOf(p).potion > 0) return () => press(g, 'r');
   if (g.zone.safe) {
     // 町: 草原への門へ歩く (建物の中にいたら外へ)
     const to = gateTile(g, 'plains') || gateTile(g, 'town');

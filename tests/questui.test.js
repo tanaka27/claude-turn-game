@@ -3,7 +3,7 @@
 'use strict';
 const assert = require('assert');
 const {
-  newGame, press, textOf, htmlOf, openScreen, questRows, clickQuestRow, clickButton, findButton, nextToNpc, setLevel, fillInventory, trackSaves,
+  newGame, press, textOf, htmlOf, openScreen, questRows, clickQuestRow, clickButton, findButton, nextToNpc, setLevel, fillInventory, trackSaves, bagOf, consumableDef,
 } = require('./helpers');
 
 function openNpc(g, id) { nextToNpc(g, id); press(g, 'f'); }
@@ -115,10 +115,10 @@ test('報酬の回復薬は上限まで、装備は持ち物がいっぱいな�
   const p = g.player;
   setLevel(g, 3);
   p.quests = { c_wolf: { state: 'claimed', count: 8 }, c_bee: { state: 'ready', count: 5 } };
-  p.potions.potion = g.IT.potions.potion.max - 1;
+  bagOf(p).potion = consumableDef(g, 'potion').max - 1;
   openNpc(g, 'captain');
   press(g, 'Enter');
-  assert.strictEqual(p.potions.potion, g.IT.potions.potion.max);
+  assert.strictEqual(bagOf(p).potion, consumableDef(g, 'potion').max);
   assert.strictEqual(textOf(g, 'questNote'), '「毒針の羽音」の報酬を受け取った: 経験値 150、60 G、回復薬 ×2');
   press(g, 'f');
   p.quests.c_salamander = { state: 'ready', count: 6 };

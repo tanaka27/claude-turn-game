@@ -42,7 +42,7 @@ function rewardText(r) {
   const parts = [];
   if (r.exp) parts.push(`経験値 ${r.exp}`);
   if (r.gold) parts.push(`${r.gold} G`);
-  if (r.potions) parts.push(`${IT.potions.potion.name} ×${r.potions}`);
+  for (const c of r.consumables || []) parts.push(`${IT.consumables[c.id].name} ×${c.count}`);
   if (r.item) parts.push(`${rarityOf(r.item.rarity).name}の${IT.slots[r.item.slot].label}`);
   return parts.join('、');
 }
@@ -53,7 +53,8 @@ function claimQuest(q) {
   if (q.repeatable) delete player.quests[q.id];
   else player.quests[q.id].state = 'claimed';
   p.gold += r.gold || 0;
-  p.potions.potion = Math.min(IT.potions.potion.max, (p.potions.potion || 0) + (r.potions || 0));
+  // 道具は持てる数 (max) まで。超えた分はもらえない
+  for (const c of r.consumables || []) p.consumables[c.id] = Math.min(IT.consumables[c.id].max, consumableCount(p, c.id) + c.count);
   if (r.item) p.inventory.push(makeItem(r.item.slot, p.level, r.item.rarity));
   questNote = `「${q.name}」の報酬を受け取った: ${rewardText(r)}`;
   if (r.exp) gainExp(r.exp, p.x, p.y); // レベルアップの表示が最後に出るように

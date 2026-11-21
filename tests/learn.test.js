@@ -118,7 +118,7 @@ test('覚えたスキルはセーブに残り、ないスキルの id は捨て�
   const g = newGame();
   teach(g, g.player, 'meteor');
   const save = plain(g.buildSave());
-  assert.strictEqual(save.v, 3);
+  assert.strictEqual(save.v, g.SAVE_VERSION);
   assert.deepStrictEqual(save.player.knownSkills, [...LV1, 'meteor']);
   const g2 = loadGame();
   g2.startGame(g2.migrateSave(save));

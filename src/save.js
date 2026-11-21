@@ -4,14 +4,14 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v3。くわしくは docs/save.md)
-//   { v: 3, savedAt,
-//     player:   { level, exp, base, hp, mp, gold, potions, inventory, materials, equip, quests, knownSkills },
+// セーブの形 (v4。くわしくは docs/save.md)
+//   { v: 4, savedAt,
+//     player:   { level, exp, base, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
@@ -42,6 +42,16 @@ const SAVE_MIGRATIONS = {
     }
     return d;
   },
+  // v3 → v4: 回復薬の数 player.potions を、道具の数 player.consumables ({ 道具のキー: 数 }) にした。キーと数はそのまま
+  //   v1 より前のセーブは数だけ (回復薬 potion の数) のことがあるので、それも直す。数でもオブジェクトでもなければ空
+  3: (d) => {
+    if (d.player && typeof d.player === 'object') {
+      const old = d.player.potions;
+      d.player.consumables = typeof old === 'number' ? { potion: old } : old && typeof old === 'object' && !Array.isArray(old) ? old : {};
+      delete d.player.potions;
+    }
+    return d;
+  },
 };
 
 // server: null (まだ確かめていない) / true (サーバーに保存できる) / false (ブラウザだけ)
@@ -56,7 +66,7 @@ function buildSave() {
   const home = homeZone(), r = WORLD.zones[home].respawn;
   return {
     v: SAVE_VERSION, savedAt: Date.now(),
-    player: { level: p.level, exp: p.exp, base: p.base, hp: p.dead ? null : p.hp, mp: p.dead ? null : p.mp, gold: p.gold, potions: p.potions,
+    player: { level: p.level, exp: p.exp, base: p.base, hp: p.dead ? null : p.hp, mp: p.dead ? null : p.mp, gold: p.gold, consumables: p.consumables,
       inventory: p.inventory, materials: p.materials, equip: p.equip, quests: p.quests, knownSkills: p.knownSkills },
     progress: { kills: game.kills, time: game.time },
     location: p.dead ? { zone: home, tx: tileOf(r.x), ty: tileOf(r.y) } : { zone: zone.id, tx: p.tx, ty: p.ty },
@@ -113,8 +123,9 @@ function applySave(save) {
     if (questById(id) && st && ['active', 'ready', 'claimed'].includes(st.state)) p.quests[id] = { state: st.state, count: st.count || 0 };
   }
   p.gold = Math.max(0, s.gold || 0);
-  const potions = typeof s.potions === 'number' ? { potion: s.potions } : s.potions || {};
-  for (const id in IT.potions) p.potions[id] = clamp(Math.floor(potions[id]) || 0, 0, IT.potions[id].max);
+  // 道具: 今はない道具は捨て、持てる数 (max) までにする
+  const owned = s.consumables && typeof s.consumables === 'object' ? s.consumables : {};
+  for (const id in IT.consumables) p.consumables[id] = clamp(Math.floor(owned[id]) || 0, 0, IT.consumables[id].max);
   const home = WORLD.zones[save.home];
   p.home = home && home.safe && home.respawn ? save.home : WORLD.respawnZone;
   const valid = (it) => it && IT.slots[it.slot] && it.stats && Object.keys(it.stats).every((k) => STATS[k]);

@@ -42,6 +42,7 @@
 ## クエスト（`quests`）
 
 始まりの町の衛兵隊長（物語の討伐。順に続く）と、冒険者ギルドの受付（[buildings.md](buildings.md)。くり返し受けられる依頼が中心）から受ける。前のクエスト（`requires`）を報告し、レベルが足りていると受けられる。
+報酬（`reward`）は `exp`（経験値）・`gold`・`consumables`（道具 `[{ id: 'potion', count: 2 }]`。`id` は `data/items.js` の `consumables` のキー。何種類でも書ける。持てる数（`max`）を超えた分はもらえない）・`item`（装備 `{ slot, rarity }`）。
 報酬の装備のレベルは、報告したときの自分のレベル。
 
 ### 衛兵隊長（`captain`）
@@ -87,7 +88,7 @@
 - くり返しのクエスト（`repeatable`）は、報告すると `player.quests` から記録を消すので、また `available` になる。ほかのクエストの `requires` には使えない（データの確認で調べる）
 - NPC の頭上の印: 報告できるクエストがあれば「?」、くり返しでないクエストを受けられれば「!」（くり返しの依頼だけなら印は出さない。`npcMark`）
 - クエストの画面は HTML（`index.html` の `#quest`）。`role: 'quest'` の NPC に話しかけると `openScreen('quest', NPC)` で開く（画面の登録表の `quest`。[screens.md](screens.md)）。左が依頼の一覧（`questEntries`。報告できる → 受けている → 受けられる → レベル不足 → 報告済みの順。前のクエストがまだのものは出さない）、右が選んでいる依頼の内容（説明・倒す敵と数・場所・報酬）と「受ける」「報告する」ボタン。一覧はクリックか ↑↓ で選び（`moveQuestSel`）、Enter かボタンで受ける・報告する（`questAction`）。`renderQuest` が中身を作る
-- 報告すると `claimQuest` が報酬を渡す（装備の報酬は持ち物がいっぱいだと受け取れない）
+- 報告すると `claimQuest` が報酬を渡す（装備の報酬は持ち物がいっぱいだと受け取れない。道具は持てる数まで）。報酬の文は `rewardText`（「経験値 150、60 G、回復薬 ×2」）
 
 ## スキルを覚える（はじめの決まり: レベルで覚える）
 

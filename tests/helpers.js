@@ -109,6 +109,24 @@ const lootsOnGround = (g) => g.loots.length;
 // メッセージ欄の文 (新しいものが後ろ。最大 7 行)
 const messages = (g) => Array.from(g.logLines, (l) => l.text);
 
+// ----- 道具 (data/items.js の ITEMS.consumables。主人公の数は player.consumables) -----
+// 道具の数 { 道具のキー: 数 } (そのまま書き換えられる)
+const bagOf = (u) => u.consumables;
+// 道具の定義 / 回復薬の回復の割合 (healHp の ratio)
+const consumableDef = (g, id) => g.ITEMS.consumables[id];
+const healRatio = (g, id) => consumableDef(g, id).effects.find((e) => e.kind === 'healHp').ratio;
+// キャラ u が道具 id を t (省略時は u 自身) に使う (どのキャラも同じ道 useConsumable。行動の後始末はしない)。使えたら true
+const useItem = (g, u, id, t) => (t ? g.useConsumable(u, id, t) : g.useConsumable(u, id));
+// テストだけで使う道具を足す (data/items.js の consumables と同じ形)。key を書かなければ空いているキーを付ける
+function defineConsumable(g, id, def) {
+  const used = Object.values(g.ITEMS.consumables).map((c) => c.key);
+  const key = def.key || [...'ghjklnbvxy'].find((k) => !used.includes(k));
+  g.ITEMS.consumables[id] = { name: id, rarity: 'common', price: 1, max: 9, start: 0, ...def, key };
+  return g.ITEMS.consumables[id];
+}
+// 商人の「買う」ボタン (findButton / clickButton に ...buyButton(id) で渡す)
+const buyButton = (id) => ['buyItem', { item: id }];
+
 // ----- マップ -----
 // 今のゾーンから行き先 to へ行く門のマス (1 つ)
 function gateTile(g, to) {
@@ -409,4 +427,5 @@ module.exports = {
   sees, rayFrom, press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,
   useSkillBy, cooldownLeftOf, cooldownLengthOf, canUseSkillOf, setCooldown, enemyAttack,
   skillById, keyOf, knows, knownSkillIds, teach, defineSkill, bindSkill, storedCooldown, dataProblems,
+  bagOf, consumableDef, healRatio, useItem, defineConsumable, buyButton,
 };

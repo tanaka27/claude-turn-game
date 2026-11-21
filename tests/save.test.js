@@ -2,7 +2,7 @@
 'use strict';
 const assert = require('assert');
 const { loadGame } = require('./harness');
-const { newGame, plain, step, recompute } = require('./helpers');
+const { newGame, plain, step, recompute, bagOf } = require('./helpers');
 
 // 遊んだ状態を作ってセーブする (JSON にして戻す = 実際の保存と同じ)
 function playedSave() {
@@ -14,7 +14,7 @@ function playedSave() {
   Object.assign(p.base, base);
   p.exp = 77;
   p.gold = 321;
-  p.potions.potion = 7; p.potions.hiPotion = 2;
+  bagOf(p).potion = 7; bagOf(p).hiPotion = 2;
   p.inventory.push(g.makeItem('armor', 3, 'rare'), g.makeItem('accessory', 2, 'epic'));
   p.equip.accessory = g.makeItem('accessory', 4, 'common');
   p.materials.wolfPelt = 5; p.materials.honey = 2;
@@ -39,7 +39,7 @@ test('セーブを読み直すと、レベル・ステータス・お金・持�
   assert.strictEqual(p.exp, 77);
   assert.deepStrictEqual(plain(p.base), base);
   assert.strictEqual(p.gold, 321);
-  assert.deepStrictEqual(plain(p.potions), { potion: 7, hiPotion: 2 });
+  assert.deepStrictEqual(plain(bagOf(p)), { potion: 7, hiPotion: 2 });
   assert.deepStrictEqual(plain(p.inventory), plain(q.inventory));
   assert.deepStrictEqual(plain(p.equip), plain(q.equip));
   assert.deepStrictEqual(plain(p.materials), { wolfPelt: 5, honey: 2 });

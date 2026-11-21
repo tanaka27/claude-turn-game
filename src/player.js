@@ -1,6 +1,6 @@
 // =====================================================================
 //  入力と主人公の行動
-//  主人公の番のときだけ受け付ける。移動・攻撃・スキル・回復薬・待機はどれも 1 行動
+//  主人公の番のときだけ受け付ける。移動・攻撃・スキル・道具・待機はどれも 1 行動
 // =====================================================================
 'use strict';
 
@@ -14,7 +14,8 @@ const NUMPAD = { Numpad8: [0, -1], Numpad2: [0, 1], Numpad4: [-1, 0], Numpad6: [
 const WAIT_KEYS = [' ', '.'];
 // キー k に置いたスキル (主人公のスキル欄 player.skillSlots から。覚えていないスキルも返す)
 const skillByKey = (k) => (skillSlotsOf(player).find((b) => b.key === k) || {}).sk;
-const potionByKey = (k) => Object.keys(IT.potions).find((id) => IT.potions[id].key === k);
+// キー k で使う道具のキー (data/items.js の consumables の key)
+const consumableByKey = (k) => Object.keys(IT.consumables).find((id) => IT.consumables[id].key === k);
 
 // 主人公が行動できるか (主人公の番で、画面を開いていない)
 const canAct = () => game.state === 'play' && !game.paused && player && !player.dead;
@@ -36,10 +37,10 @@ window.addEventListener('keydown', (e) => {
   player.travel = null;
   if (aiming) {
     if (k === 'enter' || skillByKey(k) === aiming) { castSkill(aiming, mouse.tx, mouse.ty); return; }
-    // フィールドで意味のあるキー (移動・待機・I / Tab / F・回復薬・ほかのスキル) は、狙うのをやめてからふだんどおりにする
+    // フィールドで意味のあるキー (移動・待機・I / Tab / F・道具・ほかのスキル) は、狙うのをやめてからふだんどおりにする
     // (ほかのスキルのキーなら、そのスキルに構え直す)。意味のないキーは何もしない (構えたまま)
     const fieldKey = dir || WAIT_KEYS.includes(k) || e.code === 'Numpad5' ||
-      (!e.repeat && (k === 'i' || k === 'tab' || k === 'f' || potionByKey(k) || skillByKey(k)));
+      (!e.repeat && (k === 'i' || k === 'tab' || k === 'f' || consumableByKey(k) || skillByKey(k)));
     if (!fieldKey) return;
     aiming = null;
   }
@@ -49,8 +50,8 @@ window.addEventListener('keydown', (e) => {
   if (k === 'i') { openScreen('inv'); return; }
   if (k === 'tab') { openScreen('char'); return; }
   if (k === 'f') { interact(); return; }
-  const potion = potionByKey(k);
-  if (potion) { act(() => usePotion(potion)); return; }
+  const item = consumableByKey(k);
+  if (item) { act(() => useConsumable(player, item)); return; }
   const sk = skillByKey(k);
   if (sk && !knowsSkill(player, sk)) {
     // まだ覚えていない (はじめの覚え方で覚えるレベルがあれば、それを知らせる)

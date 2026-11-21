@@ -3,10 +3,10 @@
 // =====================================================================
 'use strict';
 
-// 回復薬の数 { 回復薬のキー: 数 }
-function startPotions() {
+// 道具の数 { 道具のキー: 数 } (data/items.js の consumables の start)
+function startConsumables() {
   const n = {};
-  for (const id in IT.potions) n[id] = IT.potions[id].start;
+  for (const id in IT.consumables) n[id] = IT.consumables[id].start;
   return n;
 }
 
@@ -22,7 +22,7 @@ function createPlayer() {
   const p = {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
     stats: null, base: growthBase(1), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
-    gold: EC.startGold, potions: startPotions(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
+    gold: EC.startGold, consumables: startConsumables(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null, control: 'input',
     // 覚えられる技 (data/skills.js 全部)・覚えている技の id (はじめは下の learnSkillsByLevel で Lv1 のもの)・スキル欄 (キー → スキルの id)
     skills: SKILLS, knownSkills: [], skillSlots: d.skillSlots.map((b) => ({ ...b })), skillRule: 'hero', skillCd, buffs: [], hitFlash: 0, dead: false,

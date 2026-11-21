@@ -100,7 +100,7 @@ function drawHUD() {
   // スキルバー (主人公のスキル欄の並び。覚えていないスキルは lock に出す文)
   const slots = skillSlotsOf(p).map(({ key, sk: s }) => ({ label: key.toUpperCase(), name: s.name, cd: cooldownLeft(p, s), max: skillCooldown(p, s), active: aiming === s,
       lock: knowsSkill(p, s) ? '' : learnLevelOf(s) ? `Lv${learnLevelOf(s)} で解放` : '未習得', mp: skillMp(s), short: !enoughMp(p, s) }))
-    .concat(Object.entries(IT.potions).map(([id, po]) => ({ label: po.key.toUpperCase(), name: po.name, cd: 0, max: 1, count: p.potions[id] || 0 })))
+    .concat(Object.entries(IT.consumables).map(([id, c]) => ({ label: c.key.toUpperCase(), name: c.name, cd: 0, max: 1, count: consumableCount(p, id) })))
     .concat([{ label: 'I', name: '道具', cd: 0, max: 1, button: 'items' }]);
   const SB = THEME.hud.skillBar;
   const sz = SB.size, gap = SB.gap, total = slots.length * sz + (slots.length - 1) * gap;
