@@ -213,7 +213,10 @@ function validateData() {
 
   const questIds = QUESTS.map((q) => q.id);
   for (const q of QUESTS) {
-    check(ENEMIES[q.target], `data/quests.js '${q.id}': 敵 '${q.target}' が data/enemies.js にない`);
+    // 目標 (goal) は種類 (src/quests.js の QUEST_GOALS) があり、その種類の check で中身 (敵・素材・NPC・数) を調べる
+    const kind = q.goal && QUEST_GOALS[q.goal.kind];
+    check(kind, `data/quests.js '${q.id}': 目標の種類 goal.kind '${q.goal && q.goal.kind}' が QUEST_GOALS (src/quests.js) にない`);
+    for (const msg of (kind ? kind.check(q.goal) : [])) check(false, `data/quests.js '${q.id}': ${msg}`);
     check(npcIds.includes(q.giver), `data/quests.js '${q.id}': NPC '${q.giver}' が world.js にない`);
     check(!q.requires || questIds.includes(q.requires), `data/quests.js '${q.id}': requires '${q.requires}' のクエストがない`);
     check(!q.requires || !(questById(q.requires) || {}).repeatable, `data/quests.js '${q.id}': requires '${q.requires}' はくり返しのクエストなので使えない`);

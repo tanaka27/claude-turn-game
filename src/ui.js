@@ -247,7 +247,7 @@ function profileHtml() {
   const qs = QUESTS.filter((q) => p.quests[q.id] && p.quests[q.id].state !== 'claimed').map((q) => {
     const st = p.quests[q.id];
     return st.state === 'ready' ? `<div class="row"><span>${q.name}</span><span class="up">${npcById(q.giver).name}に報告</span></div>`
-      : `<div class="row"><span>${q.name}</span><span>${enemyName(q.target)} ${st.count} / ${q.count}</span></div>`;
+      : `<div class="row"><span>${q.name}</span><span>${goalKind(q).short(q.goal)} ${questProgress(q)} / ${questNeed(q)}</span></div>`;
   }).join('');
   return `<div class="profile"><div class="phead">${face}<div class="pname">${p.name}　Lv${p.level}</div></div>
     <div class="row"><span>HP</span><span>${Math.ceil(p.hp)} / ${p.stats.maxHp}</span></div>${bar(p.hp, p.stats.maxHp, '#ef5350')}
@@ -322,6 +322,7 @@ function sellMaterial(id, all) {
   p.gold += IT.materials[id].price * k;
   p.materials[id] = n - k;
   if (!p.materials[id]) delete p.materials[id];
+  questEvent('materials'); // 集めるクエストは足りなくなると「受けている」に戻る
 }
 
 // 付け替えたら、最大 HP・MP の増減ぶん今の値もずらす (refreshStats の 'shift')
@@ -453,6 +454,7 @@ const NPC_ROLES = {
   talk: { screen: 'talk', arg: (n) => n, check: (n) => (Array.isArray(n.lines) && n.lines.length > 0 ? [] : ['話す言葉 lines がない']) },
 };
 function talkTo(n) {
+  questEvent('talk', n); // 話しかけるクエスト (役目の画面を開く前に。クエストの NPC ならすぐ「報告できる」が出る)
   const r = NPC_ROLES[n.role];
   if (r) openScreen(r.screen, r.arg(n));
 }

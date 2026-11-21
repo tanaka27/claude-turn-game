@@ -261,7 +261,7 @@ function enemyDefeated(u) {
   const gray = player.level - u.level >= P.enemyLevel.grayDiff;
   gainExp(Math.max(1, Math.round(u.exp * (gray ? P.enemyLevel.grayExpMult : 1))), u.x, u.y);
   dropLoot(u);
-  questKill(u);
+  questEvent('kill', u);
   if (u.isBoss) { addShake(14); showMsg('BOSS 撃破！'); }
 }
 

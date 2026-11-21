@@ -22,7 +22,8 @@
 | [docs/enemy-ai.md](docs/enemy-ai.md) | 敵の AI（狙う技のくじ、状況による重み、遠くから撃つ敵の間合い、群れで取り囲む）、経路探索 | 敵の動きを変える・直す |
 | [docs/world.md](docs/world.md) | ゾーン・門・湧き場所・NPC の配置、マス目、視線、ゾーンの読み込みと切り替え | マップ・ゾーン・湧き場所を変える |
 | [docs/buildings.md](docs/buildings.md) | 入れる建物（建物の中のゾーン・入口）、NPC のステータス、話すだけの NPC（会話） | 建物を足す・入れるようにする、NPC を足す・ステータスを変える、会話を変える |
-| [docs/progression.md](docs/progression.md) | 経験値とレベル、ステータスの成長（成長曲線）、クエスト、スキルを覚える決まり（今はレベルで覚える `learnAtLevel`） | 成長・クエスト・スキルの覚え方を変える |
+| [docs/progression.md](docs/progression.md) | 経験値とレベル、ステータスの成長（成長曲線）、スキルを覚える決まり（今はレベルで覚える `learnAtLevel`） | 成長・スキルの覚え方を変える |
+| [docs/quests.md](docs/quests.md) | クエストのデータの形（目標 `goal`）、目標の種類の表（`QUEST_GOALS`: 倒す・集める・話しかける）、進み具合を進める出来事（`questEvent`）、今のクエストの表、クエストの画面、クエスト・目標の種類の足し方 | クエストを足す・変える。新しい目標の種類を足す |
 | [docs/items.md](docs/items.md) | 素材とお金、落とし物、装備とレア度、商人と鍛冶屋の品ぞろえ | 装備・経済・店を変える |
 | [docs/consumables.md](docs/consumables.md) | 道具（回復薬など使うとなくなるもの）の定義（`ITEMS.consumables`）、効果の種類（`ITEM_EFFECTS`）、どのキャラも同じ使う道（`useConsumable`）、道具・効果の種類の足し方 | 道具を足す・変える。新しい効果（MP 回復・強化・弱体を消すなど）を足す。仲間に道具を使わせる |
 | [docs/menu.md](docs/menu.md) | 道具一覧・店（商人・鍛冶屋）・キャラクターの画面（開き方、道具を使う、装備の付け替え、素材を売る） | 画面の中身を変える |
@@ -54,12 +55,12 @@
 | `src/player.js` | 入力と主人公の行動（移動・通常攻撃・スキル欄のキーからスキルを引く `skillByKey`・スキルを狙って使う `castSkill`・道具のキー `consumableByKey`） |
 | `src/ai.js` | 敵の AI（狙う相手の選び方、1 回の行動、狙う技の選び方）、湧き場所 |
 | `src/turn.js` | ターンの進め方（速度による行動順、キャラごとの行動の決め方 `CONTROLLERS`、予告した技を出す・再使用待ちを減らすとき、行動の後始末 `endTurn`、時間を進める、行動順の表示用） |
-| `src/ui.js` / `src/quests.js` | 画面の登録表（`SCREENS` / `registerScreen` / `openScreen` / `closeMenu`・画面のキー `screenKey`）、道具一覧と店とキャラクター・NPC の役目（`NPC_ROLES` / `talkTo`）・会話・一時停止の画面 / クエスト（クエストの画面も登録表に入れる） |
+| `src/ui.js` / `src/quests.js` | 画面の登録表（`SCREENS` / `registerScreen` / `openScreen` / `closeMenu`・画面のキー `screenKey`）、道具一覧と店とキャラクター・NPC の役目（`NPC_ROLES` / `talkTo`）・会話・一時停止の画面 / クエスト（目標の種類の表 `QUEST_GOALS`、出来事を伝える `questEvent`、達成の確かめ `settleQuest`。クエストの画面も登録表に入れる） |
 | `src/render.js` / `src/hud.js` | ワールドの描画（キャラ `drawUnit`・地形 `TERRAIN_DRAW`・演出 `EFFECT_TYPES` の登録表）と描く道具（`fontOf` / `outlineText`）/ HUD・行動順・メッセージ欄・ミニマップ・ツールチップ（`drawTooltipBox`）。色と大きさは `data/theme.js`（[docs/render.md](docs/render.md)） |
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |
 | `tests/run.js` / `tests/harness.js` / `tests/helpers.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）。詳しくは [docs/testing.md](docs/testing.md) |
-| `tests/*.test.js` | テスト本体（ステータス・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・セーブ・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・自動で戦わせる通し試験） |
+| `tests/*.test.js` | テスト本体（ステータス・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・クエストの目標の種類・セーブ・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・自動で戦わせる通し試験） |
 | `start.bat` | ダブルクリックで `server.py` を起動し、ブラウザでゲームを開く（Windows 用。ポートは中の `PORT`。8766 が使われていると止まって知らせる） |
 | `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする）。詳しくは [docs/save.md](docs/save.md) |
 | `.claude/launch.json` | 確認用ローカルサーバーの設定（`python server.py`） |
@@ -90,7 +91,7 @@
 - 視界（見えていないマスを暗くする）
 - 大きいボスを 2×2 マスにする（今はどの敵も 1 マス）
 - キーボードだけでスキルを狙う方法（今はマウスで狙う）
-- クエストの種類を増やす（集める・届ける）、クエストをくれる NPC を増やす（宿場・隠れ里にはまだ店しかない。冒険者ギルドは始まりの町だけ）
+- 集める（`collect`）・話しかける（`talk`）クエストを実際に作る（目標の種類はあるが、今のクエストはどれも討伐。[docs/quests.md](docs/quests.md)）、品物をほかの NPC に届ける種類、クエストをくれる NPC を増やす（宿場・隠れ里にはまだ店しかない。冒険者ギルドは始まりの町だけ）
 - ほかの家にも入れるようにする（今は始まりの町の宿だけ。[docs/buildings.md](docs/buildings.md)）
 - 効果音・BGM
 - 敵の種類や、状態異常の追加。強化・弱体（ステータスに倍率を掛けるもの。`data/buffs.js`）のしくみは主人公・敵・仲間のだれにでも効くようになった（速度を下げれば行動の回数も減る）が、データにあるのは攻撃力アップ（主人公が自分にかける闘気）だけ。弱体の種類、敵の技・主人公の技で相手に弱体をかける（技に「当たったらかける効果」を書けるようにする）、敵が使う強化（技を使う道はどのキャラも同じ `useSkill` になったので、敵も強化の技を自分に使えるが、データと敵の AI の選び方がない）は未実装。毒（行動ごとのダメージ）・スタン（行動できない）のような別の種類の効果も未実装（足す場所は [docs/combat.md](docs/combat.md) の「強化・弱体」）

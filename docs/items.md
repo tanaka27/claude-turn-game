@@ -90,8 +90,8 @@
 ## 仕組み: 装備・落とし物・店
 
 - `makeItem(部位, レベル, レア度, ボスか)` が装備を作る。装備は `{ id, slot, name, rarity, level, stats }` の形で、そのまま保存する
-- 敵が倒れると `dropLoot` が素材（`kind: 'material'`）と装備（`kind: 'item'`）を `loots` に落とす。落とし物はマス（`tx`, `ty`）と、重ならないように少しずらして描く位置を持つ。主人公がマスに入ると `pickUpAt` が拾い、`updateLoots` が時間で消す。拾った素材は `player.materials`（`{ 素材のid: 数 }`）に足す
-- NPC は `world.js` の `npcs`（NPC のマスは通れない）。`nearNpc` がとなりの NPC を探し、F キーの `interact`、または NPC のマスへの移動（`tryMove`）で `talkTo` が役割（`shop` / `smith` / `quest`）に応じた画面を開く。商人の NPC は `shop` に `ITEMS.shops` のキー、鍛冶屋の NPC は `smith` に `ITEMS.smiths` のキーを持つ
+- 敵が倒れると `dropLoot` が素材（`kind: 'material'`）と装備（`kind: 'item'`）を `loots` に落とす。落とし物はマス（`tx`, `ty`）と、重ならないように少しずらして描く位置を持つ。主人公がマスに入ると `pickUpAt` が拾い、`updateLoots` が時間で消す。拾った素材は `player.materials`（`{ 素材のid: 数 }`）に足す。素材を拾う・売る（`sellMaterial`）と `questEvent('materials')` で集めるクエストに伝える（[quests.md](quests.md)）
+- NPC は `world.js` の `npcs`（NPC のマスは通れない）。`nearNpc` がとなりの NPC を探し、F キーの `interact`、または NPC のマスへの移動（`tryMove`）で `talkTo` が役割（`shop` / `smith` / `quest`）に応じた画面を開く（開く前に話しかけるクエストへ `questEvent('talk', NPC)` を伝える。[quests.md](quests.md)）。商人の NPC は `shop` に `ITEMS.shops` のキー、鍛冶屋の NPC は `smith` に `ITEMS.smiths` のキーを持つ
 - 画面（道具一覧・店・キャラクター）の作り方は [menu.md](menu.md)
 - 鍛冶屋の品ぞろえは鍛冶屋ごとに `shopStocks[鍛冶屋のキー]` に持ち、`refreshSmith` が自分のレベルが変わったときだけ作り直す（セーブはしない）
 - 道具は `player.consumables`（`{ 道具のキー: 数 }`）。使うのは `useConsumable`（[consumables.md](consumables.md)）。キー入力は `consumableByKey`（`src/player.js`）、HUD のスキル欄の右に道具の数だけ枠を出す

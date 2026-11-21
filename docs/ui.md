@@ -1,6 +1,6 @@
 # 画面（HUD・ワールドに何を描くか）
 
-HUD とワールドに何を出すか。コードは `src/hud.js`（HUD）と `src/render.js`（ワールド）。色と大きさは `data/theme.js` の `THEME.hud` など、描く道具（ツールチップの枠 `drawTooltipBox`・縁取りした文字 `outlineText`）は [render.md](render.md)、キャラ・地形・演出の描き方の登録表は [drawing.md](drawing.md)。道具一覧・店・クエストの HTML の画面はそれぞれ [menu.md](menu.md)・[progression.md](progression.md)（見た目は `style.css`）。
+HUD とワールドに何を出すか。コードは `src/hud.js`（HUD）と `src/render.js`（ワールド）。色と大きさは `data/theme.js` の `THEME.hud` など、描く道具（ツールチップの枠 `drawTooltipBox`・縁取りした文字 `outlineText`）は [render.md](render.md)、キャラ・地形・演出の描き方の登録表は [drawing.md](drawing.md)。道具一覧・店・クエストの HTML の画面はそれぞれ [menu.md](menu.md)・[quests.md](quests.md)（見た目は `style.css`）。
 
 ## HUD
 

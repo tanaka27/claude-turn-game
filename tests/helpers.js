@@ -347,6 +347,19 @@ function clickQuestRow(g, qid) {
   if (!n) throw new Error(`クエスト ${qid} が一覧にない`);
   clickNode(g, 'quest', n);
 }
+// ----- クエスト (data/quests.js の QUESTS / src/quests.js) -----
+// テストだけで使うクエストを QUESTS の最後に足す (data/quests.js と同じ形)。giver を書かなければギルド受付
+function defineQuest(g, def) {
+  const q = { giver: 'guildClerk', name: def.id, where: 'テスト', minLevel: 1, desc: 'テスト', reward: {}, ...def };
+  g.QUESTS.push(q);
+  return q;
+}
+// クエストの状態 ('locked' / 'lowLevel' / 'available' / 'active' / 'ready' / 'claimed')
+const questState = (g, id) => g.questStatus(g.questById(id));
+// NPC (world.js の id) の頭上の印 ('!' / '?' / '')
+const npcMarkOf = (g, id) => g.npcMark(g.npcById(id));
+// 画面中央の大きい文字 [文, 下の文]
+const bigMessage = (g) => [g.game.msg, g.game.sub];
 // 開いている画面 (game.state が 'menu' のときの画面の名前。開いていなければ null)
 const openScreen = (g) => (g.game.state === 'menu' ? g.menu.mode : null);
 // HUD のボタン (id: 'items' | 'char' | 'map') を左クリックする (画面の描画は動かないので、ボタンの場所を置いてから押す)
@@ -421,7 +434,7 @@ function dropAt(g, tx, ty, data) { g.spawnLoot(tx, ty, data); }
 module.exports = {
   renderFrame, hoverTile, hoverBuffIcon, fakeSpriteLoaded, dropAt,
   el, shown, textOf, htmlOf, screenNodes, findButton, buttonLabels, clickNode, clickButton, clickStaleButton, staleSelect, clickGear, clickTool, clickMat, clickPopBackdrop, clickTalkText,
-  questRows, clickQuestRow, openScreen, clickHud, trackSaves, nextToNpc, giveItem, fillInventory, smithStock, defineScreen, defineRole, screenNames, roleNames,
+  questRows, clickQuestRow, defineQuest, questState, npcMarkOf, bigMessage, openScreen, clickHud, trackSaves, nextToNpc, giveItem, fillInventory, smithStock, defineScreen, defineRole, screenNames, roleNames,
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
   recompute, setPlayerBase, setLevel, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns, passTime,
   sees, rayFrom, press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,

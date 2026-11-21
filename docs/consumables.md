@@ -11,7 +11,7 @@
 | 回復薬 (`potion`) | ノーマル | R | 25 G | 最大HP の 40% 回復（`healHp` 0.4） | 20 | 3 | 始まりの町の商店、宿場の道具屋、隠れ里の薬師 |
 | 上回復薬 (`hiPotion`) | レア | T | 80 G | 最大HP の 80% 回復（`healHp` 0.8） | 10 | 0 | 隠れ里の薬師 |
 
-クエストの報酬でもらえる道具は [progression.md](progression.md) のクエストの表（`reward.consumables`）。
+クエストの報酬でもらえる道具は [quests.md](quests.md) の今のクエストの表（`reward.consumables`）。
 
 ## 道具の定義
 

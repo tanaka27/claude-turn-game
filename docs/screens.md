@@ -1,6 +1,6 @@
 # 画面の登録表と NPC の役目（施設の足し方）
 
-HTML の画面（道具一覧・キャラクター・商人・鍛冶屋・クエスト・会話）を開く・閉じる・キー・クリックのしくみと、NPC に話しかけたときに何を開くか。コードは `src/ui.js`（クエストの画面だけ `src/quests.js`）。画面の中身は [menu.md](menu.md)、会話は [buildings.md](buildings.md)、クエストは [progression.md](progression.md)。
+HTML の画面（道具一覧・キャラクター・商人・鍛冶屋・クエスト・会話）を開く・閉じる・キー・クリックのしくみと、NPC に話しかけたときに何を開くか。コードは `src/ui.js`（クエストの画面だけ `src/quests.js`）。画面の中身は [menu.md](menu.md)、会話は [buildings.md](buildings.md)、クエストは [quests.md](quests.md)。
 
 ## 画面の登録表（`SCREENS`）
 

@@ -90,6 +90,7 @@ function pickUpAt(tx, ty) {
       l.taken = true;
     }
   }
+  if (loots.some((l) => l.taken && l.kind === 'material')) questEvent('materials'); // 集めるクエスト
   loots = loots.filter((l) => !l.taken);
 }
 

@@ -13,7 +13,7 @@
 | `data/enemies.js` | `ENEMIES` | 敵（モンスター）の種類ごとの名前・字・色・描く大きさ・経験値・落とす素材（`drops`）・装備を落とす確率・間合い（`keepDistance`）・技を狙う確率（`skillChance`）・ステータス（主人公と同じもの）・装備のかわりの上乗せ（`gear`）・技（消費 MP 付き） |
 | `data/npcs.js` | `NPC_KINDS` | NPC の種類（商人・鍛冶屋・衛兵・ギルドの職員・冒険者）ごとの表示名・ステータス（主人公と同じもの）・装備のかわりの上乗せ（`gear`）。配置は `world.js` の NPC の `kind` で選ぶ。今は NPC に攻撃は当たらない |
 | `data/items.js` | `ITEMS` | レア度、部位（基本性能・名前）、追加性能、価値、道具（`consumables`。レア度・使うキー・効果の並び `effects`。[consumables.md](consumables.md)）、商人の品ぞろえ（`shops`）、鍛冶屋の品ぞろえ（`smiths`）、素材（名前・レア度・売値・色） |
-| `data/quests.js` | `QUESTS` | 討伐クエスト（依頼する NPC・倒す敵・数・報酬（道具は `consumables: [{ id, count }]`）・前提） |
+| `data/quests.js` | `QUESTS` | クエスト（依頼する NPC・目標 `goal`（種類 `kill` / `collect` / `talk` と敵・素材・NPC・数。[quests.md](quests.md)）・報酬（道具は `consumables: [{ id, count }]`）・前提） |
 | `data/stats.js` | `STATS` | ステータスの表示名・桁数（並び順がキャラクターの画面のつよさの並び順） |
 | `data/buffs.js` | `BUFFS` | 強化・弱体（バフ・デバフ）の種類（表示名・変えるステータスと倍率・アイコンの字と色）。倍率が 1 より小さいものが弱体。どのキャラにもかけられる。今かける手段は `data/skills.js` の `type: 'buff'` の技（自分を強化）だけ（[combat.md](combat.md)） |
 | `data/theme.js` | `THEME` / `UNIT_SPRITE` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、仲間の HP バー、MP のゲージと消費 MP の色）と、canvas に描く色と大きさのまとまり（`font` / `background` / `text` / `bars` / `hud` / `map` / `tooltip` / `buffIcon` / `field` / `unit` / `npc` / `fx`。中身は [render.md](render.md)）、キャラの種類ごとの描き方（`UNIT_LOOK`。[drawing.md](drawing.md)）、キャラの絵の大きさ。HTML の画面の見た目は `style.css` |
@@ -28,7 +28,7 @@
 - 店を足す: 商人は `data/items.js` の `shops` に 1 つ足し、`world.js` の NPC に `role: 'shop', shop: '店のキー'` を書く。鍛冶屋は `smiths` に足し、NPC に `role: 'smith', smith: '鍛冶屋のキー'` を書く。新しい種類の施設（役目）を足すときは [screens.md](screens.md) の「施設の足し方」
 - 入れる建物を足す・話すだけの NPC を足す: [buildings.md](buildings.md)
 - NPC を足す: `world.js` の `npcs` に足し、`kind` に `data/npcs.js` の種類を書く。合う種類がなければ `NPC_KINDS` に 1 つ足す。絵を付けるなら `sprite`（[drawing.md](drawing.md)）
-- クエストを足す: `data/quests.js` に 1 つ足す（`giver` は `world.js` の NPC の `id`。くり返し受けられるものは `repeatable: true`）。`id` はセーブに残るので、あとから変えるときはセーブの版を上げて古い id を直す（[save-versions.md](save-versions.md)）
+- クエストを足す: `data/quests.js` に 1 つ足す（`giver` は `world.js` の NPC の `id`。目標は `goal: { kind, … }`。くり返し受けられるものは `repeatable: true`。[quests.md](quests.md) の「足し方」）。`id` はセーブに残るので、あとから変えるときはセーブの版を上げて古い id を直す（[save-versions.md](save-versions.md)）
 - ステータスを足す: `data/stats.js` に 1 行足し、`data/player.js` の `stats` に Lv1 の値を書く。レベルで上げるなら `params.js` の `progression.growth`、ほかのステータスから計算するなら `params.js` の `derivedStats` に書く（このときは `stats` に書かない）。それ以外の効き目は `src/` に書く
 - 道具を足す: [consumables.md](consumables.md) の「道具を足す」
 - 強化を足す: `data/buffs.js` に 1 つ足し、`data/skills.js` に `type: 'buff', buff: 'キー', duration: 行動回数` の技を足す
@@ -53,5 +53,5 @@
 - 装備の性能・追加性能のステータスが `data/stats.js` にあるか、商人の道具・鍛冶屋の部位とレア度があるか。道具: キーがあり重なっていないか（移動・画面（I / F / P / M / Tab / Esc / Enter）・スキルのキーとも）、`name`、`max`（1 以上の整数）、`start`（0〜`max`）、`price`（1 以上の整数）、`effects` が 1 つ以上で効果の種類が `ITEM_EFFECTS` にあり、種類ごとの数値（`ratio` / `buff` / `actions`）がおかしくないか
 - NPC の種類のステータスが主人公と同じものだけそろっているか、`gear` のステータスが `data/stats.js` にあるか（`data/npcs.js`）
 - 主人公のステータス: 成長するものに Lv1 の値があるか、成長曲線が最大レベルまで届いているか、計算で決まるものを `PLAYER.stats` に書いていないか
-- クエストの敵・NPC・前提・報酬の装備・報酬の道具（`consumables` にあるか、`count` が 1 以上の整数か）
+- クエストの目標（種類があるか、種類ごとの敵・素材・NPC・数）・NPC・前提・報酬の装備・報酬の道具（`consumables` にあるか、`count` が 1 以上の整数か）
 - セーブの形の直し方（`src/save.js` の `SAVE_MIGRATIONS`）が最初の版から今の版までそろっているか
