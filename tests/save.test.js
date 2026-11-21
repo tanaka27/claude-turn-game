@@ -65,6 +65,29 @@ test('セーブの HP・MP はそのまま戻る (最大を超える分は切る
   assert.strictEqual(g3.player.hp, g3.player.stats.maxHp);
 });
 
+test('セーブの HP・MP の戻し方: HP は 0 より大きい数ならその値 (最大まで)、MP は数なら 0〜最大、それ以外は満タン', () => {
+  const { save } = playedSave();
+  const load = (hp, mp) => {
+    const g2 = loadGame();
+    g2.startGame(g2.migrateSave({ ...save, player: { ...save.player, hp, mp } }));
+    return { hp: g2.player.hp, mp: g2.player.mp, maxHp: g2.player.stats.maxHp, maxMp: g2.player.stats.maxMp };
+  };
+  const full = load(null, null);
+  assert.ok(full.hp > 1 && full.mp > 1);
+  // 生きている主人公は HP 0 では戻せない (倒れている間のセーブは hp: null)。0 以下は満タン
+  assert.strictEqual(load(0, 5).hp, full.maxHp, 'HP 0');
+  assert.strictEqual(load(-3, 5).hp, full.maxHp, 'HP が負');
+  assert.strictEqual(load(0.4, 5).hp, 0.4, 'HP 0.4 は切り上げも切り捨てもしない');
+  assert.strictEqual(load(full.maxHp + 50, 5).hp, full.maxHp, 'HP が最大より大きい');
+  for (const bad of [null, undefined, '5', 'x', true, [], {}]) assert.strictEqual(load(bad, 5).hp, full.maxHp, `HP ${JSON.stringify(bad)}`);
+  // MP は 0 も戻す (技を使い切った状態)。負は 0、最大より大きければ最大
+  assert.strictEqual(load(5, 0).mp, 0, 'MP 0');
+  assert.strictEqual(load(5, -2).mp, 0, 'MP が負');
+  assert.strictEqual(load(5, 0.4).mp, 0.4, 'MP 0.4');
+  assert.strictEqual(load(5, full.maxMp + 50).mp, full.maxMp, 'MP が最大より大きい');
+  for (const bad of [null, undefined, '5', 'x', true, [], {}]) assert.strictEqual(load(5, bad).mp, full.maxMp, `MP ${JSON.stringify(bad)}`);
+});
+
 test('今はないゾーンにいたセーブは、戻る町のかがり火から始まる', () => {
   const { save } = playedSave();
   save.location = { zone: 'noSuchZone', tx: 3, ty: 3 };

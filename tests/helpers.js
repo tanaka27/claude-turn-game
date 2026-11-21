@@ -134,6 +134,14 @@ function traceTurns(g) {
   log.stop = () => { ctx.endTurn = orig; };
   return log;
 }
+// キャラの行動を通さずに、ゲーム内の時間だけを dt ターン進める (時間で進むものの区切り方を変えるテスト用)
+function passTime(g, dt) { g.advanceTime(g.game.time + dt); }
+
+// ----- 視線と直線 -----
+// (x1, y1) と (x2, y2) のマスの中心どうしを結ぶ線が、攻撃を遮る地形を通らないか
+const sees = (g, x1, y1, x2, y2) => g.hasLOS(x1, y1, x2, y2);
+// (x, y) から dir (ラジアン) の向きへ len マスの直線が通るマス ([[x, y]...]。近い順)
+const rayFrom = (g, x, y, dir, len) => Array.from(g.rayTiles(x, y, dir, len), (t) => Array.from(t));
 
 // ----- 入力 (本物のキー入力の処理を通す) -----
 function press(g, key, extra = {}) {
@@ -373,8 +381,8 @@ module.exports = {
   el, shown, textOf, htmlOf, screenNodes, findButton, buttonLabels, clickNode, clickButton, clickStaleButton, staleSelect, clickGear, clickTool, clickMat, clickPopBackdrop, clickTalkText,
   questRows, clickQuestRow, openScreen, clickHud, trackSaves, nextToNpc, giveItem, fillInventory, smithStock, defineScreen, defineRole, screenNames, roleNames,
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
-  recompute, setPlayerBase, setLevel, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns,
-  press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,
+  recompute, setPlayerBase, setLevel, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns, passTime,
+  sees, rayFrom, press, step, wait, castAt, skill, attackTiles, performAttack, runFrames, gateTile, isGate, firstStep,
   useSkillBy, cooldownLeftOf, cooldownLengthOf, canUseSkillOf, setCooldown, enemyAttack,
   skillById, keyOf, knows, knownSkillIds, teach, defineSkill, bindSkill, storedCooldown, dataProblems,
 };

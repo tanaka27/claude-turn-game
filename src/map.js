@@ -39,27 +39,50 @@ function canStep(x, y, dx, dy) {
 }
 
 // 視線: マスの中心どうしを結ぶ線が、攻撃を遮る地形を通らないか (両端のマスは見ない)
+//   線の上の点を 1/4 マスごとに調べる。点の位置は整数で計算する (どちら向きに調べても同じ点になる)
+//   点がマスの境目の辺にちょうど乗ったら、辺の両側のマスを見る
+//   線がマスの角をちょうど通るとき (点が角に乗るかによらない): 角で触れるだけの 2 マス (角を挟む 2 マス) は、
+//   両方とも遮るときだけ通らない (斜めに並んだ壁の間は抜けられない。壁 1 つの角をかすめるだけなら通る)
+//   こうすると、線の向きを逆にしても、地形を左右・上下に裏返しても、結果は同じになる
 function hasLOS(x1, y1, x2, y2) {
-  const n = Math.ceil(dist(x1, y1, x2, y2) * 4);
+  const n = Math.ceil(dist(x1, y1, x2, y2) * 4), D = 2 * n, dx = x2 - x1, dy = y2 - y1;
+  const wall = (x, y) => (x !== x1 || y !== y1) && (x !== x2 || y !== y2) && isShotBlocked(x, y);
+  // 斜めに隣り合う 2 マス (a → b) の間で、線が 2 マスの共有する角をちょうど通り、角を挟む 2 マスが両方とも遮るか
+  const sealed = (ax, ay, bx, by) => {
+    if (ax === bx || ay === by) return false;
+    const cx = Math.max(ax, bx), cy = Math.max(ay, by);
+    return (2 * cx - 2 * x1 - 1) * dy === (2 * cy - 2 * y1 - 1) * dx && wall(bx, ay) && wall(ax, by);
+  };
+  let px = x1, py = y1; // 直前の点のマス (辺や角に乗った点は除く)
   for (let i = 1; i < n; i++) {
-    const k = i / n;
-    const x = Math.floor(x1 + 0.5 + (x2 - x1) * k), y = Math.floor(y1 + 0.5 + (y2 - y1) * k);
-    if ((x !== x1 || y !== y1) && (x !== x2 || y !== y2) && isShotBlocked(x, y)) return false;
+    // 点の位置 × 2n (マスの中心は x + 0.5 なので 2 倍して整数にする)
+    const X = (2 * x1 + 1) * n + 2 * dx * i, Y = (2 * y1 + 1) * n + 2 * dy * i;
+    const x = Math.floor(X / D), y = Math.floor(Y / D);
+    const onX = x * D === X, onY = y * D === Y;
+    if (onX && onY) continue;
+    if (onX || onY) {
+      if (wall(x, y) || wall(onX ? x - 1 : x, onY ? y - 1 : y)) return false;
+      continue;
+    }
+    if (wall(x, y) || sealed(px, py, x, y)) return false;
+    px = x; py = y;
   }
-  return true;
+  return !sealed(px, py, x2, y2);
 }
 
 // (x, y) のマスから dir の向きへ伸ばした直線が通るマス (近い順。攻撃を遮る地形の手前まで)
 //   len: 長さ (マス)。斜めでも len 歩ぶん届くように、縦横の大きいほうで測る
+//   ちょうど斜め (45°) の直線はマスの角をちょうど通るので、角を挟む 2 マスが両方とも遮るならそこで止まる (視線 hasLOS と同じ決まり)
 function rayTiles(x, y, dir, len) {
   const c = Math.cos(dir), s = Math.sin(dir);
+  const diag = Math.abs(Math.abs(c) - Math.abs(s)) < 1e-9; // cos と sin の誤差だけ違う
   const max = len / Math.max(Math.abs(c), Math.abs(s));
   const out = [];
   let lx = x, ly = y;
   for (let d = 0.25; d <= max + 1e-6; d += 0.25) {
     const tx = Math.floor(x + 0.5 + c * d), ty = Math.floor(y + 0.5 + s * d);
     if (tx === lx && ty === ly) continue;
-    if (isShotBlocked(tx, ty)) break;
+    if (isShotBlocked(tx, ty) || (diag && tx !== lx && ty !== ly && isShotBlocked(tx, ly) && isShotBlocked(lx, ty))) break;
     out.push([tx, ty]);
     lx = tx; ly = ty;
   }

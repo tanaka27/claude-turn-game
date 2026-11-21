@@ -1,7 +1,7 @@
 // ターンの進み方 (速度による行動順) と、時間で進むもの
 'use strict';
 const assert = require('assert');
-const { newGame, arena, traceTurns, setNextAction, setPlayerBase, wait, press, castAt, livingEnemies, lootsOnGround, messages, skill, storedCooldown } = require('./helpers');
+const { newGame, arena, traceTurns, passTime, setNextAction, setPlayerBase, wait, press, castAt, livingEnemies, lootsOnGround, messages, skill, storedCooldown } = require('./helpers');
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg || ''} ${a} != ${b}`);
 
@@ -94,12 +94,114 @@ test('湧き場所: 倒した敵は respawn ターン後に出現予告を挟ん
   assert.ok(wolf.dead);
   let n = 1;
   while (livingEnemies(g).length === 0 && n < 100) { wait(g); n++; }
-  // 今の動き: 行動 1 回 = 1 ターン。respawn 10 ターンが切れたターンに予告が始まり、その同じターンの分も
-  // 予告 (spawnTelegraph 2) に数えるので、倒した行動を含めて 11 行動目で湧く
-  assert.strictEqual(n, 11);
+  // 行動 1 回 = 1 ターン。respawn 10 ターンが切れた時刻に予告が出て、そこから spawnTelegraph (2) ターンで湧く。
+  // 倒した行動を含めて 12 行動目 (= respawn + spawnTelegraph)
+  assert.strictEqual(n, 10 + g.PARAMS.field.spawnTelegraph);
   const e = livingEnemies(g)[0];
   assert.deepStrictEqual([e.tx, e.ty], [10, 7]);
   assert.strictEqual(e.hp, e.stats.maxHp);
+});
+
+// 倒してから湧き直すまで: 主人公の行動を何回したか (倒した行動を含む) と、何ターンたったか
+//   others: ほかに置く敵 (遠くで待機させる)。agi: 主人公のすばやさ (速度を変える)
+function respawnCount({ others = [], agi } = {}) {
+  const g = newGame();
+  const [wolf] = arena(g, { cols: 40, rows: 15, player: [2, 7], enemies: [{ type: 'wolf', at: [10, 7], respawn: 10 }, ...others] });
+  if (agi !== undefined) setPlayerBase(g, { agi });
+  g.rng.constant(0.99); // 会心なし・待機中の敵はうろつかない
+  wolf.hp = 1;
+  const t0 = g.game.time;
+  castAt(g, '1', 10, 7);
+  assert.ok(wolf.dead);
+  let n = 1;
+  while (livingEnemies(g).length === others.length && n < 100) { wait(g); n++; }
+  g.rng.constant(null);
+  return { n, turns: g.game.time - t0, speed: g.player.stats.speed };
+}
+
+test('湧き場所: 湧き直すまでのターン数は、時間の区切られ方 (主人公の速さ・速い敵がいるか) によらない', () => {
+  const telegraph = newGame().PARAMS.field.spawnTelegraph;
+  const want = 10 + telegraph;
+  const alone = respawnCount();
+  assert.deepStrictEqual([alone.n, alone.turns], [want, want]);
+  // 速い敵 (Lv10 のウルフ) が遠くで待機していると、時間がその敵の行動で細かく区切られる
+  const fast = [{ type: 'wolf', at: [36, 2], level: 10 }];
+  const withFast = respawnCount({ others: fast });
+  assert.deepStrictEqual([withFast.n, withFast.turns], [want, want]);
+  // 主人公が速い (速度 150: 1 行動 2/3 ターン) と、湧くまでの行動は増えるがターン数は同じ
+  const quick = respawnCount({ others: fast, agi: 45 });
+  assert.strictEqual(quick.speed, 150);
+  assert.strictEqual(quick.n, want * 3 / 2);
+  near(quick.turns, want, '速度 150');
+  // 主人公が遅い (速度 75: 1 行動 4/3 ターン)
+  const slow = respawnCount({ others: fast, agi: 7.5 });
+  assert.strictEqual(slow.speed, 75);
+  assert.strictEqual(slow.n, want * 3 / 4);
+  near(slow.turns, want, '速度 75');
+});
+
+test('湧き場所: 時間を 1 度に進めても、細かく分けて進めても、同じ時刻に湧く', () => {
+  const telegraph = newGame().PARAMS.field.spawnTelegraph;
+  const killed = () => {
+    const g = newGame();
+    const [wolf] = arena(g, { cols: 20, rows: 15, player: [2, 7], enemies: [{ type: 'wolf', at: [10, 7], respawn: 10 }] });
+    wolf.hp = 1;
+    g.rng.force(0.99);
+    castAt(g, '1', 10, 7); // 倒した行動で 1 ターン進む
+    assert.ok(wolf.dead);
+    return g;
+  };
+  const rest = 10 + telegraph - 1;
+  // 1 度に: 再出現の時間が切れてから過ぎた分も予告に数えるので、その場で湧く
+  const big = killed();
+  passTime(big, rest - 1e-6);
+  assert.strictEqual(livingEnemies(big).length, 0, 'まだ');
+  const big2 = killed();
+  passTime(big2, rest);
+  assert.strictEqual(livingEnemies(big2).length, 1, '1 度に進める');
+  // 0.1 ターンずつ
+  const small = killed();
+  for (let i = 0; i < rest * 10 - 1; i++) passTime(small, 0.1);
+  assert.strictEqual(livingEnemies(small).length, 0, '0.1 ターン手前');
+  passTime(small, 0.1);
+  assert.strictEqual(livingEnemies(small).length, 1, '0.1 ターンずつ');
+  // 再出現の時間が切れる区切りをまたいで、半端な大きさで
+  const odd = killed();
+  passTime(odd, 8.7); passTime(odd, 0.6); passTime(odd, 1.5); // 0.6 の途中で切れる
+  assert.strictEqual(livingEnemies(odd).length, 0, '10.8 ターン');
+  passTime(odd, rest - 10.8);
+  assert.strictEqual(livingEnemies(odd).length, 1, '半端な区切り');
+});
+
+test('湧き場所: ゾーンを出て戻っても、再出現までの残りを引き継いで同じ時刻に湧く', () => {
+  const g = newGame();
+  const [wolf] = arena(g, { cols: 20, rows: 15, player: [2, 7], enemies: [{ type: 'wolf', at: [10, 7], respawn: 10 }] });
+  const first = g.zone.id;
+  wolf.hp = 1;
+  g.rng.force(0.99);
+  castAt(g, '1', 10, 7);
+  assert.ok(wolf.dead);
+  wait(g, 3); // 倒してから 4 ターン (残り 6)
+  arena(g, { cols: 12, rows: 12, player: [5, 5], safe: true });
+  wait(g, 4); // よそで 4 ターン (残り 2)
+  g.enterZone(first, 2, 7);
+  assert.strictEqual(livingEnemies(g).length, 0, '戻ってすぐは湧いていない');
+  const telegraph = g.PARAMS.field.spawnTelegraph;
+  let n = 0;
+  while (livingEnemies(g).length === 0 && n < 100) { wait(g); n++; }
+  // 残り 2 ターンで予告が出て、そこから spawnTelegraph ターン。倒してからでは 10 + spawnTelegraph ターン
+  assert.strictEqual(n, 2 + telegraph);
+  assert.strictEqual(1 + 3 + 4 + n, 10 + telegraph);
+  // 残りが過ぎてから戻ると、入ったときにもう湧いている
+  const [w2] = livingEnemies(g);
+  w2.hp = 1;
+  g.rng.force(0.99);
+  castAt(g, '1', w2.tx, w2.ty);
+  assert.ok(w2.dead);
+  arena(g, { cols: 12, rows: 12, player: [5, 5], safe: true });
+  wait(g, 10);
+  g.enterZone(first, 2, 7);
+  assert.strictEqual(livingEnemies(g).length, 1);
 });
 
 test('湧き場所: 主人公が近く (7 マス未満) にいるうちは湧かない', () => {

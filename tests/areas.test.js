@@ -1,7 +1,7 @@
 // 技の範囲 (planAttack) と、弾の貫通
 'use strict';
 const assert = require('assert');
-const { newGame, arena, attackTiles, performAttack, castAt } = require('./helpers');
+const { newGame, arena, attackTiles, performAttack, castAt, sees, rayFrom } = require('./helpers');
 
 const sorted = (list) => list.map(([x, y]) => `${x},${y}`).sort();
 // (cx, cy) から半径 r 以内のマス (中心を含むか選べる)
@@ -35,14 +35,63 @@ test('近接・円 (旋風斬 2.3 マス): まわり 20 マス (自分のマス�
   assert.deepStrictEqual(tiles, disc(7, 7, 2.3, false));
 });
 
-test('近接・円: 壁のマスと、壁の陰のマスには届かない', () => {
-  const g = field([[8, 7, 1, 1]]);
-  const whirl = g.SKILLS.find((s) => s.shape === 'circle');
-  const tiles = attackTiles(g, g.player, whirl, 7, 7);
-  // 今の動き: 斜め上 (8,6) も壁の陰あつかいになるが、斜め下 (8,8) はならない (視線の判定がマスの角で
-  // floor するため、上下で非対称)。不具合の疑いとして記録してあり、ここでは今の結果を固定する
-  const hidden = ['8,7', '9,7', '9,6', '9,8', '8,6'];
-  assert.deepStrictEqual(tiles, disc(7, 7, 2.3, false).filter((k) => !hidden.includes(k)));
+test('近接・円: 壁のマスと、壁の陰のマスには届かない (上下左右どの向きの壁でも同じ形)', () => {
+  // 壁が東にあるとき、隠れるのは壁と、その奥の 3 マス。斜めのとなり (8,6)・(8,8) へは、線が壁の角を
+  // かすめるだけなので届く (角をちょうど通る線は、角を挟む 2 マスが両方とも遮るときだけ止まる)
+  const east = ['8,7', '9,7', '9,6', '9,8'];
+  // 東の壁と隠れるマスを、(7,7) のまわりで回したもの: [dx, dy] → 向き
+  const turn = { east: ([dx, dy]) => [dx, dy], west: ([dx, dy]) => [-dx, dy], south: ([dx, dy]) => [dy, dx], north: ([dx, dy]) => [-dy, -dx] };
+  for (const [name, f] of Object.entries(turn)) {
+    const [wx, wy] = f([1, 0]);
+    const g = field([[7 + wx, 7 + wy, 1, 1]]);
+    const whirl = g.SKILLS.find((s) => s.shape === 'circle');
+    const tiles = attackTiles(g, g.player, whirl, 7, 7);
+    const hidden = east.map((k) => { const [x, y] = k.split(',').map(Number); const [dx, dy] = f([x - 7, y - 7]); return `${7 + dx},${7 + dy}`; });
+    assert.deepStrictEqual(tiles, disc(7, 7, 2.3, false).filter((k) => !hidden.includes(k)), name);
+  }
+});
+
+test('近接・円: 斜めに並んだ 2 つの壁の間 (角をちょうど通る線) は抜けられない', () => {
+  // (7,7) から斜めのとなり (7+dx, 7+dy) へは、角を挟む (7+dx, 7) と (7, 7+dy) が両方とも壁なら届かない。片方だけなら届く
+  for (const [dx, dy] of [[1, -1], [1, 1], [-1, 1], [-1, -1]]) {
+    const key = `${7 + dx},${7 + dy}`;
+    for (const walls of [[[7 + dx, 7, 1, 1]], [[7, 7 + dy, 1, 1]], [[7 + dx, 7, 1, 1], [7, 7 + dy, 1, 1]]]) {
+      const g = field(walls);
+      const whirl = g.SKILLS.find((s) => s.shape === 'circle');
+      const tiles = attackTiles(g, g.player, whirl, 7, 7);
+      assert.strictEqual(tiles.includes(key), walls.length === 1, `${key} 壁 ${JSON.stringify(walls)}`);
+    }
+  }
+});
+
+test('視線は向きによらない: 入れ替えても、左右・上下・縦横を裏返した地形でも同じ (ランダムな壁 25 通り)', () => {
+  let seed = 12345;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const N = 9; // 外周の壁を含めて 9 × 9 マス
+  const maps = {
+    id: (x, y) => [x, y], ew: (x, y) => [N - 1 - x, y], ns: (x, y) => [x, N - 1 - y],
+    both: (x, y) => [N - 1 - x, N - 1 - y], swap: (x, y) => [y, x],
+  };
+  const tiles = [];
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) tiles.push([x, y]); // 外周の壁の内側
+  const games = {};
+  for (const name in maps) games[name] = newGame(); // 地形ごとに試験場のゾーンを作り直す (ゲームは向きごとに 1 つ)
+  for (let k = 0; k < 25; k++) {
+    const walls = [];
+    for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if (rnd() < 0.25) walls.push([x, y]);
+    const open = tiles.find(([x, y]) => !walls.some(([wx, wy]) => wx === x && wy === y));
+    const results = {};
+    for (const [name, m] of Object.entries(maps)) {
+      const g = games[name];
+      arena(g, { cols: N, rows: N, player: m(...open), walls: walls.map(([x, y]) => [...m(x, y), 1, 1]) });
+      results[name] = (a, b) => sees(g, ...m(...a), ...m(...b));
+    }
+    for (const a of tiles) for (const b of tiles) {
+      const v = results.id(a, b);
+      assert.strictEqual(results.id(b, a), v, `入れ替え ${a} → ${b} (地形 ${k})`);
+      for (const name of ['ew', 'ns', 'both', 'swap']) assert.strictEqual(results[name](a, b), v, `${name} ${a} → ${b} (地形 ${k})`);
+    }
+  }
 });
 
 test('近接・直線 (角突き 3 マス): まっすぐ・斜め、壁の手前で止まる', () => {
@@ -52,6 +101,23 @@ test('近接・直線 (角突き 3 マス): まっすぐ・斜め、壁の手前
   assert.deepStrictEqual(attackTiles(g, g.player, gore, 12, 12), sorted([[8, 8], [9, 9], [10, 10]]));
   const g2 = field([[9, 7, 1, 1]]);
   assert.deepStrictEqual(attackTiles(g2, g2.player, gore, 12, 7), ['8,7']);
+});
+
+test('直線: ちょうど斜めの直線はどの向きでも同じ形 (角を挟む 2 マスが両方とも壁のときだけ止まる)', () => {
+  for (const [dx, dy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    const dir = Math.atan2(dy, dx);
+    const g = field();
+    const want = [1, 2, 3, 4].map((i) => [7 + dx * i, 7 + dy * i]);
+    assert.deepStrictEqual(rayFrom(g, 7, 7, dir, 4), want, `${dx},${dy}`);
+    // 2 歩目と 3 歩目の間の角を、片方だけふさいでも通る。両方ふさぐとそこで止まる
+    const side1 = [7 + dx * 3, 7 + dy * 2, 1, 1], side2 = [7 + dx * 2, 7 + dy * 3, 1, 1];
+    assert.deepStrictEqual(rayFrom(field([side1]), 7, 7, dir, 4), want, `${dx},${dy} 片方`);
+    assert.deepStrictEqual(rayFrom(field([side2]), 7, 7, dir, 4), want, `${dx},${dy} もう片方`);
+    assert.deepStrictEqual(rayFrom(field([side1, side2]), 7, 7, dir, 4), want.slice(0, 2), `${dx},${dy} 両方`);
+    // 逆向き (終わりのマスから戻る) も同じマスを通る
+    const back = rayFrom(g, 7 + dx * 4, 7 + dy * 4, Math.atan2(-dy, -dx), 4);
+    assert.deepStrictEqual(back, [3, 2, 1, 0].map((i) => [7 + dx * i, 7 + dy * i]), `${dx},${dy} 逆向き`);
+  }
 });
 
 test('弾 (衝撃波 9 マス): まっすぐ飛び、壁で止まる', () => {

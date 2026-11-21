@@ -271,21 +271,26 @@ function placeEnemy(type, tx, ty, camp, slot) {
 }
 
 // 倒された枠は respawn ターン後に、出現予告を挟んで湧き直す。dt: 進んだ時間 (ターン)
+//   予告は再出現の時間が切れた時刻から数える (この dt の途中で切れたら、切れてから過ぎた分を予告に入れる)。
+//   主人公が近いなどで予告を出すのを待っていた枠は、出したときから数える。
+//   こうすると、時間がどう細かく区切られて進んでも、湧くのは「倒してから respawn + spawnTelegraph ターン」になる
 function updateCamps(dt) {
+  for (const s of spawns) s.t += dt; // 前から出ていた予告だけ進める (このあと出す予告には dt を足さない)
   for (const c of camps) {
     for (const s of c.slots) {
       if (s.enemy || s.pending) continue;
+      const before = s.timer;
       s.timer -= dt;
-      if (s.timer > 0) continue;
+      if (s.timer > 1e-9) continue; // 1e-9: 細かく区切って引いたときの小数の誤差
       const at = pickCampTile(c);
       if (!at || (player && !player.dead && dist(player.tx, player.ty, at[0], at[1]) < F.respawnMinDist)) continue;
       s.pending = true;
-      spawns.push({ type: s.type, tx: at[0], ty: at[1], t: 0, total: F.spawnTelegraph, r: ENEMIES[s.type].radius, camp: c, slot: s });
+      const late = before > 1e-9 ? Math.max(0, -s.timer) : 0;
+      spawns.push({ type: s.type, tx: at[0], ty: at[1], t: late, total: F.spawnTelegraph, r: ENEMIES[s.type].radius, camp: c, slot: s });
     }
   }
   for (const s of spawns) {
-    s.t += dt;
-    if (s.t >= s.total && isFree(s.tx, s.ty)) {
+    if (s.t >= s.total - 1e-9 && isFree(s.tx, s.ty)) {
       s.done = true;
       s.slot.pending = false;
       placeEnemy(s.type, s.tx, s.ty, s.camp, s.slot);
