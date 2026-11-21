@@ -21,7 +21,7 @@ HTML の画面（道具一覧・キャラクター・商人・鍛冶屋・クエ
 - `open(arg)`: その画面だけの準備。共通の準備（`game.state = 'menu'`、構え `aiming` と歩く道 `player.travel` を消す、`menu.mode`）は `openScreen(名前, arg)` が先にして、`open` → `render` → overlay を出す、の順
 - `render()`: 中身を作る
 - `keys(k, e)`: その画面のキー（`k` は小文字）。処理したら `true`。処理しなかったキーは、押しっぱなしでなければ Esc と `closeKeys` で閉じる（`screenKey`）。`src/player.js` の keydown は、画面を開いている間は `screenKey` を呼ぶだけで、フィールドには渡さない（動かない・時間が進まない）
-- `actions`: `{ data-act の値: (ボタン) => … }`。overlay のクリックは `registerScreen` が 1 度だけ受け、押せる（`disabled` でない）`[data-act]` のボタンなら開いている画面の `actions` から引いて呼ぶ。`true` を返さなければそのあと `afterAction()`（`#menu` の画面は `renderMenu`。合わない data-act でも呼ぶ）。お金・持ち物・選んでいるもののたしかめ（見張り）は各 action の中に書く。`#menu` の画面に共通のボタン（閉じる・ポップアップを閉じる・装備する・外す・捨てる）は `MENU_ACTIONS`、画面ごとのもの（道具一覧の「使う」、商人の回復薬を買う・素材を売る、鍛冶屋の買う・売る）はその画面の `actions`
+- `actions`: `{ data-act の値: (ボタン) => … }`。overlay のクリックは `registerScreen` が 1 度だけ受け、押せる（`disabled` でない）`[data-act]` のボタンなら開いている画面の `actions` から引いて呼ぶ。`true` を返さなければそのあと `afterAction()`（`#menu` の画面は `renderMenu`。合わない data-act でも呼ぶ）。お金・持ち物・選んでいるもののたしかめ（見張り）は各 action の中に書く（古い画面に残ったボタンが押されても、合わないときは何もしない）。装備のボタンは、`detailHtml` がそのボタンを出す選び方（`menu.sel.from`。`selFrom`）のときだけ効く: 「装備する」は持ち物（`inv`）、「捨てる」は持ち物でその画面に `invGearButton` がないとき、「売る」は持ち物（鍛冶屋だけ）、「外す」は装備中（`equip`）で持ち物に空きがあるとき、「買う」はその鍛冶屋の今の品ぞろえ（`shop`）から選んだもので、お金と持ち物の空きがあるとき。`#menu` の画面に共通のボタン（閉じる・ポップアップを閉じる・装備する・外す・捨てる）は `MENU_ACTIONS`、画面ごとのもの（道具一覧の「使う」、商人の回復薬を買う・素材を売る、鍛冶屋の買う・売る）はその画面の `actions`
 - `click(e)`: ボタン以外のところのクリック（アイテムを選ぶ・ポップアップの外、クエストの一覧、会話を進める）
 - `onClose()`: 閉じたあと。`closeMenu` は登録された全部の画面の overlay を隠し、`game.state = 'play'` にして `onClose` を呼び、セーブする。`#menu` の画面はポップアップを消し、キャラクターは一時停止中なら一時停止の画面に戻す
 

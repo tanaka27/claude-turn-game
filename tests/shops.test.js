@@ -4,7 +4,7 @@
 const assert = require('assert');
 const {
   newGame, press, el, shown, textOf, htmlOf, openScreen, findButton, buttonLabels, clickButton, clickGear, clickTool, clickMat, clickPopBackdrop,
-  nextToNpc, giveItem, fillInventory, smithStock, setLevel, trackSaves, screenNodes, clickNode, clickStaleButton,
+  nextToNpc, giveItem, fillInventory, smithStock, setLevel, trackSaves, screenNodes, clickNode, clickStaleButton, staleSelect,
 } = require('./helpers');
 
 function openNpc(g, id) { nextToNpc(g, id); press(g, 'f'); }
@@ -381,6 +381,136 @@ test('画面の処理の見張り: 開いている画面に合わないボタン
   clickStaleButton(g, 'menu', 'close');
   assert.strictEqual(p.potions.potion, n);
   assert.strictEqual(g.game.state, 'play');
+});
+
+// ----- 装備のボタンの見張り: detailHtml がそのボタンを出す選び方 (inv: 装備する + 捨てる / 売る、equip: 外す、shop: 買う) のときだけ効く -----
+// 持ち物・装備・品ぞろえ・お金をまとめて写す (比べる用)
+const gearState = (g, id) => JSON.stringify({
+  gold: g.player.gold, inv: g.player.inventory.map((x) => x.id), equip: Object.values(g.player.equip).map((x) => x && x.id),
+  stock: smithStock(g, id).map((x) => x.id),
+});
+
+test('鍛冶屋: 持ち物の装備を選んでいるときに古い「買う」が押されても、お金も持ち物も変わらない', () => {
+  const g = newGame();
+  const p = g.player;
+  p.gold = 500;
+  const it = giveItem(g, 'weapon', 1, 'common');
+  openNpc(g, 'townSmith');
+  clickGear(g, 'inv', it.id);
+  assert.strictEqual(findButton(g, 'menu', 'buy'), null, '持ち物の装備には「買う」は出ない');
+  const before = gearState(g, 'townSmith');
+  clickStaleButton(g, 'menu', 'buy');
+  assert.strictEqual(gearState(g, 'townSmith'), before);
+  assert.strictEqual(p.inventory.filter((x) => x === it).length, 1, '増えない');
+  assert.strictEqual(openScreen(g), 'smith');
+});
+
+test('鍛冶屋: 「買う」を 2 回押しても (2 回目は買った装備が持ち物の側で選ばれている) 1 回ぶんしか払わない', () => {
+  const g = newGame();
+  const p = g.player;
+  p.gold = 500;
+  openNpc(g, 'townSmith');
+  const it = smithStock(g, 'townSmith')[0], price = g.itemValue(it);
+  clickGear(g, 'shop', it.id);
+  clickButton(g, 'menu', 'buy');
+  clickStaleButton(g, 'menu', 'buy');
+  assert.strictEqual(p.gold, 500 - price);
+  assert.strictEqual(p.inventory.filter((x) => x === it).length, 1);
+});
+
+test('鍛冶屋: もう品ぞろえにない装備 (選んだまま残っていた) の古い「買う」は何もしない', () => {
+  const g = newGame();
+  const p = g.player;
+  p.gold = 500;
+  openNpc(g, 'townSmith');
+  const it = smithStock(g, 'townSmith')[0];
+  clickGear(g, 'shop', it.id);
+  clickButton(g, 'menu', 'buy');
+  // 品ぞろえの側で選ばれたまま残っていたことにする (もう品ぞろえにない)
+  staleSelect(g, 'shop', it.id);
+  const before = gearState(g, 'townSmith');
+  clickStaleButton(g, 'menu', 'buy');
+  assert.strictEqual(gearState(g, 'townSmith'), before);
+  // ほかの鍛冶屋の品ぞろえの装備も、この鍛冶屋では買えない
+  press(g, 'f');
+  openNpc(g, 'waySmith');
+  press(g, 'f');
+  openNpc(g, 'townSmith');
+  const other = smithStock(g, 'waySmith')[0];
+  staleSelect(g, 'shop', other.id);
+  const before2 = gearState(g, 'townSmith');
+  clickStaleButton(g, 'menu', 'buy');
+  assert.strictEqual(gearState(g, 'townSmith'), before2);
+  assert.ok(smithStock(g, 'waySmith').includes(other));
+});
+
+test('鍛冶屋: 品ぞろえの装備を選んでいるときに古い「装備する」「売る」「捨てる」「外す」が押されても何も起きない', () => {
+  const g = newGame();
+  const p = g.player;
+  p.gold = 500;
+  openNpc(g, 'townSmith');
+  const it = smithStock(g, 'townSmith')[0];
+  clickGear(g, 'shop', it.id);
+  assert.deepStrictEqual(buttonLabels(g, 'menu').filter((l) => /装備する|捨てる|売る（|外す|買う/.test(l)), [`買う（${g.itemValue(it)} G）`]);
+  const before = gearState(g, 'townSmith');
+  for (const act of ['equip', 'sell', 'drop', 'unequip']) {
+    clickStaleButton(g, 'menu', act);
+    assert.strictEqual(gearState(g, 'townSmith'), before, act);
+  }
+  assert.ok(!Object.values(p.equip).includes(it), 'ただで装備できない');
+  assert.ok(htmlOf(g, 'detail').includes(it.name), '選んだまま');
+});
+
+test('鍛冶屋: 持ち物の装備には「捨てる」が出ないので、古い「捨てる」は何もしない', () => {
+  const g = newGame();
+  const it = giveItem(g);
+  openNpc(g, 'townSmith');
+  clickGear(g, 'inv', it.id);
+  const before = gearState(g, 'townSmith');
+  clickStaleButton(g, 'menu', 'drop');
+  assert.strictEqual(gearState(g, 'townSmith'), before);
+});
+
+test('道具一覧: 装備中のものを選んでいるときの古い「装備する」「捨てる」、持ち物の装備を選んでいるときの古い「外す」は何もしない', () => {
+  const g = newGame();
+  const p = g.player, w = p.equip.weapon;
+  const it = giveItem(g, 'weapon', 2, 'rare');
+  press(g, 'i');
+  clickGear(g, 'equip', w.id);
+  const before = gearState(g, 'townSmith');
+  clickStaleButton(g, 'menu', 'equip');
+  clickStaleButton(g, 'menu', 'drop');
+  assert.strictEqual(gearState(g, 'townSmith'), before, '装備中のものが持ち物に増えたり消えたりしない');
+  clickGear(g, 'inv', it.id);
+  clickStaleButton(g, 'menu', 'unequip');
+  assert.strictEqual(gearState(g, 'townSmith'), before, '装備中のものが外れたり持ち物が増えたりしない');
+  assert.strictEqual(p.equip.weapon, w);
+});
+
+test('鍛冶屋: 買う → 装備する → 外す → 売る の流れ (お金はちょうど値段と売値のぶん)', () => {
+  const g = newGame();
+  const p = g.player;
+  p.gold = 500;
+  openNpc(g, 'townSmith');
+  const it = smithStock(g, 'townSmith')[0], price = g.itemValue(it), old = p.equip[it.slot];
+  const inv0 = p.inventory.length;
+  clickGear(g, 'shop', it.id);
+  assert.ok(clickButton(g, 'menu', 'buy'));
+  assert.strictEqual(p.gold, 500 - price);
+  assert.ok(clickButton(g, 'menu', 'equip'));
+  assert.strictEqual(p.equip[it.slot], it);
+  assert.ok(!p.inventory.includes(it));
+  assert.ok(clickButton(g, 'menu', 'unequip'));
+  assert.strictEqual(p.equip[it.slot], null);
+  assert.ok(p.inventory.includes(it));
+  const sell = g.sellPrice(it);
+  assert.strictEqual(label(findButton(g, 'menu', 'sell')), `売る（${sell} G）`);
+  assert.ok(clickButton(g, 'menu', 'sell'));
+  assert.strictEqual(p.gold, 500 - price + sell);
+  assert.ok(!p.inventory.includes(it));
+  assert.strictEqual(p.inventory.length, inv0 + (old ? 1 : 0), '前の装備だけが持ち物に残る');
+  if (old) assert.ok(p.inventory.includes(old));
+  assert.ok(!smithStock(g, 'townSmith').includes(it));
 });
 
 test('道具一覧を開くたびに選んでいたもの・ポップアップは消える', () => {

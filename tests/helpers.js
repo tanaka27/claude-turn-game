@@ -290,6 +290,8 @@ function clickStaleButton(g, screen, act, data = {}) {
   for (const [k, v] of Object.entries(data)) attrs[`data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`] = String(v);
   clickNode(g, screen, makeNode('button', attrs, staticNode((CONTAINERS[screen] || [])[0] || screen)));
 }
+// 選んでいる装備を直接決める (画面には出ていない、古い画面の選択が残った場面。from: 'inv' | 'equip' | 'shop')
+function staleSelect(g, from, id) { g.menu.sel = { from, id: String(id) }; }
 // 道具一覧・店の画面のアイテムをクリックする: 装備 (from: 'inv' | 'equip' | 'shop') / 道具 / 素材
 function clickGear(g, from, id) {
   const n = screenNodes(g, 'menu').find((x) => x.classes.includes('item') && x.dataset.from === from && x.dataset.id === String(id));
@@ -368,7 +370,7 @@ const roleNames = (g) => Object.keys(g.NPC_ROLES);
 const smithStock = (g, id) => (g.shopStocks[id] ? Array.from(g.shopStocks[id].items) : []);
 
 module.exports = {
-  el, shown, textOf, htmlOf, screenNodes, findButton, buttonLabels, clickNode, clickButton, clickStaleButton, clickGear, clickTool, clickMat, clickPopBackdrop, clickTalkText,
+  el, shown, textOf, htmlOf, screenNodes, findButton, buttonLabels, clickNode, clickButton, clickStaleButton, staleSelect, clickGear, clickTool, clickMat, clickPopBackdrop, clickTalkText,
   questRows, clickQuestRow, openScreen, clickHud, trackSaves, nextToNpc, giveItem, fillInventory, smithStock, defineScreen, defineRole, screenNames, roleNames,
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,
   recompute, setPlayerBase, setLevel, applyBuff, buffsOf, defineEffect, makeEnemy, statPartsOf, strengthHtml, levelUp, telegraphTiles, lootsOnGround, messages, traceTurns,

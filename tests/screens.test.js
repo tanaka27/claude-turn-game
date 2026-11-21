@@ -3,7 +3,7 @@
 'use strict';
 const assert = require('assert');
 const {
-  newGame, press, step, el, shown, textOf, openScreen, clickHud, clickButton, clickTool, clickTalkText, trackSaves, nextToNpc, skill,
+  newGame, press, step, el, shown, textOf, openScreen, clickHud, clickButton, clickTool, clickTalkText, trackSaves, nextToNpc, skill, arena, messages,
 } = require('./helpers');
 
 const OVERLAYS = ['menu', 'quest', 'talk', 'pause', 'itemPop'];
@@ -92,6 +92,91 @@ test('スキルを構えているときの Esc は構えをやめるだけ (一�
   press(g, 'Escape');
   assert.strictEqual(g.aiming, null);
   assert.strictEqual(g.game.paused, false);
+});
+
+// ----- スキルを構えているときのほかのキー (docs/turn.md の「入力」) -----
+test('スキルを構えているときの I / Tab は構えをやめて道具一覧 / キャラクターを開く', () => {
+  const g = newGame();
+  for (const [key, mode] of [['i', 'inv'], ['Tab', 'char']]) {
+    const t = g.game.time;
+    press(g, '1');
+    assert.ok(g.aiming);
+    press(g, key);
+    assert.strictEqual(g.aiming, null, key);
+    assert.strictEqual(openScreen(g), mode, key);
+    assert.deepStrictEqual(overlays(g), ['menu']);
+    assert.strictEqual(g.game.time, t, '行動にならない');
+    press(g, 'Escape');
+    assert.strictEqual(openScreen(g), null);
+  }
+});
+
+test('スキルを構えているときの F: となりに NPC がいればその画面を開き、いなければ今までどおりの文', () => {
+  const g = newGame();
+  nextToNpc(g, 'merchant');
+  const t = g.game.time;
+  press(g, '1');
+  assert.ok(g.aiming);
+  press(g, 'f');
+  assert.strictEqual(g.aiming, null);
+  assert.strictEqual(openScreen(g), 'shop');
+  assert.strictEqual(g.game.time, t);
+  press(g, 'Escape');
+  arena(g);
+  press(g, '1');
+  assert.ok(g.aiming);
+  press(g, 'f');
+  assert.strictEqual(g.aiming, null);
+  assert.strictEqual(openScreen(g), null);
+  assert.strictEqual(messages(g).slice(-1)[0], '話しかけられる人がいない。となりのマスで F を押そう。');
+  assert.strictEqual(g.game.time, t);
+});
+
+test('スキルを構えているときのほかのスキルのキーは構え直し、強化のキーはすぐ使い、覚えていないスキルのキーは構えをやめて文を出す', () => {
+  const g = newGame();
+  arena(g);
+  press(g, '1');
+  press(g, '4');
+  assert.strictEqual(g.aiming, skill(g, '4'), '構え直す');
+  press(g, '2');
+  assert.strictEqual(g.aiming, null);
+  assert.strictEqual(messages(g).slice(-1)[0], '旋風斬は Lv3 で使えるようになる。');
+  const t = g.game.time;
+  press(g, '1');
+  press(g, '5');
+  assert.strictEqual(g.aiming, null);
+  assert.ok(g.player.buffs.length > 0, '闘気がかかる');
+  assert.ok(g.game.time > t, '1 行動');
+});
+
+test('スキルを構えているときの回復薬のキーは構えをやめて飲む、テンキーの 5 は構えをやめて待つ、意味のないキーと M は構えたまま', () => {
+  const g = newGame();
+  arena(g);
+  const p = g.player;
+  p.hp = 5;
+  const n = p.potions.potion;
+  let t = g.game.time;
+  press(g, '1');
+  press(g, 'r');
+  assert.strictEqual(g.aiming, null);
+  assert.strictEqual(p.potions.potion, n - 1);
+  assert.ok(p.hp > 5);
+  assert.ok(g.game.time > t);
+  t = g.game.time;
+  press(g, '1');
+  press(g, '5', { code: 'Numpad5' });
+  assert.strictEqual(g.aiming, null);
+  assert.strictEqual(p.buffs.length, 0, '闘気は使わない');
+  assert.ok(g.game.time > t, '1 回待つ');
+  t = g.game.time;
+  press(g, '1');
+  for (const k of ['x', 'Shift', 'm', 'm']) press(g, k);
+  assert.strictEqual(g.aiming, skill(g, '1'));
+  assert.strictEqual(g.game.time, t);
+  assert.strictEqual(openScreen(g), null);
+  press(g, 'Escape');
+  assert.strictEqual(g.aiming, null);
+  assert.strictEqual(g.game.paused, false, 'Esc は構えをやめるだけ');
 });
 
 test('一時停止から C / 「キャラクター」ボタンでキャラクターを開き、閉じると一時停止に戻る', () => {

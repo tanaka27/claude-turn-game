@@ -36,8 +36,12 @@ window.addEventListener('keydown', (e) => {
   player.travel = null;
   if (aiming) {
     if (k === 'enter' || skillByKey(k) === aiming) { castSkill(aiming, mouse.tx, mouse.ty); return; }
-    if (dir || WAIT_KEYS.includes(k)) aiming = null; // 動いたら狙うのをやめる
-    else return;
+    // フィールドで意味のあるキー (移動・待機・I / Tab / F・回復薬・ほかのスキル) は、狙うのをやめてからふだんどおりにする
+    // (ほかのスキルのキーなら、そのスキルに構え直す)。意味のないキーは何もしない (構えたまま)
+    const fieldKey = dir || WAIT_KEYS.includes(k) || e.code === 'Numpad5' ||
+      (!e.repeat && (k === 'i' || k === 'tab' || k === 'f' || potionByKey(k) || skillByKey(k)));
+    if (!fieldKey) return;
+    aiming = null;
   }
   if (dir) { act(() => tryMove(dir[0], dir[1])); return; }
   if (WAIT_KEYS.includes(k) || e.code === 'Numpad5') { act(waitTurn); return; }

@@ -340,12 +340,18 @@ function unequipItem(it) {
 
 // ----- #menu のボタン (data-act) -----
 // どの #menu の画面でも使えるボタン。画面ごとのボタンは menuScreen の actions に足す (押したあとは renderMenu)
+// 装備のボタンは、detailHtml がそのボタンを出す選び方 (menu.sel.from) のときだけ効く (古い画面のボタンが押されても何も起きない)
+//   inv: 装備する + (invGearButton があればそれ、なければ捨てる) / equip: 外す / shop: 買う
+const selFrom = (from) => { const it = findSel(); return it && menu.sel.from === from ? it : null; };
 const MENU_ACTIONS = {
   close: () => { closeMenu(); return true; },
   popClose: () => { closePop(); return true; },
-  equip: () => { const it = findSel(); if (it) equipItem(it); },
-  unequip: () => { const it = findSel(); if (it && player.inventory.length < EC.inventorySize) unequipItem(it); },
-  drop: () => { const it = findSel(); if (it) { player.inventory = player.inventory.filter((x) => x !== it); menu.sel = null; } },
+  equip: () => { const it = selFrom('inv'); if (it) equipItem(it); },
+  unequip: () => { const it = selFrom('equip'); if (it && player.inventory.length < EC.inventorySize) unequipItem(it); },
+  drop: () => {
+    const it = selFrom('inv');
+    if (it && !screenNow().invGearButton) { player.inventory = player.inventory.filter((x) => x !== it); menu.sel = null; }
+  },
 };
 // 道具を使う (画面を閉じて 1 行動)。使えなくても画面は作り直さない
 function useToolAction(btn) {
@@ -361,11 +367,12 @@ function buyPotionAction(btn) {
   }
 }
 function sellGearAction() {
-  const p = player, it = findSel();
-  if (it && menu.sel.from === 'inv') { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
+  const p = player, it = selFrom('inv');
+  if (it) { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
 }
+// 買えるのは、この鍛冶屋の今の品ぞろえから選んだ装備だけ (findSel は from が 'shop' なら shopStock から探す)
 function buyGearAction() {
-  const p = player, it = findSel();
+  const p = player, it = selFrom('shop');
   if (it && p.gold >= itemValue(it) && p.inventory.length < EC.inventorySize) {
     p.gold -= itemValue(it);
     shopStocks[menu.shop].items = shopStock().filter((x) => x !== it);
