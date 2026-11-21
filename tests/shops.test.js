@@ -57,7 +57,7 @@ test('隠れ里の薬師は上回復薬も売る', () => {
 
 test('商人: 素材を 1 つ・種類ごと全部・全部売る', () => {
   const g = newGame();
-  const p = g.player, M = g.IT.materials;
+  const p = g.player, M = g.ITEMS.materials;
   p.materials = { wolfPelt: 3, boarHorn: 2, honey: 1 };
   openNpc(g, 'merchant');
   const total = 3 * M.wolfPelt.price + 2 * M.boarHorn.price + M.honey.price;
@@ -96,7 +96,7 @@ test('素材を売るボタンは商人にだけ出る (道具一覧・鍛冶屋
   clickStaleButton(g, 'menu', 'sellMat', { mat: 'wolfPelt', all: 1 });
   clickStaleButton(g, 'menu', 'sellAllMat');
   assert.strictEqual(p.materials.wolfPelt, 3);
-  assert.strictEqual(p.gold, g.EC.startGold);
+  assert.strictEqual(p.gold, g.ECON.startGold);
 });
 
 test('商人の画面: 装備を選ぶと右の欄に詳細が出て (ポップアップなし)、「捨てる」が出る', () => {
@@ -114,7 +114,7 @@ test('商人の画面: 装備を選ぶと右の欄に詳細が出て (ポップ�
 // ----- 鍛冶屋 -----
 test('鍛冶屋: 品ぞろえは自分のレベルで決まり、同じレベルなら開き直しても同じ、レベルが変わると入れ替わる', () => {
   const g = newGame();
-  const d = g.IT.smiths.townSmith;
+  const d = g.ITEMS.smiths.townSmith;
   openNpc(g, 'townSmith');
   const first = smithStock(g, 'townSmith');
   assert.deepStrictEqual(first.map((it) => [it.slot, it.rarity, it.level]), Array.from(d.gear, ([s, r]) => [s, r, 1]));
@@ -137,7 +137,7 @@ test('鍛冶屋: 隠れ里は自分のレベル + levelOffset の装備', () => 
   const g = newGame();
   setLevel(g, 4);
   openNpc(g, 'hamletSmith');
-  const lv = 4 + g.IT.smiths.hamletSmith.levelOffset;
+  const lv = 4 + g.ITEMS.smiths.hamletSmith.levelOffset;
   assert.ok(smithStock(g, 'hamletSmith').every((it) => it.level === lv));
 });
 
@@ -245,7 +245,7 @@ test('道具一覧: 持ち物がいっぱいだと外せない', () => {
   assert.strictEqual(findButton(g, 'menu', 'unequip').disabled, true);
   clickButton(g, 'menu', 'unequip', {}, { force: true });
   assert.strictEqual(p.equip.weapon, w);
-  assert.strictEqual(p.inventory.length, g.EC.inventorySize);
+  assert.strictEqual(p.inventory.length, g.ECON.inventorySize);
 });
 
 test('道具一覧: 捨てるとなくなり、ポップアップも閉じる', () => {
@@ -277,7 +277,7 @@ test('道具一覧: ポップアップは「閉じる」・幕のクリックで
 
 test('道具一覧: 素材・道具をクリックすると詳細が出る', () => {
   const g = newGame();
-  const p = g.player, M = g.IT.materials;
+  const p = g.player, M = g.ITEMS.materials;
   p.materials = { wolfPelt: 4 };
   press(g, 'i');
   clickMat(g, 'wolfPelt');

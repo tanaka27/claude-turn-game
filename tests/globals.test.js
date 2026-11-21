@@ -13,14 +13,7 @@ const { tokenize, scanSource, scanGame } = require('./scope-scan');
 // ローカルの名前がトップレベルの名前を隠してよいもの: [ファイル, 名前, どのトップレベルの名前のあとか (within), 理由]
 // 隠すのをやめたら、ここからも消す (使われなくなった行はテストが知らせる)
 const SHADOW_ALLOW = [
-  ['src/core.js', 'P', 'burst', '名前の付け替えの前 (次の作業で直す)'],
-  ['src/core.js', 'H', 'fxHit', '名前の付け替えの前 (次の作業で直す)'],
-  ['src/map.js', 'last', 'computeFlow', '名前の付け替えの前 (次の作業で直す)'],
-  ['src/ui.js', 'act', 'actButton', '名前の付け替えの前 (次の作業で直す)'],
-  ['src/ui.js', 'bar', 'profileHtml', '名前の付け替えの前 (次の作業で直す)'],
-  ['src/ui.js', 'last', 'renderTalk', '名前の付け替えの前 (次の作業で直す)'],
-  ['src/ui.js', 'act', 'showPause', '名前の付け替えの前 (次の作業で直す)'],
-  ['src/hud.js', 'gateAt', 'drawWorldMap', '名前の付け替えの前 (次の作業で直す)'],
+  // いまはない (2026-11-21 にトップレベルの名前を付け替えたとき、隠していたローカルの名前を全部変えた)
 ];
 
 const scripts = scriptList();

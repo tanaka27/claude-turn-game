@@ -5,9 +5,9 @@
 
 // ----- 画面の登録表 -----
 // 画面 (game.state === 'menu' のときに出す HTML の画面) は SCREENS[名前] に 1 つずつ登録する (registerScreen)。
-// 開いている画面の名前は menu.mode。足し方は docs/menu.md の「施設（画面と NPC の役目）の足し方」
+// 開いている画面の名前は menuState.mode。足し方は docs/menu.md の「施設（画面と NPC の役目）の足し方」
 //   overlay   : 出す要素の id (index.html)。閉じるときは登録された全部の画面の overlay を隠す
-//   open(arg) : その画面だけの開くときの準備 (共通の準備 = 時間を止める・構えと歩く道を消す・menu.mode は openScreen がする)
+//   open(arg) : その画面だけの開くときの準備 (共通の準備 = 時間を止める・構えと歩く道を消す・menuState.mode は openScreen がする)
 //   render()  : 中身を作る (開いたとき。ボタンを押したあとは afterAction)
 //   keys(k, e): その画面のキー (k は小文字)。処理したら true。処理しなかったら、Esc と closeKeys で閉じる (押しっぱなしは除く)
 //   closeKeys : Esc のほかに閉じるキー
@@ -16,7 +16,7 @@
 //   click(e)  : ボタン (data-act) 以外のところのクリック
 //   onClose() : 閉じたあと (セーブの前)
 const SCREENS = {};
-const screenNow = () => SCREENS[menu.mode];
+const screenNow = () => SCREENS[menuState.mode];
 const hasAction = (s, a) => Object.prototype.hasOwnProperty.call(s.actions || {}, a);
 // 画面を登録する。overlay の要素のクリックはここで 1 度だけ受けて、開いている画面に渡す
 function registerScreen(name, def) {
@@ -41,7 +41,7 @@ function openScreen(name, arg) {
   game.state = 'menu';
   aiming = null;
   player.travel = null;
-  menu.mode = name;
+  menuState.mode = name;
   if (s.open) s.open(arg);
   s.render();
   $(s.overlay).classList.add('show');
@@ -65,21 +65,21 @@ function closeMenu() {
 //   sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
 // pop: 開いているアイテムの詳細 (ポップアップ。画面の pop が true のときだけ) null / { kind: 'gear' } (装備。どれかは sel) /
 //   { kind: 'tool', id: 道具のキー (data/items.js の consumables) } / { kind: 'mat', id: 素材のキー }
-const menu = { mode: 'inv', shop: null, sel: null, pop: null };
+const menuState = { mode: 'inv', shop: null, sel: null, pop: null };
 // アイテムをクリックしたときにポップアップで詳細を出す画面か (店では今までどおり右の欄に出す)
 const usesPop = () => !!screenNow().pop;
 // 鍛冶屋ごとの品ぞろえ { 鍛冶屋のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
 const shopStocks = {};
 // 開いている店の定義 (その画面の defs() の表から) / 商品の装備 (その画面の stock()。なければ空)
-const shopDef = () => screenNow().defs()[menu.shop];
+const shopDef = () => screenNow().defs()[menuState.shop];
 const shopStock = () => (screenNow().stock ? screenNow().stock() : []);
 
 // 鍛冶屋の品ぞろえ: その鍛冶屋の gear を 1 つずつ。自分のレベルが変わったら入れ替える
 function refreshSmith(id) {
   const st = shopStocks[id];
   if (st && st.level === player.level) return;
-  const d = IT.smiths[id];
-  const lv = clamp(player.level + (d.levelOffset || 0), 1, d.maxLevel || PG.maxLevel);
+  const d = ITEMS.smiths[id];
+  const lv = clamp(player.level + (d.levelOffset || 0), 1, d.maxLevel || PROGRESSION.maxLevel);
   shopStocks[id] = { level: player.level, items: d.gear.map(([slot, r]) => makeItem(slot, lv, r)) };
 }
 
@@ -88,19 +88,19 @@ function refreshSmith(id) {
 //   toolUse: 道具の「使う」を出す / sellMaterials: 素材を売るボタンを出す /
 //   defs(): 店の定義の表 (data/items.js) / stock(): 商品の装備 / shopList(): 「商品」の欄の中身 (あれば「商品」の欄を出す) /
 //   invGearButton(it): 持ち物の装備を選んだときの「装備する」の横のボタン (なければ「捨てる」) /
-//   open(arg): menu.shop・menu.sel・menu.pop を消したあとの準備 / actions: MENU_ACTIONS に足すボタン / onClose()
+//   open(arg): menuState.shop・menuState.sel・menuState.pop を消したあとの準備 / actions: MENU_ACTIONS に足すボタン / onClose()
 function menuScreen(def) {
   return {
     overlay: 'menu', render: renderMenu, afterAction: renderMenu, keys: menuKeys, click: menuClick, ...def,
     open(arg) {
-      menu.shop = null;
-      menu.sel = null;
-      menu.pop = null;
+      menuState.shop = null;
+      menuState.sel = null;
+      menuState.pop = null;
       if (def.open) def.open(arg);
     },
     actions: { ...MENU_ACTIONS, ...(def.actions || {}) },
     onClose() {
-      menu.pop = null;
+      menuState.pop = null;
       $('itemPop').classList.remove('show');
       if (def.onClose) def.onClose();
     },
@@ -108,12 +108,12 @@ function menuScreen(def) {
 }
 // アイテムの詳細 (ポップアップ) を開いているときは、Esc でそれだけ閉じる
 function menuKeys(k, e) {
-  if (menu.pop && !e.repeat && k === 'escape') { closePop(); return true; }
+  if (menuState.pop && !e.repeat && k === 'escape') { closePop(); return true; }
   return false;
 }
 
 function findSel() {
-  const s = menu.sel, p = player;
+  const s = menuState.sel, p = player;
   if (!s) return null;
   if (s.from === 'inv') return p.inventory.find((it) => it.id === s.id) || null;
   if (s.from === 'shop') return shopStock().find((it) => it.id === s.id) || null;
@@ -122,10 +122,10 @@ function findSel() {
 
 function itemChip(it, from) {
   const r = rarityOf(it.rarity);
-  const on = menu.sel && menu.sel.id === it.id ? ' sel' : '';
+  const on = menuState.sel && menuState.sel.id === it.id ? ' sel' : '';
   const price = from === 'shop' ? `<span class="price">${txt('menu.price', { n: itemValue(it) })}</span>` : '';
   return `<div class="item${on}${usesPop() ? ' pop' : ''}" data-from="${from}" data-id="${it.id}" style="--rc:${r.color}">
-    <b>${it.name}</b><span>${txt('menu.chipSub', { slot: IT.slots[it.slot].label, level: it.level })}</span>${price}</div>`;
+    <b>${it.name}</b><span>${txt('menu.chipSub', { slot: ITEMS.slots[it.slot].label, level: it.level })}</span>${price}</div>`;
 }
 
 // 選んだ装備の詳細。部位で決まる基本性能と、ランダムに付いた追加性能を分けて出し、
@@ -139,7 +139,7 @@ function detailHtml(it, from) {
       `<span class="${diff > 0 ? 'up' : 'down'}">${fmtStat(k, diff, true)}</span>`;
     return `<div class="row${v ? '' : ' lost'}"><span>${STATS[k].label}</span><span>${v ? fmtStat(k, v, true) : txt('menu.noValue')} ${d}</span></div>`;
   };
-  const baseKeys = Object.keys(IT.slots[it.slot].base);
+  const baseKeys = Object.keys(ITEMS.slots[it.slot].base);
   const own = Object.keys(it.stats).filter((k) => !baseKeys.includes(k));
   const lost = cur ? Object.keys(cur.stats).filter((k) => !baseKeys.includes(k) && !own.includes(k)) : [];
   const section = (title, keys, empty) => `<div class="shead">${title}</div>
@@ -147,7 +147,7 @@ function detailHtml(it, from) {
   const rows = section(txt('menu.baseStats'), baseKeys, txt('menu.noStats')) +
     section(txt('menu.extraStats', { n: own.length }), [...own, ...lost], txt('menu.noStats'));
   const btn = actButton, s = screenNow();
-  const full = p.inventory.length >= EC.inventorySize;
+  const full = p.inventory.length >= ECON.inventorySize;
   let btns = '';
   if (from === 'equip') btns = btn('unequip', txt('menu.unequip'), !full);
   else if (from === 'shop') btns = btn('buy', txt('menu.buy', { n: itemValue(it) }), p.gold >= itemValue(it) && !full);
@@ -156,12 +156,12 @@ function detailHtml(it, from) {
     btns += s.invGearButton ? s.invGearButton(it) : btn('drop', txt('menu.drop'));
   }
   return `<div class="dname" style="color:${r.color}">${it.name}</div>
-    <div class="dsub">${txt('menu.gearSub', { rarity: r.name, slot: IT.slots[it.slot].label, level: it.level })}</div>
+    <div class="dsub">${txt('menu.gearSub', { rarity: r.name, slot: ITEMS.slots[it.slot].label, level: it.level })}</div>
     ${cur ? `<div class="dsub">${txt('menu.compare', { name: cur.name })}</div>` : ''}
     ${rows}<div class="btns">${btns}</div>`;
 }
 
-const actButton = (act, label, ok = true) => `<button data-act="${act}"${ok ? '' : ' disabled'}>${label}</button>`;
+const actButton = (action, label, ok = true) => `<button data-act="${action}"${ok ? '' : ' disabled'}>${label}</button>`;
 
 function renderMenu() {
   const p = player, s = screenNow();
@@ -169,11 +169,11 @@ function renderMenu() {
   $('profile').innerHTML = s.profile ? profileHtml() : '';
   $('menuGold').textContent = txt('menu.gold', { n: p.gold });
   renderTools();
-  $('equipList').innerHTML = Object.keys(IT.slots).map((slot) => {
+  $('equipList').innerHTML = Object.keys(ITEMS.slots).map((slot) => {
     const it = p.equip[slot];
-    return it ? itemChip(it, 'equip') : `<div class="item empty">${txt('menu.emptySlot', { slot: IT.slots[slot].label })}</div>`;
+    return it ? itemChip(it, 'equip') : `<div class="item empty">${txt('menu.emptySlot', { slot: ITEMS.slots[slot].label })}</div>`;
   }).join('');
-  $('invCount').textContent = txt('menu.invCount', { n: p.inventory.length, max: EC.inventorySize });
+  $('invCount').textContent = txt('menu.invCount', { n: p.inventory.length, max: ECON.inventorySize });
   $('invList').innerHTML = p.inventory.map((it) => itemChip(it, 'inv')).join('') || `<p class="hint">${txt('menu.noItems')}</p>`;
   $('shopCol').style.display = s.shopList ? '' : 'none';
   if (s.shopList) $('shopList').innerHTML = s.shopList();
@@ -185,31 +185,31 @@ function renderMenu() {
     renderPop();
     return;
   }
-  $('detail').innerHTML = !it ? strengthHtml() + `<p class="hint">${txt('menu.hintSelect')}</p>` : detailHtml(it, menu.sel.from);
+  $('detail').innerHTML = !it ? strengthHtml() + `<p class="hint">${txt('menu.hintSelect')}</p>` : detailHtml(it, menuState.sel.from);
 }
 
 // ----- アイテムの詳細 (ポップアップ) -----
 function openPop(pop) {
-  menu.pop = pop;
+  menuState.pop = pop;
   renderMenu();
 }
 function closePop() {
-  menu.pop = null;
-  menu.sel = null;
+  menuState.pop = null;
+  menuState.sel = null;
   renderMenu();
 }
 function renderPop() {
-  const pop = menu.pop, it = pop && pop.kind === 'gear' ? findSel() : null;
+  const pop = menuState.pop, it = pop && pop.kind === 'gear' ? findSel() : null;
   let html = '', rc = '';
-  if (it) { html = detailHtml(it, menu.sel.from); rc = rarityOf(it.rarity).color; }
+  if (it) { html = detailHtml(it, menuState.sel.from); rc = rarityOf(it.rarity).color; }
   else if (pop && pop.kind === 'tool') {
     const t = toolEntries().find((x) => x.id === pop.id);
     if (t) { html = toolPopHtml(t); rc = rarityOf(t.rarity).color; }
   } else if (pop && pop.kind === 'mat' && player.materials[pop.id] > 0) {
-    html = matPopHtml(pop.id); rc = rarityOf(IT.materials[pop.id].rarity).color;
+    html = matPopHtml(pop.id); rc = rarityOf(ITEMS.materials[pop.id].rarity).color;
   }
   // 中身がなくなった (捨てた・売った) ら閉じる
-  if (!html) menu.pop = null;
+  if (!html) menuState.pop = null;
   $('itemPopBody').innerHTML = html ? `<button class="pclose" data-act="popClose">${txt('menu.close')}</button>${html}` : '';
   $('itemPopBody').style.setProperty('--rc', rc || '#30363d');
   $('itemPop').classList.toggle('show', !!html);
@@ -227,7 +227,7 @@ function toolPopHtml(t) {
 }
 // 素材の詳細: 数・売値・落とす魔物
 function matPopHtml(id) {
-  const m = IT.materials[id], r = rarityOf(m.rarity), n = player.materials[id];
+  const m = ITEMS.materials[id], r = rarityOf(m.rarity), n = player.materials[id];
   const from = Object.values(ENEMIES).filter((d) => (d.drops || []).some((x) => x.id === id)).map((d) => d.name);
   return `<div class="dname" style="color:${r.color}"><i class="swatch" style="background:${m.color}"></i>${m.name}</div>
     <div class="dsub">${txt('menu.matSub', { rarity: r.name })}</div>
@@ -240,9 +240,9 @@ function matPopHtml(id) {
 // キャラクターの画面の左上: 顔の絵・名前・レベル・HP・MP・経験値・撃破数・状態・ターン・今いるゾーン・受けているクエスト
 // (フィールドの HUD には顔・名前・レベル・HP・MP しか出さないので、ほかはここで見る)
 function profileHtml() {
-  const p = player, maxed = p.level >= PG.maxLevel, need = expToNext(p.level);
-  const bar = (v, max, color) => `<div class="bar" style="--bc:${color}"><i style="width:${clamp(v / max, 0, 1) * 100}%"></i></div>`;
-  const status = inSafeZone() ? txt('menu.statusSafe') : game.time - p.lastHurt >= PG.restDelay ? txt('menu.statusRest') : txt('menu.statusFight');
+  const p = player, maxed = p.level >= PROGRESSION.maxLevel, need = expToNext(p.level);
+  const meter = (v, max, color) => `<div class="bar" style="--bc:${color}"><i style="width:${clamp(v / max, 0, 1) * 100}%"></i></div>`;
+  const status = inSafeZone() ? txt('menu.statusSafe') : game.time - p.lastHurt >= PROGRESSION.restDelay ? txt('menu.statusRest') : txt('menu.statusFight');
   const face = PLAYER.face ? `<img class="pface" src="${PLAYER.face}" alt="" style="--fc:${PLAYER.color}">` : '';
   const qs = QUESTS.filter((q) => p.quests[q.id] && p.quests[q.id].state !== 'claimed').map((q) => {
     const st = p.quests[q.id];
@@ -250,9 +250,9 @@ function profileHtml() {
       : `<div class="row"><span>${q.name}</span><span>${txt('menu.questCount', { name: goalKind(q).short(q.goal), n: questProgress(q), need: questNeed(q) })}</span></div>`;
   }).join('');
   return `<div class="profile"><div class="phead">${face}<div class="pname">${txt('menu.nameLevel', { name: p.name, level: p.level })}</div></div>
-    <div class="row"><span>${txt('menu.hp')}</span><span>${txt('menu.ofMax', { n: Math.ceil(p.hp), max: p.stats.maxHp })}</span></div>${bar(p.hp, p.stats.maxHp, '#ef5350')}
-    <div class="row"><span>${txt('menu.mp')}</span><span>${txt('menu.ofMax', { n: Math.floor(p.mp), max: p.stats.maxMp })}</span></div>${bar(p.mp, p.stats.maxMp, THEME.mp)}
-    <div class="row"><span>${txt('menu.exp')}</span><span>${maxed ? txt('menu.maxLevel') : txt('menu.expValue', { exp: p.exp, need, left: need - p.exp })}</span></div>${bar(maxed ? 1 : p.exp, maxed ? 1 : need, '#b39ddb')}
+    <div class="row"><span>${txt('menu.hp')}</span><span>${txt('menu.ofMax', { n: Math.ceil(p.hp), max: p.stats.maxHp })}</span></div>${meter(p.hp, p.stats.maxHp, '#ef5350')}
+    <div class="row"><span>${txt('menu.mp')}</span><span>${txt('menu.ofMax', { n: Math.floor(p.mp), max: p.stats.maxMp })}</span></div>${meter(p.mp, p.stats.maxMp, THEME.mp)}
+    <div class="row"><span>${txt('menu.exp')}</span><span>${maxed ? txt('menu.maxLevel') : txt('menu.expValue', { exp: p.exp, need, left: need - p.exp })}</span></div>${meter(maxed ? 1 : p.exp, maxed ? 1 : need, '#b39ddb')}
     <div class="row"><span>${txt('menu.kills')}</span><span>${game.kills}</span></div>
     <div class="row"><span>${txt('menu.status')}</span><span>${status}</span></div>
     <div class="row"><span>${txt('menu.turn')}</span><span>${Math.floor(game.time)}</span></div>
@@ -277,10 +277,10 @@ function strengthHtml() {
 // ----- 道具 (使うもの。data/items.js の ITEMS.consumables) -----
 // 道具の種類を増やすときは data/items.js の consumables に足す (効果の種類は src/items.js の ITEM_EFFECTS)
 //   usable / reason: 使えるか・使えない理由 (どちらも consumableBlock。使うときと同じ判定) /
-//   use(): 1 行動を返す関数 (act に渡す。行動したら true)。今は主人公が自分に使う
+//   use(): 1 行動を返す関数 (doPlayerAction に渡す。行動したら true)。今は主人公が自分に使う
 function toolEntries() {
   const p = player;
-  return Object.entries(IT.consumables).map(([id, c]) => {
+  return Object.entries(ITEMS.consumables).map(([id, c]) => {
     const block = consumableBlock(p, id);
     return {
       id, name: c.name, rarity: c.rarity, count: consumableCount(p, id), max: c.max, key: c.key,
@@ -300,15 +300,15 @@ function renderTools() {
   }).join('');
 }
 
-const canBuyConsumable = (id) => player.gold >= IT.consumables[id].price && consumableCount(player, id) < IT.consumables[id].max;
+const canBuyConsumable = (id) => player.gold >= ITEMS.consumables[id].price && consumableCount(player, id) < ITEMS.consumables[id].max;
 
 // 素材の一覧。店では 1 つずつ・種類ごと・全部を売れる
-const materialTotal = () => Object.entries(player.materials).reduce((s, [id, n]) => s + IT.materials[id].price * n, 0);
+const materialTotal = () => Object.entries(player.materials).reduce((s, [id, n]) => s + ITEMS.materials[id].price * n, 0);
 function renderMaterials() {
   const p = player, shop = !!screenNow().sellMaterials;
-  const ids = Object.keys(IT.materials).filter((id) => p.materials[id] > 0);
+  const ids = Object.keys(ITEMS.materials).filter((id) => p.materials[id] > 0);
   $('matList').innerHTML = ids.map((id) => {
-    const m = IT.materials[id], n = p.materials[id];
+    const m = ITEMS.materials[id], n = p.materials[id];
     const btns = shop ? `<div class="btns"><button data-act="sellMat" data-mat="${id}">${txt('menu.sellOne')}</button>
       <button data-act="sellMat" data-mat="${id}" data-all="1">${txt('menu.sellAllOf', { n: m.price * n })}</button></div>` : '';
     const r = rarityOf(m.rarity);
@@ -320,7 +320,7 @@ function sellMaterial(id, all) {
   const p = player, n = p.materials[id] || 0;
   if (n <= 0) return;
   const k = all ? n : 1;
-  p.gold += IT.materials[id].price * k;
+  p.gold += ITEMS.materials[id].price * k;
   p.materials[id] = n - k;
   if (!p.materials[id]) delete p.materials[id];
   questEvent('materials'); // 集めるクエストは足りなくなると「受けている」に戻る
@@ -333,56 +333,56 @@ function equipItem(it) {
   if (p.equip[it.slot]) p.inventory.push(p.equip[it.slot]);
   p.equip[it.slot] = it;
   refreshStats(p, 'shift');
-  menu.sel = { from: 'equip', id: it.id };
+  menuState.sel = { from: 'equip', id: it.id };
 }
 function unequipItem(it) {
   const p = player;
   p.equip[it.slot] = null;
   p.inventory.push(it);
   refreshStats(p, 'shift');
-  menu.sel = { from: 'inv', id: it.id };
+  menuState.sel = { from: 'inv', id: it.id };
 }
 
 // ----- #menu のボタン (data-act) -----
 // どの #menu の画面でも使えるボタン。画面ごとのボタンは menuScreen の actions に足す (押したあとは renderMenu)
-// 装備のボタンは、detailHtml がそのボタンを出す選び方 (menu.sel.from) のときだけ効く (古い画面のボタンが押されても何も起きない)
+// 装備のボタンは、detailHtml がそのボタンを出す選び方 (menuState.sel.from) のときだけ効く (古い画面のボタンが押されても何も起きない)
 //   inv: 装備する + (invGearButton があればそれ、なければ捨てる) / equip: 外す / shop: 買う
-const selFrom = (from) => { const it = findSel(); return it && menu.sel.from === from ? it : null; };
+const selFrom = (from) => { const it = findSel(); return it && menuState.sel.from === from ? it : null; };
 const MENU_ACTIONS = {
   close: () => { closeMenu(); return true; },
   popClose: () => { closePop(); return true; },
   equip: () => { const it = selFrom('inv'); if (it) equipItem(it); },
-  unequip: () => { const it = selFrom('equip'); if (it && player.inventory.length < EC.inventorySize) unequipItem(it); },
+  unequip: () => { const it = selFrom('equip'); if (it && player.inventory.length < ECON.inventorySize) unequipItem(it); },
   drop: () => {
     const it = selFrom('inv');
-    if (it && !screenNow().invGearButton) { player.inventory = player.inventory.filter((x) => x !== it); menu.sel = null; }
+    if (it && !screenNow().invGearButton) { player.inventory = player.inventory.filter((x) => x !== it); menuState.sel = null; }
   },
 };
 // 道具を使う (画面を閉じて 1 行動)。使えなくても画面は作り直さない
 function useToolAction(btn) {
   const t = toolEntries().find((x) => x.id === btn.dataset.tool);
-  if (t && t.usable) { closeMenu(); act(t.use); }
+  if (t && t.usable) { closeMenu(); doPlayerAction(t.use); }
   return true;
 }
 function buyConsumableAction(btn) {
   const p = player, id = btn.dataset.item;
   if (shopDef().consumables.includes(id) && canBuyConsumable(id)) {
-    p.gold -= IT.consumables[id].price;
+    p.gold -= ITEMS.consumables[id].price;
     p.consumables[id] = consumableCount(p, id) + 1;
   }
 }
 function sellGearAction() {
   const p = player, it = selFrom('inv');
-  if (it) { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menu.sel = null; }
+  if (it) { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menuState.sel = null; }
 }
 // 買えるのは、この鍛冶屋の今の品ぞろえから選んだ装備だけ (findSel は from が 'shop' なら shopStock から探す)
 function buyGearAction() {
   const p = player, it = selFrom('shop');
-  if (it && p.gold >= itemValue(it) && p.inventory.length < EC.inventorySize) {
+  if (it && p.gold >= itemValue(it) && p.inventory.length < ECON.inventorySize) {
     p.gold -= itemValue(it);
-    shopStocks[menu.shop].items = shopStock().filter((x) => x !== it);
+    shopStocks[menuState.shop].items = shopStock().filter((x) => x !== it);
     p.inventory.push(it);
-    menu.sel = { from: 'inv', id: it.id };
+    menuState.sel = { from: 'inv', id: it.id };
   }
 }
 
@@ -393,7 +393,7 @@ function menuClick(e) {
   if (e.target.closest('#itemPop')) return;
   const chip = e.target.closest('.item[data-id]');
   if (chip) {
-    menu.sel = { from: chip.dataset.from, id: chip.dataset.id };
+    menuState.sel = { from: chip.dataset.from, id: chip.dataset.id };
     if (usesPop()) openPop({ kind: 'gear' }); else renderMenu();
     return;
   }
@@ -416,10 +416,10 @@ registerScreen('char', menuScreen({
 // 商人: 道具を買う・素材を売る (arg: data/items.js の ITEMS.shops のキー)
 registerScreen('shop', menuScreen({
   title: () => shopDef().name, sellMaterials: true, closeKeys: ['f'],
-  defs: () => IT.shops,
-  open: (id) => { menu.shop = id; },
+  defs: () => ITEMS.shops,
+  open: (id) => { menuState.shop = id; },
   shopList: () => shopDef().consumables.map((id) => {
-    const c = IT.consumables[id], ok = canBuyConsumable(id);
+    const c = ITEMS.consumables[id], ok = canBuyConsumable(id);
     return `<div class="item potion" style="--rc:${rarityOf(c.rarity).color}"><b>${c.name}</b><span>${txt('menu.shopLine', { rarity: rarityOf(c.rarity).name, desc: consumableDesc(id), key: c.key.toUpperCase() })}</span>
         <button data-act="buyItem" data-item="${id}"${ok ? '' : ' disabled'}>${txt('menu.shopBuy', { n: c.price })}</button></div>`;
   }).join('') || `<p class="hint">${txt('menu.shopEmpty')}</p>`,
@@ -432,9 +432,9 @@ registerScreen('shop', menuScreen({
 // 鍛冶屋: 装備を買う・売る (arg: data/items.js の ITEMS.smiths のキー)。品ぞろえは開いたときに自分のレベルで作り直す
 registerScreen('smith', menuScreen({
   title: () => shopDef().name, closeKeys: ['f'],
-  defs: () => IT.smiths,
-  stock: () => (shopStocks[menu.shop] ? shopStocks[menu.shop].items : []),
-  open: (id) => { menu.shop = id; refreshSmith(id); },
+  defs: () => ITEMS.smiths,
+  stock: () => (shopStocks[menuState.shop] ? shopStocks[menuState.shop].items : []),
+  open: (id) => { menuState.shop = id; refreshSmith(id); },
   shopList: () => shopStock().map((it) => itemChip(it, 'shop')).join('') ||
     `<p class="hint">${txt('menu.smithEmpty')}</p>`,
   invGearButton: (it) => actButton('sell', txt('menu.sell', { n: sellPrice(it) })),
@@ -444,13 +444,13 @@ registerScreen('smith', menuScreen({
 // 話しかけられる NPC (となりのマスにいる人)
 function nearNpc() {
   if (!player || player.dead) return null;
-  return (zone.npcs || []).find((n) => steps(n.tx, n.ty, player.tx, player.ty) <= 1) || null;
+  return (zone.npcs || []).find((n) => tileSteps(n.tx, n.ty, player.tx, player.ty) <= 1) || null;
 }
 // NPC の役目 (world.js の NPC の role) → 話しかけたときに開く画面 (SCREENS の名前) と、その画面の open に渡すもの。
 //   check(n): 役目ごとに NPC に書くもの (店のキーなど) の食い違いの文の並び (起動時に validateData が調べる)
 const NPC_ROLES = {
-  shop: { screen: 'shop', arg: (n) => n.shop, check: (n) => (IT.shops[n.shop] ? [] : [`店 '${n.shop}' が data/items.js の shops にない`]) },
-  smith: { screen: 'smith', arg: (n) => n.smith, check: (n) => (IT.smiths[n.smith] ? [] : [`鍛冶屋 '${n.smith}' が data/items.js の smiths にない`]) },
+  shop: { screen: 'shop', arg: (n) => n.shop, check: (n) => (ITEMS.shops[n.shop] ? [] : [`店 '${n.shop}' が data/items.js の shops にない`]) },
+  smith: { screen: 'smith', arg: (n) => n.smith, check: (n) => (ITEMS.smiths[n.smith] ? [] : [`鍛冶屋 '${n.smith}' が data/items.js の smiths にない`]) },
   quest: { screen: 'quest', arg: (n) => n },
   talk: { screen: 'talk', arg: (n) => n, check: (n) => (Array.isArray(n.lines) && n.lines.length > 0 ? [] : ['話す言葉 lines がない']) },
 };
@@ -461,23 +461,23 @@ function talkTo(n) {
 }
 
 // ----- 会話 (role: 'talk' の NPC。world.js の lines を 1 つずつ出す) -----
-const talk = { npc: null, line: 0 };
+const talkState = { npc: null, line: 0 };
 function renderTalk() {
-  const n = talk.npc, last = talk.line >= n.lines.length - 1;
+  const n = talkState.npc, isLast = talkState.line >= n.lines.length - 1;
   $('talkName').textContent = n.name;
   $('talkName').style.color = n.color;
-  $('talkText').textContent = n.lines[talk.line];
-  $('talkNext').textContent = last ? txt('talk.close') : txt('talk.next', { n: talk.line + 1, total: n.lines.length });
+  $('talkText').textContent = n.lines[talkState.line];
+  $('talkNext').textContent = isLast ? txt('talk.close') : txt('talk.next', { n: talkState.line + 1, total: n.lines.length });
 }
 function nextTalk() {
-  if (talk.line >= talk.npc.lines.length - 1) { closeMenu(); return; }
-  talk.line++;
+  if (talkState.line >= talkState.npc.lines.length - 1) { closeMenu(); return; }
+  talkState.line++;
   renderTalk();
 }
 // F / Enter / スペース・クリックで次の言葉へ (最後なら閉じる)。Esc か「閉じる」でいつでも閉じる
 registerScreen('talk', {
   overlay: 'talk', render: renderTalk,
-  open: (n) => { talk.npc = n; talk.line = 0; },
+  open: (n) => { talkState.npc = n; talkState.line = 0; },
   keys: (k, e) => {
     if (!e.repeat && (k === 'f' || k === 'enter' || k === ' ')) { nextTalk(); return true; }
     return false;
@@ -488,7 +488,7 @@ registerScreen('talk', {
 function interact() {
   const n = nearNpc();
   if (n) talkTo(n);
-  else log(txt('talk.nobody'), THEME.msg.refuse);
+  else logMsg(txt('talk.nobody'), THEME.msg.refuse);
 }
 
 function togglePause() {
@@ -503,8 +503,8 @@ function showPause() {
   $('pause').classList.add('show');
 }
 $('pause').addEventListener('click', (e) => {
-  const act = e.target.closest('[data-act]');
-  if (!act || game.state !== 'play' || !game.paused) return;
-  if (act.dataset.act === 'resume') togglePause();
-  else if (act.dataset.act === 'char') openScreen('char');
+  const btn = e.target.closest('[data-act]');
+  if (!btn || game.state !== 'play' || !game.paused) return;
+  if (btn.dataset.act === 'resume') togglePause();
+  else if (btn.dataset.act === 'char') openScreen('char');
 });

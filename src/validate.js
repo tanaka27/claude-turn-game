@@ -62,13 +62,13 @@ function validateData() {
   }
   // 主人公のステータス: 成長するものは Lv1 の値があり、計算で決まるものは PLAYER.stats に書かない
   for (const k in PLAYER.stats) check(STATS[k], `data/player.js stats: '${k}' が data/stats.js にない`);
-  for (const [k, g] of Object.entries(P.progression.growth)) {
+  for (const [k, g] of Object.entries(PARAMS.progression.growth)) {
     check(k in PLAYER.stats, `params.js progression.growth: '${k}' の Lv1 の値が data/player.js の stats にない`);
     const lv = g.gain.map((pt) => pt[0]);
     check(lv.every((v, i) => v > (i ? lv[i - 1] : 1)), `params.js progression.growth.${k}: gain のレベルが 2 以上で小さい順になっていない`);
-    check(lv[lv.length - 1] >= P.progression.maxLevel, `params.js progression.growth.${k}: gain が最大レベル (${P.progression.maxLevel}) まで届いていない`);
+    check(lv[lv.length - 1] >= PARAMS.progression.maxLevel, `params.js progression.growth.${k}: gain が最大レベル (${PARAMS.progression.maxLevel}) まで届いていない`);
   }
-  for (const [k, d] of Object.entries(P.derivedStats)) {
+  for (const [k, d] of Object.entries(PARAMS.derivedStats)) {
     check(STATS[k], `params.js derivedStats: '${k}' が data/stats.js にない`);
     check(!(k in PLAYER.stats), `data/player.js stats: '${k}' は params.js の derivedStats で計算するので書かない`);
     check(d.from in PLAYER.stats, `params.js derivedStats.${k}: もとのステータス '${d.from}' が data/player.js の stats にない`);
@@ -104,7 +104,7 @@ function validateData() {
   check(new Set(skillIds).size === skillIds.length, 'data/skills.js: スキルの id が重なっている');
   for (const [id, lv] of Object.entries(PLAYER.learnAtLevel || {})) {
     check(skillIds.includes(id), `data/player.js learnAtLevel: スキル '${id}' が data/skills.js にない`);
-    check(Number.isInteger(lv) && lv >= 1 && lv <= P.progression.maxLevel, `data/player.js learnAtLevel.${id}: レベル ${lv} は 1〜${P.progression.maxLevel} の整数にする`);
+    check(Number.isInteger(lv) && lv >= 1 && lv <= PARAMS.progression.maxLevel, `data/player.js learnAtLevel.${id}: レベル ${lv} は 1〜${PARAMS.progression.maxLevel} の整数にする`);
   }
   check(Object.values(PLAYER.learnAtLevel || {}).includes(1), 'data/player.js learnAtLevel: Lv1 で覚えるスキルがない (はじめから遊ぶとスキルがない)');
   const slots = PLAYER.skillSlots || [];
@@ -142,7 +142,7 @@ function validateData() {
     for (const st in k.stats) check(st in PLAYER.stats, `data/npcs.js ${kind}: stats の ${st} は主人公にないステータス (計算で決まるものは書かない)`);
     for (const st in k.gear || {}) check(STATS[st], `data/npcs.js ${kind}: gear の ${st} が data/stats.js にない`);
   }
-  for (const k in SITUATIONS) check(P.field.ai.situations[k], `params.js field.ai.situations: '${k}' の数値がない (src/ai.js の SITUATIONS にはある)`);
+  for (const k in SITUATIONS) check(PARAMS.field.ai.situations[k], `params.js field.ai.situations: '${k}' の数値がない (src/ai.js の SITUATIONS にはある)`);
   check(PLAYER.sprite === undefined || (typeof PLAYER.sprite === 'string' && /\.(png|webp)$/i.test(PLAYER.sprite)), 'data/player.js: sprite は PNG か WebP のパスにする');
   if (PLAYER.sprite) getSprite(PLAYER.sprite);
   check(PLAYER.face === undefined || (typeof PLAYER.face === 'string' && /\.(png|webp)$/i.test(PLAYER.face)), 'data/player.js: face は PNG か WebP のパスにする');
@@ -159,7 +159,7 @@ function validateData() {
     check(d.skillChance === undefined || (d.skillChance >= 0 && d.skillChance <= 1), `data/enemies.js ${type}: skillChance は 0〜1 にする`);
     check(d.keepDistance === undefined || d.keepDistance > 0, `data/enemies.js ${type}: keepDistance は 0 より大きくする`);
     for (const a of d.attacks) check(a.weight === undefined || a.weight > 0, `data/enemies.js ${type} の技「${a.name}」: weight は 0 より大きくする`);
-    for (const a of d.attacks) for (const k of a.situations || []) check(P.field.ai.situations[k] && SITUATIONS[k], `data/enemies.js ${type} の技「${a.name}」: situations の '${k}' が params.js の field.ai.situations にない`);
+    for (const a of d.attacks) for (const k of a.situations || []) check(PARAMS.field.ai.situations[k] && SITUATIONS[k], `data/enemies.js ${type} の技「${a.name}」: situations の '${k}' が params.js の field.ai.situations にない`);
     check(d.surround === undefined || typeof d.surround === 'boolean', `data/enemies.js ${type}: surround は true か false にする`);
     check(d.sprite === undefined || (typeof d.sprite === 'string' && /\.(png|webp)$/i.test(d.sprite)), `data/enemies.js ${type}: sprite は PNG か WebP のパスにする (読み込めないときは描くときに出る)`);
     if (d.sprite) getSprite(d.sprite); // 起動時に読み込みを始める (なければここでエラーが出る)
@@ -176,13 +176,13 @@ function validateData() {
     const z = WORLD.zones[zid];
     const open = (px, py, what) => {
       const tx = tileOf(px), ty = tileOf(py);
-      check(inMap(tx, ty) && !blocked[idx(tx, ty)], `world.js ${zid}: ${what} (${px}, ${py}) が通れないマスにある`);
+      check(inMap(tx, ty) && !blocked[tileIndex(tx, ty)], `world.js ${zid}: ${what} (${px}, ${py}) が通れないマスにある`);
     };
     if (z.respawn) open(z.respawn.x, z.respawn.y, '復活地点');
     for (const g of z.gates) open(g.spawn.x, g.spawn.y, `門 '${g.id}' の spawn`);
     for (const c of z.camps || []) open(c.x, c.y, `湧き場所「${c.name}」の中心`);
     for (const n of zone.npcs) {
-      check(NB.some(([dx, dy]) => !isBlocked(n.tx + dx, n.ty + dy)), `world.js ${zid}: NPC '${n.id}' のとなりに通れるマスがない`);
+      check(NEIGHBORS.some(([dx, dy]) => !isBlocked(n.tx + dx, n.ty + dy)), `world.js ${zid}: NPC '${n.id}' のとなりに通れるマスがない`);
     }
   }
   zone = null;

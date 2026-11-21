@@ -4,29 +4,29 @@
 'use strict';
 
 // ===================================================================
-//  マス目。world.js の px の値を、読み込むときにマスに直す (1 マス = T px。T は core.js)
+//  マス目。world.js の px の値を、読み込むときにマスに直す (1 マス = TILE px。TILE は core.js)
 // ===================================================================
 let zone = null, MAP_W = 0, MAP_H = 0, COLS = 0, ROWS = 0;
 // obstacles: マスにそろえた障害物 (描画用。x, y, w, h は px)
 let obstacles = [], decor = [];
 // blocked: 1 なら通れない (地形と NPC) / shotBlocked: 1 なら攻撃も通らない / gateAt: 門の番号 (なければ -1)
-let blocked = null, shotBlocked = null, gateAt = null, flow = null;
-const NB = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+let blocked = null, shotBlocked = null, gateAt = null, playerFlow = null;
+const NEIGHBORS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
-const idx = (x, y) => y * COLS + x;
+const tileIndex = (x, y) => y * COLS + x;
 const inMap = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
-const tileOf = (px) => Math.floor(px / T);
-const center = (t) => (t + 0.5) * T;
-const isBlocked = (x, y) => !inMap(x, y) || !!blocked[idx(x, y)];
-const isShotBlocked = (x, y) => !inMap(x, y) || !!shotBlocked[idx(x, y)];
-// マスどうしの距離。dist はマスの中心どうしの直線距離、steps は何歩か (斜めも 1 歩)
-const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
-const steps = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+const tileOf = (px) => Math.floor(px / TILE);
+const tileCenter = (t) => (t + 0.5) * TILE;
+const isBlocked = (x, y) => !inMap(x, y) || !!blocked[tileIndex(x, y)];
+const isShotBlocked = (x, y) => !inMap(x, y) || !!shotBlocked[tileIndex(x, y)];
+// マスどうしの距離。tileDist はマスの中心どうしの直線距離、tileSteps は何歩か (斜めも 1 歩)
+const tileDist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+const tileSteps = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
 
 // px の範囲を、いちばん近いマスの境目にそろえる (最低 1 マス)
 function snapRect(x, y, w, h) {
-  const x0 = Math.round(x / T), y0 = Math.round(y / T);
-  const x1 = Math.max(x0 + 1, Math.round((x + w) / T)), y1 = Math.max(y0 + 1, Math.round((y + h) / T));
+  const x0 = Math.round(x / TILE), y0 = Math.round(y / TILE);
+  const x1 = Math.max(x0 + 1, Math.round((x + w) / TILE)), y1 = Math.max(y0 + 1, Math.round((y + h) / TILE));
   return { tx: x0, ty: y0, tw: x1 - x0, th: y1 - y0 };
 }
 
@@ -45,7 +45,7 @@ function canStep(x, y, dx, dy) {
 //   両方とも遮るときだけ通らない (斜めに並んだ壁の間は抜けられない。壁 1 つの角をかすめるだけなら通る)
 //   こうすると、線の向きを逆にしても、地形を左右・上下に裏返しても、結果は同じになる
 function hasLOS(x1, y1, x2, y2) {
-  const n = Math.ceil(dist(x1, y1, x2, y2) * 4), D = 2 * n, dx = x2 - x1, dy = y2 - y1;
+  const n = Math.ceil(tileDist(x1, y1, x2, y2) * 4), D = 2 * n, dx = x2 - x1, dy = y2 - y1;
   const wall = (x, y) => (x !== x1 || y !== y1) && (x !== x2 || y !== y2) && isShotBlocked(x, y);
   // 斜めに隣り合う 2 マス (a → b) の間で、線が 2 マスの共有する角をちょうど通り、角を挟む 2 マスが両方とも遮るか
   const sealed = (ax, ay, bx, by) => {
@@ -91,12 +91,12 @@ function rayTiles(x, y, dir, len) {
 
 // ===================================================================
 //  経路探索 (目的地までの歩数の場 / Dijkstra)
-//  flow はプレイヤーまで。湧き場所ごとの場は帰還に使う
+//  playerFlow はプレイヤーまで。湧き場所ごとの場は帰還に使う
 // ===================================================================
 function computeFlow(tx, ty, field) {
   field.fill(1e9);
   if (!inMap(tx, ty)) return;
-  const s = idx(tx, ty);
+  const s = tileIndex(tx, ty);
   field[s] = 0;
   const heap = [[0, s]];
   const push = (n) => {
@@ -109,9 +109,9 @@ function computeFlow(tx, ty, field) {
     }
   };
   const pop = () => {
-    const top = heap[0], last = heap.pop();
+    const top = heap[0], tail = heap.pop();
     if (heap.length) {
-      heap[0] = last;
+      heap[0] = tail;
       let i = 0;
       for (;;) {
         const l = i * 2 + 1, r = l + 1;
@@ -128,19 +128,19 @@ function computeFlow(tx, ty, field) {
     const [c, i] = pop();
     if (c > field[i]) continue;
     const x = i % COLS, y = (i / COLS) | 0;
-    for (const [dx, dy] of NB) {
+    for (const [dx, dy] of NEIGHBORS) {
       if (!canStep(x, y, dx, dy)) continue;
       // 斜めも 1 歩。ただしまっすぐの道を少しだけ好む (ジグザグに歩かないように)
-      const ni = idx(x + dx, y + dy), nc = c + (dx && dy ? 1.01 : 1);
+      const ni = tileIndex(x + dx, y + dy), nc = c + (dx && dy ? 1.01 : 1);
       if (nc < field[ni]) { field[ni] = nc; push([nc, ni]); }
     }
   }
 }
 
-// キャラ u のマスまでの歩数の場。主人公は flow (主人公が行動するたびに作り直す)。
+// キャラ u のマスまでの歩数の場。主人公は playerFlow (主人公が行動するたびに作り直す)。
 // ほかのキャラは、そのキャラが持つ場 (u.pathField) を、いるマスかゾーンが変わったときだけ作り直す
 function flowTo(u) {
-  if (u === player) return flow;
+  if (u === player) return playerFlow;
   const key = `${zone.id}:${u.tx},${u.ty}`;
   if (u.pathKey !== key) {
     if (!u.pathField || u.pathField.length !== COLS * ROWS) u.pathField = new Float64Array(COLS * ROWS);
@@ -152,10 +152,10 @@ function flowTo(u) {
 
 // field の値が一番小さくなるとなりのマスへの 1 歩 ([dx, dy])。ほかのキャラがいるマスは避ける。なければ null
 function stepDownhill(u, field) {
-  let best = field[idx(u.tx, u.ty)], pick = null;
-  for (const [dx, dy] of NB) {
+  let best = field[tileIndex(u.tx, u.ty)], pick = null;
+  for (const [dx, dy] of NEIGHBORS) {
     if (!canStep(u.tx, u.ty, dx, dy) || unitAt(u.tx + dx, u.ty + dy)) continue;
-    const v = field[idx(u.tx + dx, u.ty + dy)];
+    const v = field[tileIndex(u.tx + dx, u.ty + dy)];
     if (v < best - 1e-6) { best = v; pick = [dx, dy]; }
   }
   return pick;
@@ -166,14 +166,14 @@ function findPath(tx, ty) {
   if (isBlocked(tx, ty)) return null;
   const field = new Float64Array(COLS * ROWS);
   computeFlow(tx, ty, field);
-  if (field[idx(player.tx, player.ty)] >= 1e9) return null;
+  if (field[tileIndex(player.tx, player.ty)] >= 1e9) return null;
   const path = [];
   let x = player.tx, y = player.ty;
   while (x !== tx || y !== ty) {
-    let best = field[idx(x, y)], nx = -1, ny = -1;
-    for (const [dx, dy] of NB) {
+    let best = field[tileIndex(x, y)], nx = -1, ny = -1;
+    for (const [dx, dy] of NEIGHBORS) {
       if (!canStep(x, y, dx, dy)) continue;
-      const v = field[idx(x + dx, y + dy)];
+      const v = field[tileIndex(x + dx, y + dy)];
       if (v < best) { best = v; nx = x + dx; ny = y + dy; }
     }
     if (nx < 0) return null;
@@ -190,18 +190,18 @@ function loadZone(id) {
   const z = WORLD.zones[id];
   zone = { id, ...z };
   MAP_W = z.w; MAP_H = z.h;
-  COLS = MAP_W / T; ROWS = MAP_H / T;
+  COLS = MAP_W / TILE; ROWS = MAP_H / TILE;
   blocked = new Uint8Array(COLS * ROWS);
   shotBlocked = new Uint8Array(COLS * ROWS);
   gateAt = new Int16Array(COLS * ROWS).fill(-1);
-  flow = new Float64Array(COLS * ROWS);
+  playerFlow = new Float64Array(COLS * ROWS);
   obstacles = [];
   const add = (kind, tx, ty, tw, th) => {
     const shots = !!WORLD.terrain[kind].blocksShots;
-    obstacles.push({ x: tx * T, y: ty * T, w: tw * T, h: th * T, kind, blocksShots: shots });
+    obstacles.push({ x: tx * TILE, y: ty * TILE, w: tw * TILE, h: th * TILE, kind, blocksShots: shots });
     for (let y = Math.max(0, ty); y < Math.min(ROWS, ty + th); y++) for (let x = Math.max(0, tx); x < Math.min(COLS, tx + tw); x++) {
-      blocked[idx(x, y)] = 1;
-      if (shots) shotBlocked[idx(x, y)] = 1;
+      blocked[tileIndex(x, y)] = 1;
+      if (shots) shotBlocked[tileIndex(x, y)] = 1;
     }
   };
   add('wall', 0, 0, COLS, 1); add('wall', 0, ROWS - 1, COLS, 1);
@@ -215,13 +215,13 @@ function loadZone(id) {
     const r = snapRect(g.x, g.y, g.w, g.h);
     for (let y = r.ty; y < r.ty + r.th; y++) for (let x = r.tx; x < r.tx + r.tw; x++) {
       if (!inMap(x, y)) continue;
-      gateAt[idx(x, y)] = i;
-      blocked[idx(x, y)] = 0; shotBlocked[idx(x, y)] = 0;
+      gateAt[tileIndex(x, y)] = i;
+      blocked[tileIndex(x, y)] = 0; shotBlocked[tileIndex(x, y)] = 0;
     }
     return { ...g, ...r, sx: tileOf(g.spawn.x), sy: tileOf(g.spawn.y) };
   });
   zone.npcs = (z.npcs || []).map((n) => createNpc(n));
-  for (const n of zone.npcs) blocked[idx(n.tx, n.ty)] = 1;
+  for (const n of zone.npcs) blocked[tileIndex(n.tx, n.ty)] = 1;
   zone.respawn = z.respawn ? { tx: tileOf(z.respawn.x), ty: tileOf(z.respawn.y) } : null;
   // 地面の装飾 (ゾーンごとに固定の乱数)
   decor = [];
@@ -229,7 +229,7 @@ function loadZone(id) {
   const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const n = Math.round(MAP_W * MAP_H / 9000);
   for (let i = 0; i < n; i++) decor.push({ x: r() * MAP_W, y: r() * MAP_H, s: 1 + r() * 2.5, c: z.theme.decor[r() < 0.5 ? 0 : 1] });
-  camps = (z.camps || []).map((c) => ({ ...c, tx: tileOf(c.x), ty: tileOf(c.y), spreadT: c.spread / T,
+  camps = (z.camps || []).map((c) => ({ ...c, tx: tileOf(c.x), ty: tileOf(c.y), spreadT: c.spread / TILE,
     field: new Float64Array(COLS * ROWS), slots: c.members.map((type) => ({ type, enemy: null, pending: false, timer: 0 })) }));
   for (const c of camps) computeFlow(c.tx, c.ty, c.field);
 }
@@ -250,9 +250,9 @@ function rememberZone() {
 // 別のゾーンに入る。(tx, ty) のマスが通れなければ、復活地点か最初の門の前に立つ
 function enterZone(id, tx, ty) {
   if (zone) rememberZone();
-  units = player ? [player] : []; hazards = []; spawns = []; effects = []; texts = []; loots = [];
+  units = player ? [player] : []; hazards = []; spawns = []; effects = []; floatTexts = []; loots = [];
   loadZone(id);
-  if (isBlocked(tx, ty) || gateAt[idx(tx, ty)] >= 0) {
+  if (isBlocked(tx, ty) || gateAt[tileIndex(tx, ty)] >= 0) {
     const r = zone.respawn || { tx: zone.gates[0].sx, ty: zone.gates[0].sy };
     tx = r.tx; ty = r.ty;
   }
@@ -271,14 +271,14 @@ function enterZone(id, tx, ty) {
       else s.timer = 1;
     }
   }));
-  computeFlow(player.tx, player.ty, flow);
+  computeFlow(player.tx, player.ty, playerFlow);
   showMsg(zone.name, zoneLevelText(zone));
-  log(txt('zone.entered', { zone: zone.name }), THEME.msg.zone);
+  logMsg(txt('zone.entered', { zone: zone.name }), THEME.msg.zone);
 }
 
 // 主人公が門のマスに立ったら行き先のゾーンへ移る
 function checkGate() {
-  const gi = gateAt[idx(player.tx, player.ty)];
+  const gi = gateAt[tileIndex(player.tx, player.ty)];
   if (gi < 0) return false;
   const g = zone.gates[gi];
   const dest = WORLD.zones[g.to].gates.find((t) => t.id === g.toGate);

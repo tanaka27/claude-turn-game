@@ -95,7 +95,7 @@ test('今はないゾーンにいたセーブは、戻る町のかがり火か�
   g2.startGame(g2.migrateSave(save));
   assert.strictEqual(g2.zone.id, 'waystation');
   const r = g2.WORLD.zones.waystation.respawn;
-  assert.deepStrictEqual([g2.player.tx, g2.player.ty], [Math.floor(r.x / g2.T), Math.floor(r.y / g2.T)]);
+  assert.deepStrictEqual([g2.player.tx, g2.player.ty], [Math.floor(r.x / g2.TILE), Math.floor(r.y / g2.TILE)]);
   // 戻る町もおかしければ最初の町
   save.location = { zone: 'noSuchZone', tx: 3, ty: 3 };
   save.home = 'plains';

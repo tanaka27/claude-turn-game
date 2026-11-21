@@ -27,7 +27,7 @@
 ### アニメーションを足すとき（今は 1 枚の絵だけ）
 
 - 入り口は `spriteFrameSrc(entry, u)`（`src/render.js`）。今は指定（`entry`）が文字列ならそのままパスを返す
-- コマ・向きごとの絵を足すときは、指定を `{ frames: [...], fps, … }` や `{ up, down, side }` のようなオブジェクトにして、ここで `u.facing`・`game.rt`・描く位置が追いついたか（`u.x` と `center(u.tx)`）からコマを選んで返す。左右反転は `drawUnitSprite` がしているので、向きの絵を足すならそこも合わせる
+- コマ・向きごとの絵を足すときは、指定を `{ frames: [...], fps, … }` や `{ up, down, side }` のようなオブジェクトにして、ここで `u.facing`・`game.rt`・描く位置が追いついたか（`u.x` と `tileCenter(u.tx)`）からコマを選んで返す。左右反転は `drawUnitSprite` がしているので、向きの絵を足すならそこも合わせる
 - `src/validate.js` の `sprite` の形の確認（主人公・敵・NPC）も、オブジェクトを受け付けるように直す
 - 絵は `getSprite` が最初に使うときに読み込み、当たったとき用の白い絵も作る（コマごとに呼べばよい）
 

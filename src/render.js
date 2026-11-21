@@ -84,30 +84,30 @@ function unitSprite(u) { return getSprite(spriteFrameSrc(SPRITE_SOURCE[unitKind(
 // マスの集まりを塗る。col: 'r,g,b' / fill・line: 透明度
 function fillTiles(tiles, col, fill, line) {
   ctx.fillStyle = `rgba(${col},${fill})`;
-  for (const [x, y] of tiles) ctx.fillRect(x * T + 1, y * T + 1, T - 2, T - 2);
+  for (const [x, y] of tiles) ctx.fillRect(x * TILE + 1, y * TILE + 1, TILE - 2, TILE - 2);
   if (line) {
     ctx.strokeStyle = `rgba(${col},${line})`; ctx.lineWidth = 2;
-    for (const [x, y] of tiles) ctx.strokeRect(x * T + 2, y * T + 2, T - 4, T - 4);
+    for (const [x, y] of tiles) ctx.strokeRect(x * TILE + 2, y * TILE + 2, TILE - 4, TILE - 4);
   }
 }
 
 // 予告: 範囲のマスを塗り、主人公があと何回行動できるかを出す (1 なら次に範囲の外へ出ないと当たる)
 function drawHazard(h) {
-  const u = h.owner, col = FC[h.faction].rgb;
+  const u = h.owner, col = FACTION_COLOR[h.faction].rgb;
   const n = actionsBefore(u);
   const blink = n <= 1 ? 0.6 + 0.4 * Math.sin(game.rt * 10) : 1;
   fillTiles(h.tiles, col, 0.22 * blink, 0.75 * blink);
   if (h.centers) {
     ctx.strokeStyle = `rgba(${col},0.4)`; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
-    for (const [cx, cy] of h.centers) { ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.lineTo(center(cx), center(cy)); ctx.stroke(); }
+    for (const [cx, cy] of h.centers) { ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.lineTo(tileCenter(cx), tileCenter(cy)); ctx.stroke(); }
     ctx.setLineDash([]);
   }
   // 数字は範囲のうち、一番主人公に近いマスに出す
   let best = h.tiles[0];
   if (!best) return;
-  for (const t of h.tiles) if (dist(t[0], t[1], player.tx, player.ty) < dist(best[0], best[1], player.tx, player.ty)) best = t;
+  for (const t of h.tiles) if (tileDist(t[0], t[1], player.tx, player.ty) < tileDist(best[0], best[1], player.tx, player.ty)) best = t;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(13);
-  outlineText(txt('world.hazardLeft', { n }), center(best[0]), center(best[1]), THEME.field.hazardCount, 3);
+  outlineText(txt('world.hazardLeft', { n }), tileCenter(best[0]), tileCenter(best[1]), THEME.field.hazardCount, 3);
 }
 
 // 地形の種類 (world.js の terrain のキー) → 描き方 (o: 障害物 { kind, x, y, w, h } (px)、c: その種類の colors)。
@@ -297,7 +297,7 @@ const UNIT_OVERLAYS = {
 function drawUnit(u, near = false) {
   const look = UNIT_LOOK[unitKind(u)];
   // NPC (look.onTile) は描く位置 (x, y) を持たないので、いるマスの中心に描く
-  const v = { u, look, near, x: look.onTile ? center(u.tx) : u.x, y: look.onTile ? center(u.ty) : u.y, r: look.r || u.r, spriteTop: null };
+  const v = { u, look, near, x: look.onTile ? tileCenter(u.tx) : u.x, y: look.onTile ? tileCenter(u.ty) : u.y, r: look.r || u.r, spriteTop: null };
   drawShadow(v);
   ctx.globalAlpha = u.invuln ? 0.5 : 1;
   const s = unitSprite(u);
@@ -323,7 +323,7 @@ function drawAimPreview() {
   if (a.type === 'lob') {
     // 届く範囲 (射程) を丸で示す
     ctx.setLineDash([8, 6]); ctx.lineWidth = 2; ctx.strokeStyle = THEME.field.aimRange;
-    pathCircle(p.x, p.y, (a.castRange + 0.5) * T); ctx.stroke(); ctx.setLineDash([]);
+    pathCircle(p.x, p.y, (a.castRange + 0.5) * TILE); ctx.stroke(); ctx.setLineDash([]);
   }
   fillTiles(h.tiles, THEME.field.aim, 0.14, 0.85);
 }
@@ -332,10 +332,10 @@ function drawAimPreview() {
 function drawCursor() {
   if (!player || game.state !== 'play' || game.paused || !inMap(mouse.tx, mouse.ty)) return;
   ctx.strokeStyle = aiming ? THEME.field.cursorAiming : THEME.field.cursor; ctx.lineWidth = 2;
-  ctx.strokeRect(mouse.tx * T + 1, mouse.ty * T + 1, T - 2, T - 2);
+  ctx.strokeRect(mouse.tx * TILE + 1, mouse.ty * TILE + 1, TILE - 2, TILE - 2);
   if (player.travel) {
     ctx.fillStyle = THEME.field.travel;
-    for (const [x, y] of player.travel) { pathCircle(center(x), center(y), 3); ctx.fill(); }
+    for (const [x, y] of player.travel) { pathCircle(tileCenter(x), tileCenter(y), 3); ctx.fill(); }
   }
 }
 
@@ -362,11 +362,11 @@ const EFFECT_TYPES = {
     },
   },
   // 判定の出たマスが一瞬光る
-  tiles: { draw(f, k) { fillTiles(f.tiles, FC[f.faction].slash, 0.5 * (1 - k)); } },
+  tiles: { draw(f, k) { fillTiles(f.tiles, FACTION_COLOR[f.faction].slash, 0.5 * (1 - k)); } },
   // 弾: 線の上を先端が走る
   bolt: {
     draw(f, k) {
-      const col = FC[f.faction].rgb, m = Math.min(1, k * 1.4);
+      const col = FACTION_COLOR[f.faction].rgb, m = Math.min(1, k * 1.4);
       const x = f.x0 + (f.x1 - f.x0) * m, y = f.y0 + (f.y1 - f.y0) * m;
       ctx.strokeStyle = `rgba(${col},${0.6 * (1 - k)})`; ctx.lineWidth = 8;
       ctx.beginPath(); ctx.moveTo(f.x0, f.y0); ctx.lineTo(x, y); ctx.stroke();
@@ -376,7 +376,7 @@ const EFFECT_TYPES = {
   // 投げたもの: 放物線を描いて落ちる
   arc: {
     draw(f, k) {
-      const fc = FC[f.faction];
+      const fc = FACTION_COLOR[f.faction];
       const x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k - Math.sin(Math.PI * k) * 90;
       ctx.fillStyle = fc.orbGlow; pathCircle(x, y, 16); ctx.fill();
       ctx.fillStyle = fc.orb; pathCircle(x, y, 7); ctx.fill();
@@ -398,7 +398,7 @@ function drawEffect(f) {
 // 復活地点のかがり火
 function drawBonfire() {
   if (!zone.respawn) return;
-  const x = center(zone.respawn.tx), y = center(zone.respawn.ty);
+  const x = tileCenter(zone.respawn.tx), y = tileCenter(zone.respawn.ty);
   const fl = 1 + Math.sin(game.rt * 9) * 0.12, C = THEME.field.bonfire;
   ctx.fillStyle = C.glow; pathCircle(x, y, 18 * fl); ctx.fill();
   ctx.fillStyle = C.log; ctx.fillRect(x - 12, y + 2, 24, 6);
@@ -411,14 +411,14 @@ function levelColor(lv) {
   const d = lv - (player ? player.level : 1), C = THEME.level;
   if (d >= THEME.levelMuchDiff) return C.much;
   if (d >= 1) return C.higher;
-  if (d > -P.enemyLevel.grayDiff) return C.even;
+  if (d > -PARAMS.enemyLevel.grayDiff) return C.even;
   return C.gray;
 }
 
 // 門: 光る床と、行き先の名前 (門から入ってきたときに立つ位置の側に出す)
 function drawGate(g) {
   const pulse = 0.5 + 0.5 * Math.sin(game.rt * 3);
-  const x = g.tx * T, y = g.ty * T, w = g.tw * T, h = g.th * T;
+  const x = g.tx * TILE, y = g.ty * TILE, w = g.tw * TILE, h = g.th * TILE;
   if (g.door) {
     // 建物の入口: 家の扉の下を少し光らせるだけ
     ctx.fillStyle = `rgba(${THEME.field.door},${0.25 + 0.25 * pulse})`; ctx.fillRect(x + w / 2 - 14, y + h - 6, 28, 6);
@@ -432,21 +432,21 @@ function drawGateLabel(g) {
   if (g.door) {
     // 建物の入口は名前だけを家の扉の上に小さく出す
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(12);
-    outlineText(dest.name, (g.tx + g.tw / 2) * T, g.ty * T - 4, THEME.field.doorLabel, 3);
+    outlineText(dest.name, (g.tx + g.tw / 2) * TILE, g.ty * TILE - 4, THEME.field.doorLabel, 3);
     return;
   }
-  const lx = ((g.tx + g.tw / 2) * T + center(g.sx)) / 2, ly = ((g.ty + g.th / 2) * T + center(g.sy)) / 2;
+  const lx = ((g.tx + g.tw / 2) * TILE + tileCenter(g.sx)) / 2, ly = ((g.ty + g.th / 2) * TILE + tileCenter(g.sy)) / 2;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(14);
   outlineText(txt('world.gateLabel', { zone: dest.name, level: zoneLevelText(dest) }), lx, ly, THEME.field.gateLabel, 4);
 }
 
 function drawLoot(l) {
-  const fade = l.t > EC.lootLife - 20 ? 0.4 + 0.6 * Math.abs(Math.sin(game.rt * 8)) : 1;
-  const x = center(l.tx) + l.ox, y = center(l.ty) + l.oy + Math.sin(game.rt * 4 + l.ox) * 1.5;
+  const fade = l.t > ECON.lootLife - 20 ? 0.4 + 0.6 * Math.abs(Math.sin(game.rt * 8)) : 1;
+  const x = tileCenter(l.tx) + l.ox, y = tileCenter(l.ty) + l.oy + Math.sin(game.rt * 4 + l.ox) * 1.5;
   ctx.globalAlpha = fade;
   if (l.kind === 'material') {
     // 素材: 色付きのひし形。ノーマルより上はレア度の色で光る
-    const m = IT.materials[l.id];
+    const m = ITEMS.materials[l.id];
     if (m.rarity !== 'common') {
       ctx.fillStyle = rarityOf(m.rarity).color; ctx.globalAlpha = fade * (0.25 + 0.15 * Math.sin(game.rt * 5));
       pathCircle(x, y, 11); ctx.fill();
@@ -476,8 +476,8 @@ function drawWorld() {
   // マス目の線
   ctx.strokeStyle = THEME.field.grid; ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let x = T; x < MAP_W; x += T) { ctx.moveTo(x, 0); ctx.lineTo(x, MAP_H); }
-  for (let y = T; y < MAP_H; y += T) { ctx.moveTo(0, y); ctx.lineTo(MAP_W, y); }
+  for (let x = TILE; x < MAP_W; x += TILE) { ctx.moveTo(x, 0); ctx.lineTo(x, MAP_H); }
+  for (let y = TILE; y < MAP_H; y += TILE) { ctx.moveTo(0, y); ctx.lineTo(MAP_W, y); }
   ctx.stroke();
   for (const o of obstacles) if (!o.blocksShots) drawObstacle(o);
   for (const o of obstacles) if (o.blocksShots) drawObstacle(o);
@@ -497,7 +497,7 @@ function drawWorld() {
   drawAimPreview();
   drawCursor();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  for (const t of texts) {
+  for (const t of floatTexts) {
     ctx.globalAlpha = 1 - Math.max(0, (t.t / t.life - 0.5) * 2);
     ctx.font = fontOf(t.size);
     outlineText(t.text, t.x, t.y, t.color, 3);
@@ -506,11 +506,11 @@ function drawWorld() {
 }
 
 function render() {
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  ctx.fillStyle = THEME.background; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(PIXEL_RATIO, 0, 0, PIXEL_RATIO, 0, 0);
+  ctx.fillStyle = THEME.background; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   const shx = game.shake ? rand(-game.shake, game.shake) : 0, shy = game.shake ? rand(-game.shake, game.shake) : 0;
-  ctx.setTransform(DPR * VIEW, 0, 0, DPR * VIEW, (-cam.x * VIEW + shx) * DPR, (-cam.y * VIEW + shy) * DPR);
+  ctx.setTransform(PIXEL_RATIO * VIEW_SCALE, 0, 0, PIXEL_RATIO * VIEW_SCALE, (-camera.x * VIEW_SCALE + shx) * PIXEL_RATIO, (-camera.y * VIEW_SCALE + shy) * PIXEL_RATIO);
   drawWorld();
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.setTransform(PIXEL_RATIO, 0, 0, PIXEL_RATIO, 0, 0);
   if (game.state !== 'title') drawHUD();
 }

@@ -15,7 +15,7 @@ const WAIT_KEYS = [' ', '.'];
 // キー k に置いたスキル (主人公のスキル欄 player.skillSlots から。覚えていないスキルも返す)
 const skillByKey = (k) => (skillSlotsOf(player).find((b) => b.key === k) || {}).sk;
 // キー k で使う道具のキー (data/items.js の consumables の key)
-const consumableByKey = (k) => Object.keys(IT.consumables).find((id) => IT.consumables[id].key === k);
+const consumableByKey = (k) => Object.keys(ITEMS.consumables).find((id) => ITEMS.consumables[id].key === k);
 
 // 主人公が行動できるか (主人公の番で、画面を開いていない)
 const canAct = () => game.state === 'play' && !game.paused && player && !player.dead;
@@ -32,7 +32,7 @@ window.addEventListener('keydown', (e) => {
   if (game.paused) { if (k === 'c') openScreen('char'); return; }
   if (!canAct()) return;
   // 押しっぱなしのときは、少し間をあけて次の行動をする
-  if (e.repeat && game.rt - game.inputT < TN.repeatDelay) return;
+  if (e.repeat && game.rt - game.inputT < TURN.repeatDelay) return;
   const dir = NUMPAD[e.code] || (e.code === 'Numpad5' ? null : MOVE_KEYS[k]);
   player.travel = null;
   if (aiming) {
@@ -44,20 +44,20 @@ window.addEventListener('keydown', (e) => {
     if (!fieldKey) return;
     aiming = null;
   }
-  if (dir) { act(() => tryMove(dir[0], dir[1])); return; }
-  if (WAIT_KEYS.includes(k) || e.code === 'Numpad5') { act(waitTurn); return; }
+  if (dir) { doPlayerAction(() => tryMove(dir[0], dir[1])); return; }
+  if (WAIT_KEYS.includes(k) || e.code === 'Numpad5') { doPlayerAction(waitTurn); return; }
   if (e.repeat) return;
   if (k === 'i') { openScreen('inv'); return; }
   if (k === 'tab') { openScreen('char'); return; }
   if (k === 'f') { interact(); return; }
   const item = consumableByKey(k);
-  if (item) { act(() => useConsumable(player, item)); return; }
+  if (item) { doPlayerAction(() => useConsumable(player, item)); return; }
   const sk = skillByKey(k);
   if (sk && !knowsSkill(player, sk)) {
     // まだ覚えていない (はじめの覚え方で覚えるレベルがあれば、それを知らせる)
-    log(learnLevelOf(sk) ? txt('skills.locked', { skill: sk.name, level: learnLevelOf(sk) }) : txt('skills.unknown', { skill: sk.name }), THEME.msg.refuse);
+    logMsg(learnLevelOf(sk) ? txt('skills.locked', { skill: sk.name, level: learnLevelOf(sk) }) : txt('skills.unknown', { skill: sk.name }), THEME.msg.refuse);
   } else if (sk && cooldownLeft(player, sk) > 0) {
-    log(txt('skills.cooldown', { skill: sk.name, n: Math.ceil(cooldownLeft(player, sk)) }), THEME.msg.refuse);
+    logMsg(txt('skills.cooldown', { skill: sk.name, n: Math.ceil(cooldownLeft(player, sk)) }), THEME.msg.refuse);
   } else if (sk && !enoughMp(player, sk)) {
     logNoMp(sk);
   } else if (sk && sk.type === 'buff') {
@@ -85,16 +85,16 @@ canvas.addEventListener('mousedown', (e) => {
   updateMouseTile();
   if (aiming) { castSkill(aiming, mouse.tx, mouse.ty); return; }
   const { tx, ty } = mouse;
-  const n = steps(player.tx, player.ty, tx, ty);
-  if (n === 0) { act(waitTurn); return; }
-  if (n === 1) { act(() => tryMove(tx - player.tx, ty - player.ty)); return; }
+  const n = tileSteps(player.tx, player.ty, tx, ty);
+  if (n === 0) { doPlayerAction(waitTurn); return; }
+  if (n === 1) { doPlayerAction(() => tryMove(tx - player.tx, ty - player.ty)); return; }
   // 遠くのマス: そこまで 1 歩ずつ歩く (src/main.js の stepTravel)
   const path = findPath(tx, ty);
   if (path) player.travel = path;
 });
 
 // 行動する。fn が true を返したら (行動したら) ターンを進める
-function act(fn) {
+function doPlayerAction(fn) {
   if (!canAct()) return;
   game.inputT = game.rt;
   if (fn()) endPlayerAction();
@@ -119,8 +119,8 @@ function tryMove(dx, dy) {
 function bumpAttack(e) {
   const p = player;
   p.facing = Math.atan2(e.ty - p.ty, e.tx - p.tx);
-  fxTiles([[e.tx, e.ty]], 'player', FX.bump.life);
-  dealDamage(p, e, BASIC, BASIC.name);
+  fxTiles([[e.tx, e.ty]], 'player', FX_THEME.bump.life);
+  dealDamage(p, e, BASIC_ATTACK, BASIC_ATTACK.name);
 }
 
 function waitTurn() { return true; }
@@ -135,4 +135,4 @@ function castSkill(sk, tx, ty) {
   if (useSkill(player, sk, tx, ty)) endPlayerAction();
 }
 
-const logNoMp = (sk) => log(txt('skills.noMp', { skill: sk.name, cost: skillMp(sk), mp: Math.floor(player.mp) }), THEME.msg.refuse);
+const logNoMp = (sk) => logMsg(txt('skills.noMp', { skill: sk.name, cost: skillMp(sk), mp: Math.floor(player.mp) }), THEME.msg.refuse);

@@ -26,7 +26,7 @@ function newGame(seed = 1) {
 // 戻り値: enemies と同じ順の敵 (ゲームの中の敵オブジェクト)
 let arenaSeq = 0;
 function arena(g, opts = {}) {
-  const cols = opts.cols || 15, rows = opts.rows || 15, T = g.T;
+  const cols = opts.cols || 15, rows = opts.rows || 15, T = g.TILE;
   const px = (t) => t * T;
   const obstacles = [];
   for (const [x, y, w, h] of opts.walls || []) obstacles.push(['wall', px(x), px(y), px(w), px(h)]);
@@ -60,7 +60,7 @@ function arena(g, opts = {}) {
     g.placeUnit(e, s.at[0], s.at[1]);
     e.home = { tx: s.home[0], ty: s.home[1] };
   });
-  g.computeFlow(g.player.tx, g.player.ty, g.flow);
+  g.computeFlow(g.player.tx, g.player.ty, g.playerFlow);
   return out;
 }
 
@@ -81,7 +81,7 @@ const isHostile = (e) => e.state === 'chase';            // 主人公を追っ�
 const isReturning = (e) => e.state === 'return';          // 諦めて帰っている
 const isIdle = (e) => e.state === 'idle';
 const isInvulnerable = (e) => !!e.invuln;
-function moveTo(g, u, tx, ty) { g.placeUnit(u, tx, ty); g.computeFlow(g.player.tx, g.player.ty, g.flow); }
+function moveTo(g, u, tx, ty) { g.placeUnit(u, tx, ty); g.computeFlow(g.player.tx, g.player.ty, g.playerFlow); }
 // 次に行動できる時刻を決める (行動順のテスト用)
 function setNextAction(g, u, t) { u.next = t; }
 // ステータスを計算し直す (もとのステータスや装備を書き換えたあと)
@@ -133,7 +133,7 @@ function gateTile(g, to) {
   const gt = g.zone.gates.find((x) => x.to === to);
   return gt ? [gt.tx, gt.ty + Math.floor(gt.th / 2)] : null;
 }
-const isGate = (g, x, y) => g.inMap(x, y) && g.gateAt[g.idx(x, y)] >= 0;
+const isGate = (g, x, y) => g.inMap(x, y) && g.gateAt[g.tileIndex(x, y)] >= 0;
 // 主人公から (tx, ty) までの道の最初の 1 歩 [dx, dy] (なければ null)
 function firstStep(g, tx, ty) {
   const path = g.findPath(tx, ty);
@@ -317,7 +317,7 @@ function clickStaleButton(g, screen, act, data = {}) {
   clickNode(g, screen, makeNode('button', attrs, staticNode((CONTAINERS[screen] || [])[0] || screen)));
 }
 // 選んでいる装備を直接決める (画面には出ていない、古い画面の選択が残った場面。from: 'inv' | 'equip' | 'shop')
-function staleSelect(g, from, id) { g.menu.sel = { from, id: String(id) }; }
+function staleSelect(g, from, id) { g.menuState.sel = { from, id: String(id) }; }
 // 道具一覧・店の画面のアイテムをクリックする: 装備 (from: 'inv' | 'equip' | 'shop') / 道具 / 素材
 function clickGear(g, from, id) {
   const n = screenNodes(g, 'menu').find((x) => x.classes.includes('item') && x.dataset.from === from && x.dataset.id === String(id));
@@ -361,7 +361,7 @@ const npcMarkOf = (g, id) => g.npcMark(g.npcById(id));
 // 画面中央の大きい文字 [文, 下の文]
 const bigMessage = (g) => [g.game.msg, g.game.sub];
 // 開いている画面 (game.state が 'menu' のときの画面の名前。開いていなければ null)
-const openScreen = (g) => (g.game.state === 'menu' ? g.menu.mode : null);
+const openScreen = (g) => (g.game.state === 'menu' ? g.menuState.mode : null);
 // HUD のボタン (id: 'items' | 'char' | 'map') を左クリックする (画面の描画は動かないので、ボタンの場所を置いてから押す)
 function clickHud(g, id) {
   g.hudButtons.length = 0;
@@ -384,7 +384,7 @@ function nextToNpc(g, id) {
   const npcAt = (x, y) => g.zone.npcs.some((n) => n.tx === x && n.ty === y);
   for (const [dx, dy] of [[0, 1], [0, -1], [-1, 0], [1, 0], [-1, 1], [1, 1], [-1, -1], [1, -1]]) {
     const x = ntx + dx, y = nty + dy;
-    if (g.isBlocked(x, y) || npcAt(x, y) || g.gateAt[g.idx(x, y)] >= 0) continue;
+    if (g.isBlocked(x, y) || npcAt(x, y) || g.gateAt[g.tileIndex(x, y)] >= 0) continue;
     g.placeUnit(g.player, x, y);
     g.player.travel = null;
     return [-dx, -dy];
@@ -397,7 +397,7 @@ function giveItem(g, slot = 'weapon', level = 1, rarity = 'common') {
   g.player.inventory.push(it);
   return it;
 }
-function fillInventory(g) { while (g.player.inventory.length < g.EC.inventorySize) giveItem(g); }
+function fillInventory(g) { while (g.player.inventory.length < g.ECON.inventorySize) giveItem(g); }
 // テストだけで使う画面・NPC の役目を足す (src/ui.js の registerScreen / NPC_ROLES。施設を足すときと同じ道)
 //   def の関数はテスト側のもの。overlay の要素は土台がどの id でも作る
 function defineScreen(g, name, def) { g.registerScreen(name, def); }
@@ -415,7 +415,7 @@ function renderFrame(g) { g.updateCamera(); g.render(); }
 // マウスをマス (tx, ty) に重ねる (敵・NPC の説明を出す)
 function hoverTile(g, tx, ty) {
   g.updateCamera();
-  g.mouse.x = (g.center(tx) - g.cam.x) * g.VIEW; g.mouse.y = (g.center(ty) - g.cam.y) * g.VIEW;
+  g.mouse.x = (g.tileCenter(tx) - g.camera.x) * g.VIEW_SCALE; g.mouse.y = (g.tileCenter(ty) - g.camera.y) * g.VIEW_SCALE;
 }
 // マウスを仲間の欄の強化のアイコンに重ねる (renderFrame でアイコンの場所が決まってから)。アイコンがなければ false
 function hoverBuffIcon(g) {

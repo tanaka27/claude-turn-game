@@ -47,7 +47,7 @@
 | `params.js` | **ゲーム全体のしくみの数値**（ターンと速度、ダメージ計算、主人公のステータスの計算式、成長曲線、敵のレベル補正、お金・持ち物、敵の動き、セーブ） |
 | `data/*.js` | **中身の定義**（主人公（スキルの覚え方・スキル欄の並びを含む）・スキル（`data/skills.js`）・敵・NPC の種類・装備・クエスト・ステータスの表示・強化・弱体（バフ・デバフ）・色・画面に出す文章（`data/text.js`））。詳しくは [docs/data.md](docs/data.md) |
 | `world.js` | **マップの配置**（世界地図の並び（`mapPos`）と大きさ、地形の種類、ゾーンごとの大きさ、障害物、門、湧き場所とその敵レベル・再出現ターン数、復活地点、NPC（店の NPC はどの店か）、地面の色。px で書き、読み込むときにマスに直す） |
-| `src/core.js` | 共通（ユーティリティ、画面の大きさ、ゲームの状態 `game`、戦うキャラ全員 `units` と主人公 `player`、陣営（`factionUnits` / `hostileTo`）、演出を作る関数（`fxRing` / `fxHit` など）、メッセージ欄 `log`、画面に出す文章を引く `txt` / `fmt`） |
+| `src/core.js` | 共通（ユーティリティ、画面の大きさ、ゲームの状態 `game`、戦うキャラ全員 `units` と主人公 `player`、陣営（`factionUnits` / `hostileTo`）、演出を作る関数（`fxRing` / `fxHit` など）、メッセージ欄 `logMsg`、画面に出す文章を引く `txt` / `fmt`） |
 | `src/map.js` | マス目（通れるか・攻撃が通るか）、視線、直線のマス、経路探索、ゾーンの読み込みと切り替え、門 |
 | `src/units.js` | 主人公と敵（とテスト用の仲間 `createAlly` / `addUnit`）の生成、マスの上の位置、そのマスのキャラ（`unitAt`）・敵の陣営（`opponents`）、行動 1 回にかかる時間、ステータスの計算（どのキャラも同じ `computeStats` / `refreshStats`）、強化・弱体（`addBuff` / `tickBuffs` / `clearBuffs`）、技の再使用待ちと MP の決まり（`SKILL_RULES` / `cooldownLeft` / `enoughMp` / `canUseSkill`）、覚えているスキルとスキル欄（`knowsSkill` / `teachSkill` / `skillSlotsOf`）、スキルの覚え方（`learnSkillsByLevel`）、経験値・レベル・復活 |
 | `src/combat.js` | 技の範囲（マス）・判定・ダメージ（物理・術）、予告（出す・消す・判定する）、どのキャラも同じ技を使う道（`useSkill`、強化 `castBuff`、ダッシュ `dash`）、倒れたとき（主人公・敵・仲間で分ける） |
@@ -76,6 +76,16 @@
 - `index.html` をブラウザで直接開く、または `python -m http.server` でも遊べる（セーブはブラウザの `localStorage` だけ）
 
 > 注意: `src/*.js` はモジュールではなく、ふつうの `<script>` として順に読み込む。トップレベルの `const` / `let` / `function` は全ファイルで共有され、`window` のプロパティにならないもの（`const` / `let`）は名前で直接参照する。ファイルを読み込んだ時点で動く処理（イベントの登録など）は、それより前のファイルのものしか使えない。起動処理は `src/main.js` の最後にまとめる。トップレベルの名前がファイル間で重なると読み込みエラーになる。重なりと、ローカルの名前がトップレベルの名前を隠すことは `tests/globals.test.js` が見張る（[docs/testing.md](docs/testing.md) の「トップレベルの名前」）。
+
+### トップレベルの名前の付け方
+
+トップレベルの名前は全ファイル（とテストの `g.名前`）で共有されるので、短い名前・ありふれた名前（`T`・`log`・`menu` など）は使わず、ほかと重ならない、何かが分かる名前にする。
+
+- データ・調整用の数値の表、定数、マップと画面の大きさ: UPPER_CASE（`PARAMS`・`ITEMS`・`THEME`・`TILE`・`MAP_W`・`COLS`・`VIEW_W`・`VIEW_SCALE`・`SAVE_VERSION`）。`PARAMS` / `THEME` / `PLAYER` の一部への近道も UPPER_CASE で、どこの一部か分かる名前にする（`TURN` = `PARAMS.turn`、`FIELD` / `FIELD_AI` / `PROGRESSION` / `ECON`、`FX_THEME` = `THEME.fx`、`FACTION_COLOR`、`PARTY_CARD`、`BASIC_ATTACK`、`DERIVED_STATS`）。データ全体への近道（もとの `P` / `IT` のようなもの）は作らず、もとの名前（`PARAMS` / `ITEMS`）をそのまま使う
+- 関数と、書き換わる状態: camelCase で、何をするか・何の状態か分かる名前（`logMsg`・`doPlayerAction`・`menuState`・`talkState`・`tileCenter`・`tileDist`・`camera`・`floatTexts`・`lastFrameTime`）
+- 短いまま残しているもの（どこでも使う道具で、意味がはっきりしているもの）: `$`（`document.getElementById`）、`txt` / `fmt`（画面に出す文章を引く。[docs/text.md](docs/text.md)）、`ctx` / `canvas`、`rand` / `randInt` / `clamp` / `DEG` / `TAU`。これと同じ名前をほかで使わない
+- 関数の引数・ローカルの名前は、トップレベルの名前と同じにしない（隠すと、その関数の中でトップレベルのものが使えず、読み違えやすい）。わざと同じにするときは `tests/globals.test.js` の `SHADOW_ALLOW` に理由を書く
+- データのファイルの名前（`PARAMS`・`PLAYER`・`ENEMIES`・`ITEMS`・`QUESTS`・`WORLD`・`THEME`・`TEXT`・`SKILLS`・`BUFFS`・`NPC_KINDS`・`STATS`・`UNIT_LOOK` など）は、データを書く人とドキュメントが使うので変えない
 
 ## メインループ（`frame`、`src/main.js`）
 

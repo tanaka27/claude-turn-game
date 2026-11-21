@@ -137,7 +137,7 @@ test('報酬の回復薬は上限まで、装備は持ち物がいっぱいな�
   assert.strictEqual(p.gold, gold + 100);
   const got = p.inventory[p.inventory.length - 1];
   assert.deepStrictEqual([got.slot, got.rarity], ['accessory', 'rare']);
-  assert.strictEqual(p.inventory.length, g.EC.inventorySize);
+  assert.strictEqual(p.inventory.length, g.ECON.inventorySize);
   assert.strictEqual(textOf(g, 'questNote'), '「火を吐くトカゲ」の報酬を受け取った: 経験値 300、100 G、レアの装飾品');
 });
 

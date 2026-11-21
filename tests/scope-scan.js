@@ -31,7 +31,7 @@ const PUNCS = ['>>>=', '...', '===', '!==', '**=', '<<=', '>>=', '>>>', '??=', '
 const OPEN = new Set(['(', '[', '{', '${']);
 const CLOSE = { ')': '(', ']': '[', '}': '{', '}$': '${' };
 
-// 字句に分ける。トークン: { type: 'name' | 'num' | 'str' | 'regex' | 'punc', value, line, nl (前に改行があるか) }
+// 字句に分ける。トークン: { type: 'name' | 'num' | 'str' | 'regex' | 'punc', value, line, nl (前に改行があるか), pos (名前だけ。ファイルの中の位置) }
 // テンプレートの `…${ 式 }…` は str, '${', 式のトークン, '}$', str に分ける
 function tokenize(src) {
   const toks = [];
@@ -103,7 +103,7 @@ function tokenize(src) {
     }
     if (/[\p{ID_Start}$_]/u.test(c)) {
       const m = /^[\p{ID_Continue}$‌‍]+/u.exec(src.slice(i, i + 200));
-      push('name', m[0], line); i += m[0].length; continue;
+      push('name', m[0], line); toks[toks.length - 1].pos = i; i += m[0].length; continue;
     }
     if (c === '{') { stack.push('{'); push('punc', '{', line); i++; continue; }
     if (c === '}') {

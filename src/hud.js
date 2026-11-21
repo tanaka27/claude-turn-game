@@ -9,7 +9,7 @@ function roundRect(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
-function bar(x, y, w, h, ratio, color, label) {
+function drawBar(x, y, w, h, ratio, color, label) {
   ctx.fillStyle = THEME.bars.back; roundRect(x - 2, y - 2, w + 4, h + 4, 5); ctx.fill();
   ctx.fillStyle = color; ctx.fillRect(x, y, w * clamp(ratio, 0, 1), h);
   if (label) {
@@ -25,7 +25,7 @@ function drawTooltipBox(title, titleColor, lines, border, minW) {
   ctx.font = fontOf(TT.font, false);
   const w = Math.max(...lines.map((l) => ctx.measureText(l).width), minW) + TT.pad * 2;
   const h = 30 + lines.length * TT.lineH;
-  const x = clamp(mouse.x + TT.offset, 0, W - w), y = clamp(mouse.y + TT.offset, 0, H - h);
+  const x = clamp(mouse.x + TT.offset, 0, VIEW_W - w), y = clamp(mouse.y + TT.offset, 0, VIEW_H - h);
   ctx.fillStyle = TT.bg; roundRect(x, y, w, h, TT.radius); ctx.fill();
   ctx.strokeStyle = border; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -46,17 +46,17 @@ const buffIcons = [];
 const partyMembers = () => [player];
 
 // 左上の 1 人分の欄: 顔の絵・名前・レベル・HP・MP だけ (ほかはキャラクターの画面で見る)。クリックでキャラクターの画面
-const CARD = THEME.hud.card;
+const PARTY_CARD = THEME.hud.card;
 function drawPartyCard(u, x, y) {
-  const st = u.stats, f = CARD.face, pad = (CARD.h - f) / 2;
-  const hover = mouse.x >= x && mouse.x <= x + CARD.w && mouse.y >= y && mouse.y <= y + CARD.h;
-  hudButtons.push({ id: 'char', x, y, w: CARD.w, h: CARD.h });
-  ctx.fillStyle = hover ? CARD.bgHover : CARD.bg; roundRect(x, y, CARD.w, CARD.h, CARD.radius); ctx.fill();
-  ctx.lineWidth = 1.5; ctx.strokeStyle = hover ? CARD.edgeHover : CARD.edge; ctx.stroke();
+  const st = u.stats, f = PARTY_CARD.face, pad = (PARTY_CARD.h - f) / 2;
+  const hover = mouse.x >= x && mouse.x <= x + PARTY_CARD.w && mouse.y >= y && mouse.y <= y + PARTY_CARD.h;
+  hudButtons.push({ id: 'char', x, y, w: PARTY_CARD.w, h: PARTY_CARD.h });
+  ctx.fillStyle = hover ? PARTY_CARD.bgHover : PARTY_CARD.bg; roundRect(x, y, PARTY_CARD.w, PARTY_CARD.h, PARTY_CARD.radius); ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = hover ? PARTY_CARD.edgeHover : PARTY_CARD.edge; ctx.stroke();
   // 顔の絵 (読み込めないうちは色の付いた四角に名前の 1 文字目)
   const fx = x + pad, fy = y + pad, face = getSprite(u.isPlayer ? PLAYER.face : u.def && u.def.face);
   ctx.save(); roundRect(fx, fy, f, f, 8); ctx.clip();
-  ctx.fillStyle = CARD.faceBg; ctx.fillRect(fx, fy, f, f);
+  ctx.fillStyle = PARTY_CARD.faceBg; ctx.fillRect(fx, fy, f, f);
   if (face) ctx.drawImage(face.img, fx, fy, f, f);
   else {
     ctx.fillStyle = u.color; ctx.font = fontOf(26); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -65,23 +65,23 @@ function drawPartyCard(u, x, y) {
   ctx.restore();
   ctx.lineWidth = 2; ctx.strokeStyle = u.color; roundRect(fx, fy, f, f, 8); ctx.stroke();
   // 名前・レベル・HP・MP
-  const tx = fx + f + 10, bw = x + CARD.w - tx - 10;
-  ctx.textAlign = 'left'; ctx.font = fontOf(14); ctx.fillStyle = CARD.name;
+  const tx = fx + f + 10, bw = x + PARTY_CARD.w - tx - 10;
+  ctx.textAlign = 'left'; ctx.font = fontOf(14); ctx.fillStyle = PARTY_CARD.name;
   ctx.fillText(u.name, tx, y + 21);
   // 名前の右に強化のアイコン (マウスを重ねると説明。drawTooltip)
-  const bs = CARD.buffSize;
+  const bs = PARTY_CARD.buffSize;
   let bx = tx + ctx.measureText(u.name).width + 8;
   for (const b of u.buffs || []) {
     drawBuffIcon(b, bx, y + 6, bs);
     buffIcons.push({ x: bx, y: y + 6, s: bs, b });
-    bx += bs + CARD.buffGap;
+    bx += bs + PARTY_CARD.buffGap;
   }
   ctx.font = fontOf(14);
-  ctx.textAlign = 'right'; ctx.fillStyle = CARD.level; ctx.fillText(txt('hud.level', { level: u.level }), tx + bw, y + 21);
+  ctx.textAlign = 'right'; ctx.fillStyle = PARTY_CARD.level; ctx.fillText(txt('hud.level', { level: u.level }), tx + bw, y + 21);
   const hpR = u.hp / st.maxHp;
-  bar(tx, y + 30, bw, 16, hpR, hpR > THEME.bars.hpLowRatio ? THEME.bars.hp : THEME.bars.hpLow, txt('hud.hpBar', { hp: Math.ceil(u.hp), max: Math.round(st.maxHp) }));
-  bar(tx, y + 52, bw, 12, u.mp / st.maxMp, THEME.mp);
-  ctx.fillStyle = CARD.mpText; ctx.font = fontOf(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  drawBar(tx, y + 30, bw, 16, hpR, hpR > THEME.bars.hpLowRatio ? THEME.bars.hp : THEME.bars.hpLow, txt('hud.hpBar', { hp: Math.ceil(u.hp), max: Math.round(st.maxHp) }));
+  drawBar(tx, y + 52, bw, 12, u.mp / st.maxMp, THEME.mp);
+  ctx.fillStyle = PARTY_CARD.mpText; ctx.font = fontOf(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(txt('hud.mpBar', { mp: Math.floor(u.mp), max: Math.round(st.maxMp) }), tx + bw / 2, y + 59);
   ctx.textBaseline = 'alphabetic';
 }
@@ -94,18 +94,18 @@ function drawHUD() {
   buffIcons.length = 0;
   // 左上: 仲間の欄 (上から順に)
   const party = partyMembers();
-  party.forEach((u, i) => drawPartyCard(u, 16, 16 + i * (CARD.h + CARD.gap)));
-  const partyBottom = 16 + party.length * (CARD.h + CARD.gap);
+  party.forEach((u, i) => drawPartyCard(u, 16, 16 + i * (PARTY_CARD.h + PARTY_CARD.gap)));
+  const partyBottom = 16 + party.length * (PARTY_CARD.h + PARTY_CARD.gap);
 
   // スキルバー (主人公のスキル欄の並び。覚えていないスキルは lock に出す文)
   const slots = skillSlotsOf(p).map(({ key, sk: s }) => ({ label: key.toUpperCase(), name: s.name, cd: cooldownLeft(p, s), max: skillCooldown(p, s), active: aiming === s,
       lock: knowsSkill(p, s) ? '' : learnLevelOf(s) ? txt('hud.skillLocked', { level: learnLevelOf(s) }) : txt('hud.skillUnknown'), mp: skillMp(s), short: !enoughMp(p, s) }))
-    .concat(Object.entries(IT.consumables).map(([id, c]) => ({ label: c.key.toUpperCase(), name: c.name, cd: 0, max: 1, count: consumableCount(p, id) })))
+    .concat(Object.entries(ITEMS.consumables).map(([id, c]) => ({ label: c.key.toUpperCase(), name: c.name, cd: 0, max: 1, count: consumableCount(p, id) })))
     .concat([{ label: txt('hud.itemsKey'), name: txt('hud.itemsButton'), cd: 0, max: 1, button: 'items' }]);
   const SB = THEME.hud.skillBar;
   const sz = SB.size, gap = SB.gap, total = slots.length * sz + (slots.length - 1) * gap;
-  let sx = (W - total) / 2;
-  const sy = H - sz - SB.bottom;
+  let sx = (VIEW_W - total) / 2;
+  const sy = VIEW_H - sz - SB.bottom;
   for (const s of slots) {
     // ボタンの枠 (クリックで開く。マウスを重ねると明るくする)
     const hover = s.button && mouse.x >= sx && mouse.x <= sx + sz && mouse.y >= sy && mouse.y <= sy + sz;
@@ -156,8 +156,8 @@ function drawHUD() {
   const boss = factionUnits('enemy').find((e) => e.isBoss && e.state === 'chase');
   if (boss) {
     // 画面が狭いと左上の仲間の欄と重なるので、そのときは欄の下に出す
-    const bw = Math.min(520, W - 420), bx = (W - bw) / 2;
-    bar(bx, bx < 16 + CARD.w + 12 ? partyBottom + 4 : 58, bw, 18, boss.hp / boss.stats.maxHp, THEME.bars.boss,
+    const bw = Math.min(520, VIEW_W - 420), bx = (VIEW_W - bw) / 2;
+    drawBar(bx, bx < 16 + PARTY_CARD.w + 12 ? partyBottom + 4 : 58, bw, 18, boss.hp / boss.stats.maxHp, THEME.bars.boss,
       txt('hud.bossBar', { level: boss.level, name: boss.name, hp: Math.ceil(boss.hp), max: boss.stats.maxHp }));
   }
 
@@ -171,11 +171,11 @@ function drawHUD() {
     const M = THEME.hud.message;
     ctx.globalAlpha = clamp(game.msgT, 0, 1);
     ctx.textAlign = 'center'; ctx.font = fontOf(44);
-    outlineText(game.msg, W / 2, H * 0.28, M.main, 6);
+    outlineText(game.msg, VIEW_W / 2, VIEW_H * 0.28, M.main, 6);
     // 小さい文字は改行 (\n) で何行かに分けられる
     ctx.font = fontOf(20);
     game.sub.split('\n').filter(Boolean).forEach((line, i) => {
-      outlineText(line, W / 2, H * 0.28 + 40 + i * 28, M.sub, 4);
+      outlineText(line, VIEW_W / 2, VIEW_H * 0.28 + 40 + i * 28, M.sub, 4);
     });
     ctx.globalAlpha = 1;
   }
@@ -192,7 +192,7 @@ function mapHint(x, y, w, text) {
 function drawMinimap() {
   if (worldMapOn) { drawWorldMap(); return; }
   const C = THEME.map;
-  const s = Math.min(200 / MAP_W, 150 / MAP_H), mw = MAP_W * s, mh = MAP_H * s, mx = W - mw - 16, my = H - mh - 16;
+  const s = Math.min(200 / MAP_W, 150 / MAP_H), mw = MAP_W * s, mh = MAP_H * s, mx = VIEW_W - mw - 16, my = VIEW_H - mh - 16;
   hudButtons.push({ id: 'map', x: mx - 3, y: my - 3, w: mw + 6, h: mh + 6 });
   mapHint(mx - 3, my - 3, mw + 6, txt('hud.mapHintWorld'));
   ctx.fillStyle = C.bg; ctx.fillRect(mx - 3, my - 3, mw + 6, mh + 6);
@@ -201,14 +201,14 @@ function drawMinimap() {
     ctx.fillRect(mx + o.x * s, my + o.y * s, Math.max(1, o.w * s), Math.max(1, o.h * s));
   }
   ctx.fillStyle = C.gate;
-  for (const g of zone.gates) ctx.fillRect(mx + g.tx * T * s, my + g.ty * T * s, Math.max(3, g.tw * T * s), Math.max(3, g.th * T * s));
-  if (zone.respawn) { ctx.fillStyle = C.bonfire; pathCircle(mx + center(zone.respawn.tx) * s, my + center(zone.respawn.ty) * s, 3); ctx.fill(); }
+  for (const g of zone.gates) ctx.fillRect(mx + g.tx * TILE * s, my + g.ty * TILE * s, Math.max(3, g.tw * TILE * s), Math.max(3, g.th * TILE * s));
+  if (zone.respawn) { ctx.fillStyle = C.bonfire; pathCircle(mx + tileCenter(zone.respawn.tx) * s, my + tileCenter(zone.respawn.ty) * s, 3); ctx.fill(); }
   ctx.fillStyle = C.npc;
-  for (const n of zone.npcs || []) { pathCircle(mx + center(n.tx) * s, my + center(n.ty) * s, 3); ctx.fill(); }
+  for (const n of zone.npcs || []) { pathCircle(mx + tileCenter(n.tx) * s, my + tileCenter(n.ty) * s, 3); ctx.fill(); }
   ctx.strokeStyle = C.view; ctx.lineWidth = 1;
-  ctx.strokeRect(mx + cam.x * s, my + cam.y * s, (W / VIEW) * s, (H / VIEW) * s);
+  ctx.strokeRect(mx + camera.x * s, my + camera.y * s, (VIEW_W / VIEW_SCALE) * s, (VIEW_H / VIEW_SCALE) * s);
   ctx.fillStyle = C.spawn;
-  for (const sp of spawns) ctx.fillRect(mx + center(sp.tx) * s - 2, my + center(sp.ty) * s - 2, 4, 4);
+  for (const sp of spawns) ctx.fillRect(mx + tileCenter(sp.tx) * s - 2, my + tileCenter(sp.ty) * s - 2, 4, 4);
   for (const e of factionUnits('enemy')) {
     ctx.fillStyle = e.isBoss ? C.boss : e.state === 'chase' ? C.enemyChase : C.enemy;
     const r = e.isBoss ? 4 : 2.5;
@@ -231,12 +231,12 @@ function drawWorldMap() {
   const pad = 8, labelH = 26, margin = 13;
   // 枠の大きさ: スキル欄の右と、上中央の行動順 (HUD_TOP) の下に収まるように縮める (文字は縮めない)
   const sb = hudButtons.find((b) => b.id === 'items');
-  const availW = W - margin - (sb ? sb.x + sb.w + 12 : 0), availH = H - margin - HUD_TOP - 12;
+  const availW = VIEW_W - margin - (sb ? sb.x + sb.w + 12 : 0), availH = VIEW_H - margin - HUD_TOP - 12;
   const k = clamp(Math.min(1, (availW - (cols - 1) * M.gap - pad * 2) / (cols * M.cellW),
     (availH - rows * labelH - (rows - 1) * M.gap - pad * 2) / (rows * M.cellH)), M.minScale, 1);
   const cellW = M.cellW * k, cellH = M.cellH * k;
   const ww = cols * cellW + (cols - 1) * M.gap + pad * 2, wh = rows * (cellH + labelH) + (rows - 1) * M.gap + pad * 2;
-  const ox = W - ww - margin, oy = H - wh - margin;
+  const ox = VIEW_W - ww - margin, oy = VIEW_H - wh - margin;
   hudButtons.push({ id: 'map', x: ox, y: oy, w: ww, h: wh });
   mapHint(ox, oy, ww, txt('hud.mapHintZone'));
   ctx.fillStyle = C.worldBg; roundRect(ox, oy, ww, wh, 8); ctx.fill();
@@ -249,14 +249,14 @@ function drawWorldMap() {
     const cx = ox + pad + c * (cellW + M.gap), cy = oy + pad + r * (cellH + labelH + M.gap);
     pos[id] = { x: cx + (cellW - z.w * zs) / 2, y: cy + (cellH - z.h * zs) / 2, cx, cy };
   }
-  const gateAt = (id, g) => ({ x: pos[id].x + (g.x + g.w / 2) * zs, y: pos[id].y + (g.y + g.h / 2) * zs });
+  const gatePoint = (id, g) => ({ x: pos[id].x + (g.x + g.w / 2) * zs, y: pos[id].y + (g.y + g.h / 2) * zs });
   // 門どうしのつながり (同じ組を 2 回描かないよう、id の小さいほうからだけ)
   ctx.strokeStyle = C.link; ctx.lineWidth = 2;
   for (const [id, z] of zones) for (const g of z.gates) {
     if (id > g.to || !pos[g.to]) continue;
     const dest = WORLD.zones[g.to].gates.find((t) => t.id === g.toGate);
     if (!dest) continue;
-    const a = gateAt(id, g), b = gateAt(g.to, dest);
+    const a = gatePoint(id, g), b = gatePoint(g.to, dest);
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
   for (const [id, z] of zones) {
@@ -292,7 +292,7 @@ function drawTooltip() {
     hpMpLine(e), stats4Line(st),
     txt('hud.speed', { speed: Math.round(st.speed), ratio: (st.speed / player.stats.speed).toFixed(2) }),
     txt('hud.attacks', { list: e.def.attacks.map((a) => a.name + (a.kind === 'magic' ? txt('hud.attackMagic') : '') + (a.mp ? txt('hud.attackMp', { mp: a.mp }) : '')).join(txt('hud.listSep')) }),
-    txt('hud.drops', { list: (e.def.drops || []).map((m) => IT.materials[m.id].name).join(txt('hud.listSep')) }),
+    txt('hud.drops', { list: (e.def.drops || []).map((m) => ITEMS.materials[m.id].name).join(txt('hud.listSep')) }),
     txt('hud.expCamp', { exp: e.exp, camp: e.camp.name }),
   ], e.color, 100);
 }
@@ -327,9 +327,9 @@ function drawNpcTooltip() {
 // 行動順: これから誰がどの順に動くか (速いキャラほど何度も出てくる)
 function drawTurnOrder() {
   const O = THEME.hud.turnOrder;
-  const list = turnOrder(TN.orderCount);
+  const list = turnOrder(TURN.orderCount);
   const sz = O.size, gap = O.gap, w = list.length * (sz + gap) - gap;
-  const x0 = (W - w) / 2, y = O.top;
+  const x0 = (VIEW_W - w) / 2, y = O.top;
   ctx.fillStyle = O.bg; roundRect(x0 - 60, y - 6, w + 70, sz + 12, 8); ctx.fill();
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = O.label; ctx.font = fontOf(12);
   ctx.fillText(txt('hud.turnOrder'), x0 - 52, y + sz / 2);
@@ -345,7 +345,7 @@ function drawTurnOrder() {
 
 // メッセージ欄 (左下)。古いものほど薄く
 function drawLog() {
-  const x = 20, lh = 19, y0 = H - 22 - (logLines.length - 1) * lh;
+  const x = 20, lh = 19, y0 = VIEW_H - 22 - (logLines.length - 1) * lh;
   ctx.font = fontOf(13, false); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   logLines.forEach((l, i) => {
     ctx.globalAlpha = 0.45 + 0.55 * (i + 1) / logLines.length;

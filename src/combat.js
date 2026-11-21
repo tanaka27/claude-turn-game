@@ -18,7 +18,7 @@ function planAttack(u, atk, ax, ay) {
   };
   const around = (cx, cy, r, fn) => {
     const n = Math.ceil(r);
-    for (let y = cy - n; y <= cy + n; y++) for (let x = cx - n; x <= cx + n; x++) if (dist(cx, cy, x, y) <= r + 1e-6) fn(x, y);
+    for (let y = cy - n; y <= cy + n; y++) for (let x = cx - n; x <= cx + n; x++) if (tileDist(cx, cy, x, y) <= r + 1e-6) fn(x, y);
   };
   if (atk.type === 'melee') {
     if (atk.shape === 'line') {
@@ -43,7 +43,7 @@ function planAttack(u, atk, ax, ay) {
   } else if (atk.type === 'lob') {
     // 射程より遠いマスを狙ったら、同じ向きで射程いっぱいのマスにする
     let tx = ax, ty = ay;
-    const d = dist(u.tx, u.ty, tx, ty);
+    const d = tileDist(u.tx, u.ty, tx, ty);
     if (d > atk.castRange) {
       tx = Math.round(u.tx + (ax - u.tx) / d * atk.castRange);
       ty = Math.round(u.ty + (ay - u.ty) / d * atk.castRange);
@@ -80,16 +80,16 @@ function resolveAttack(h) {
         const t = opponents(h.faction).find((o) => !o.dead && o.tx === x && o.ty === y);
         if (t && strike(t) && !a.pierce) { end = [x, y]; break; }
       }
-      fxBolt(center(u.tx), center(u.ty), center(end[0]), center(end[1]), h.faction);
+      fxBolt(tileCenter(u.tx), tileCenter(u.ty), tileCenter(end[0]), tileCenter(end[1]), h.faction);
     }
   } else {
     for (const t of [...opponents(h.faction)]) if (h.keys.has(tileKey(t.tx, t.ty))) strike(t);
     if (a.type === 'lob') {
-      for (const [cx, cy] of h.centers) fxLobImpact(center(u.tx), center(u.ty), center(cx), center(cy), a.radius, h.faction);
+      for (const [cx, cy] of h.centers) fxLobImpact(tileCenter(u.tx), tileCenter(u.ty), tileCenter(cx), tileCenter(cy), a.radius, h.faction);
       addShake(a.radius > 2 ? 9 : 5);
     } else if (a.shape === 'circle' && a.range >= 2) addShake(5);
   }
-  fxTiles(h.tiles, h.faction, FX.slash.life);
+  fxTiles(h.tiles, h.faction, FX_THEME.slash.life);
 }
 
 // 予告を出す (使った者の次の行動で判定)
@@ -128,9 +128,9 @@ function useSkill(u, sk, tx, ty, plan) {
     u.facing = h.dir;
     if (sk.charge) {
       startCharge(u, h);
-      log(txt('combat.charge', { who: u.name, skill: sk.name }), THEME.msg.charge);
+      logMsg(txt('combat.charge', { who: u.name, skill: sk.name }), THEME.msg.charge);
     } else {
-      if (u === player) log(txt('combat.heroSkill', { skill: sk.name }), THEME.msg.skill); // ほかのキャラはダメージの文に名前が出る
+      if (u === player) logMsg(txt('combat.heroSkill', { skill: sk.name }), THEME.msg.skill); // ほかのキャラはダメージの文に名前が出る
       resolveAttack(h);
     }
   }
@@ -142,7 +142,7 @@ function useSkill(u, sk, tx, ty, plan) {
 function castBuff(u, sk) {
   const b = BUFFS[sk.buff];
   addBuff(u, sk.buff, sk.duration);
-  log(u === player ? txt('combat.buffSelf', { skill: sk.name, buff: b.name, actions: sk.duration })
+  logMsg(u === player ? txt('combat.buffSelf', { skill: sk.name, buff: b.name, actions: sk.duration })
     : txt('combat.buffOther', { who: u.name, skill: sk.name, buff: b.name, actions: sk.duration }), THEME.msg.buff);
   floatText(u.x, u.y - u.r - 30, buffFloatText(b), b.color, THEME.float.buff.size);
   fxBuff(u);
@@ -159,24 +159,24 @@ function dash(u, sk, tx, ty) {
   let moved = 0;
   for (let i = 0; i < sk.distance; i++) {
     if (!canStep(u.tx, u.ty, dx, dy) || !isFree(u.tx + dx, u.ty + dy)) break;
-    fxGhost(center(u.tx), center(u.ty), u.r, u.color);
+    fxGhost(tileCenter(u.tx), tileCenter(u.ty), u.r, u.color);
     moveUnitTo(u, u.tx + dx, u.ty + dy);
     if (hero) pickUpAt(u.tx, u.ty);
     moved++;
-    if (gateAt[idx(u.tx, u.ty)] >= 0) break;
+    if (gateAt[tileIndex(u.tx, u.ty)] >= 0) break;
   }
-  if (!moved) { if (hero) log(txt('combat.noDash'), THEME.msg.refuse); return false; }
+  if (!moved) { if (hero) logMsg(txt('combat.noDash'), THEME.msg.refuse); return false; }
   if (hero) checkGate();
   return true;
 }
 
 // 技 a (kind / power / base / intRate) のダメージ。戻り値 { dmg, crit }
 function rollDamage(src, tgt, a) {
-  const s = src.stats, D = P.damage;
+  const s = src.stats, D = PARAMS.damage;
   const vary = () => 1 + rand(-1, 1) * D.variance;
   if (a.kind === 'magic') {
     // 術: 固定値 + かしこさに比例した分を、術防御で割合で減らす。会心・ミスはない
-    const M = P.magic;
+    const M = PARAMS.magic;
     const base = a.base + s.int * (a.intRate !== undefined ? a.intRate : M.intRate);
     return { dmg: Math.max(1, Math.round(base * M.mdefScale / (M.mdefScale + Math.max(0, tgt.stats.mdef)) * vary())), crit: false };
   }
@@ -212,7 +212,7 @@ function dealDamage(src, tgt, a, what) {
   if (dmg === 0) {
     if (tgt === player) tgt.travel = null;
     if (tgt.state === 'idle') aggro(tgt);
-    log(damageLine(src, tgt, what, 0, false), THEME.msg.miss);
+    logMsg(damageLine(src, tgt, what, 0, false), THEME.msg.miss);
     floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, txt('combat.missFloat'), THEME.float.miss.color, THEME.float.miss.size);
     return true;
   }
@@ -222,7 +222,7 @@ function dealDamage(src, tgt, a, what) {
   if (tgt === player) tgt.travel = null;
   if (tgt.state === 'idle') aggro(tgt);
   const FD = THEME.float.damage;
-  log(damageLine(src, tgt, what, dmg, crit), ours ? THEME.msg.hurt : crit ? THEME.msg.crit : THEME.msg.hit);
+  logMsg(damageLine(src, tgt, what, dmg, crit), ours ? THEME.msg.hurt : crit ? THEME.msg.crit : THEME.msg.hit);
   floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, txt(crit ? 'combat.critFloat' : 'combat.damageFloat', { dmg }),
     ours ? FD.hurt : crit ? FD.crit : FD.hit, crit ? FD.critSize : FD.size);
   fxHit(tgt, ours, crit);
@@ -246,12 +246,12 @@ function kill(u) {
 
 function heroDown(u) {
   // 失うものはその場で決めて保存する (復活前に閉じても取り消せないように)
-  game.deathLoss = { exp: Math.floor(u.exp * PG.deathExpLoss), gold: Math.floor(u.gold * PG.deathGoldLoss) };
+  game.deathLoss = { exp: Math.floor(u.exp * PROGRESSION.deathExpLoss), gold: Math.floor(u.gold * PROGRESSION.deathGoldLoss) };
   u.exp -= game.deathLoss.exp;
   u.gold -= game.deathLoss.gold;
   game.state = 'dying';
   game.dyingT = 1.4;
-  log(txt('combat.heroDown'), THEME.msg.heroDown);
+  logMsg(txt('combat.heroDown'), THEME.msg.heroDown);
   saveGame();
 }
 
@@ -259,14 +259,14 @@ function enemyDefeated(u) {
   game.kills++;
   u.slot.enemy = null;
   u.slot.timer = u.camp.respawn;
-  log(txt('combat.defeated', { who: u.name }), THEME.msg.defeated);
-  const gray = player.level - u.level >= P.enemyLevel.grayDiff;
-  gainExp(Math.max(1, Math.round(u.exp * (gray ? P.enemyLevel.grayExpMult : 1))), u.x, u.y);
+  logMsg(txt('combat.defeated', { who: u.name }), THEME.msg.defeated);
+  const gray = player.level - u.level >= PARAMS.enemyLevel.grayDiff;
+  gainExp(Math.max(1, Math.round(u.exp * (gray ? PARAMS.enemyLevel.grayExpMult : 1))), u.x, u.y);
   dropLoot(u);
   questEvent('kill', u);
   if (u.isBoss) { addShake(14); showMsg(txt('combat.bossDefeated')); }
 }
 
 function allyDown(u) {
-  log(txt('combat.allyDown', { who: u.name }), THEME.msg.allyDown);
+  logMsg(txt('combat.allyDown', { who: u.name }), THEME.msg.allyDown);
 }

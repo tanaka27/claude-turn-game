@@ -31,14 +31,14 @@ const QUEST_GOALS = {
   collect: {
     on: { materials: () => {} },
     progress: (goal) => player.materials[goal.material] || 0,
-    text: (goal) => txt('quests.collectText', { material: IT.materials[goal.material].name, count: goal.count }),
-    short: (goal) => IT.materials[goal.material].name,
+    text: (goal) => txt('quests.collectText', { material: ITEMS.materials[goal.material].name, count: goal.count }),
+    short: (goal) => ITEMS.materials[goal.material].name,
     activeHint: txt('quests.collectHint'),
     claim: (goal) => {
       player.materials[goal.material] -= goal.count;
       if (!player.materials[goal.material]) delete player.materials[goal.material];
     },
-    check: (goal) => [...(IT.materials[goal.material] ? [] : [`素材 '${goal.material}' が data/items.js の materials にない`]), ...countOk(goal)],
+    check: (goal) => [...(ITEMS.materials[goal.material] ? [] : [`素材 '${goal.material}' が data/items.js の materials にない`]), ...countOk(goal)],
   },
   // 話しかける: 受けたあとに NPC (world.js の id) に話しかける
   talk: {
@@ -98,20 +98,20 @@ function rewardText(r) {
   const parts = [];
   if (r.exp) parts.push(txt('quests.rewardExp', { n: r.exp }));
   if (r.gold) parts.push(txt('quests.rewardGold', { n: r.gold }));
-  for (const c of r.consumables || []) parts.push(txt('quests.rewardItem', { name: IT.consumables[c.id].name, n: c.count }));
-  if (r.item) parts.push(txt('quests.rewardGear', { rarity: rarityOf(r.item.rarity).name, slot: IT.slots[r.item.slot].label }));
+  for (const c of r.consumables || []) parts.push(txt('quests.rewardItem', { name: ITEMS.consumables[c.id].name, n: c.count }));
+  if (r.item) parts.push(txt('quests.rewardGear', { rarity: rarityOf(r.item.rarity).name, slot: ITEMS.slots[r.item.slot].label }));
   return parts.join(txt('quests.rewardSep'));
 }
 
 function claimQuest(q) {
   const p = player, r = q.reward;
-  if (r.item && p.inventory.length >= EC.inventorySize) { questNote = txt('quests.bagFull'); return; }
+  if (r.item && p.inventory.length >= ECON.inventorySize) { questNote = txt('quests.bagFull'); return; }
   if (q.repeatable) delete player.quests[q.id];
   else player.quests[q.id].state = 'claimed';
   if (goalKind(q).claim) { goalKind(q).claim(q.goal); questEvent('materials'); }
   p.gold += r.gold || 0;
   // 道具は持てる数 (max) まで。超えた分はもらえない
-  for (const c of r.consumables || []) p.consumables[c.id] = Math.min(IT.consumables[c.id].max, consumableCount(p, c.id) + c.count);
+  for (const c of r.consumables || []) p.consumables[c.id] = Math.min(ITEMS.consumables[c.id].max, consumableCount(p, c.id) + c.count);
   if (r.item) p.inventory.push(makeItem(r.item.slot, p.level, r.item.rarity));
   questNote = txt('quests.claimed', { quest: q.name, reward: rewardText(r) });
   if (r.exp) gainExp(r.exp, p.x, p.y); // レベルアップの表示が最後に出るように

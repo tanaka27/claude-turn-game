@@ -122,7 +122,7 @@ test('集める: 装備の報酬は持ち物がいっぱいなら受け取れず
   press(g, 'Enter');
   assert.strictEqual(questState(g, 't_pelt'), 'claimed');
   assert.strictEqual(pelts(g), 0);
-  assert.strictEqual(g.player.inventory.length, g.EC.inventorySize);
+  assert.strictEqual(g.player.inventory.length, g.ECON.inventorySize);
 });
 
 test('集める: 同じ素材のクエストが 2 つ報告できるとき、1 つ報告して足りなくなったほうは受けているに戻る', () => {

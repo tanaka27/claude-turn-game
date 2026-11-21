@@ -108,13 +108,13 @@ const migrateSave = (raw) => readSave(raw).save || null;
 // 作ったばかりの player にセーブの中身を戻す。戻り値: 始める場所と HP・MP
 function applySave(save) {
   const s = save.player, p = player;
-  p.level = clamp(Math.floor(s.level) || 1, 1, PG.maxLevel);
+  p.level = clamp(Math.floor(s.level) || 1, 1, PROGRESSION.maxLevel);
   p.exp = Math.max(0, s.exp || 0);
   // 成長した値: ない・おかしい・目安から離れすぎているものは、そのレベルの目安にする
   p.base = growthBase(p.level);
   for (const k in p.base) {
     const v = s.base && s.base[k];
-    if (Number.isFinite(v) && Math.abs(v - p.base[k]) < PG.growth[k].spread * PG.growthResetMult) p.base[k] = Math.round(v);
+    if (Number.isFinite(v) && Math.abs(v - p.base[k]) < PROGRESSION.growth[k].spread * PROGRESSION.growthResetMult) p.base[k] = Math.round(v);
   }
   game.kills = save.progress.kills || 0;
   game.time = Math.max(0, save.progress.time || 0);
@@ -125,19 +125,19 @@ function applySave(save) {
   p.gold = Math.max(0, s.gold || 0);
   // 道具: 今はない道具は捨て、持てる数 (max) までにする
   const owned = s.consumables && typeof s.consumables === 'object' ? s.consumables : {};
-  for (const id in IT.consumables) p.consumables[id] = clamp(Math.floor(owned[id]) || 0, 0, IT.consumables[id].max);
+  for (const id in ITEMS.consumables) p.consumables[id] = clamp(Math.floor(owned[id]) || 0, 0, ITEMS.consumables[id].max);
   const home = WORLD.zones[save.home];
   p.home = home && home.safe && home.respawn ? save.home : WORLD.respawnZone;
-  const valid = (it) => it && IT.slots[it.slot] && it.stats && Object.keys(it.stats).every((k) => STATS[k]);
-  p.inventory = (Array.isArray(s.inventory) ? s.inventory : []).filter(valid).slice(0, EC.inventorySize);
-  for (const slot in IT.slots) {
+  const valid = (it) => it && ITEMS.slots[it.slot] && it.stats && Object.keys(it.stats).every((k) => STATS[k]);
+  p.inventory = (Array.isArray(s.inventory) ? s.inventory : []).filter(valid).slice(0, ECON.inventorySize);
+  for (const slot in ITEMS.slots) {
     const it = s.equip && s.equip[slot];
     p.equip[slot] = valid(it) && it.slot === slot ? it : null;
   }
   // 今はない素材は捨てる
   for (const id in s.materials || {}) {
     const n = Math.floor(s.materials[id]);
-    if (IT.materials[id] && n > 0) p.materials[id] = n;
+    if (ITEMS.materials[id] && n > 0) p.materials[id] = n;
   }
   // 覚えたスキル: 今はないスキルは捨て、はじめの覚え方 (レベル) でそのレベルなら覚えているはずのものは足す
   p.knownSkills = [];
@@ -178,7 +178,7 @@ function writeLocalSave(data) {
 async function fetchServerSave() {
   if (location.protocol === 'file:') return { ok: false };
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), P.save.serverTimeout * 1000);
+  const timer = setTimeout(() => ctrl.abort(), PARAMS.save.serverTimeout * 1000);
   let res;
   try {
     res = await fetch(SAVE_API, { cache: 'no-store', signal: ctrl.signal });
@@ -265,7 +265,7 @@ function saveGame(unloading) {
   writeLocalSave(data);
   if (!saveStore.server && saveStore.unreachable && !unloading) retryServer();
   sendServerSave(data, unloading);
-  game.saveT = P.save.interval;
+  game.saveT = PARAMS.save.interval;
 }
 const loadSave = () => saveStore.cached;
 

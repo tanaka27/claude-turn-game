@@ -96,7 +96,7 @@ test('倒れると所持金の 1 割を失い (経験値は失わない)、町�
   assert.ok(!p.dead);
   assert.strictEqual(g.zone.id, 'town');
   const r = g.WORLD.zones.town.respawn;
-  assert.deepStrictEqual([p.tx, p.ty], [Math.floor(r.x / g.T), Math.floor(r.y / g.T)]);
+  assert.deepStrictEqual([p.tx, p.ty], [Math.floor(r.x / g.TILE), Math.floor(r.y / g.TILE)]);
   assert.strictEqual(p.hp, p.stats.maxHp);
   assert.strictEqual(p.mp, p.stats.maxMp);
   assert.ok(g.game.time >= t, '時間は戻らない');
@@ -109,5 +109,5 @@ test('最後に立ち寄った町 (home) で復活する', () => {
   runFrames(g, 3);
   assert.strictEqual(g.zone.id, 'waystation');
   const r = g.WORLD.zones.waystation.respawn;
-  assert.deepStrictEqual([g.player.tx, g.player.ty], [Math.floor(r.x / g.T), Math.floor(r.y / g.T)]);
+  assert.deepStrictEqual([g.player.tx, g.player.ty], [Math.floor(r.x / g.TILE), Math.floor(r.y / g.TILE)]);
 });

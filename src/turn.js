@@ -23,7 +23,7 @@ function endTurn(u) {
 // 主人公が行動したあとに呼ぶ。後始末をして、主人公までの経路を作り直し、次に入力が要るまで進める
 function endPlayerAction() {
   endTurn(player);
-  computeFlow(player.tx, player.ty, flow);
+  computeFlow(player.tx, player.ty, playerFlow);
   runUntilInput();
 }
 
@@ -65,9 +65,9 @@ function advanceTime(t) {
   // どのキャラも HP再生・MP再生で回復する。主人公の陣営は、攻撃を受けずにしばらくたつと休息の分も回復する (敵に休息はない)
   for (const u of units) {
     if (u.dead) continue;
-    const resting = u.faction === 'player' && game.time - u.lastHurt >= PG.restDelay;
-    u.hp = Math.min(u.stats.maxHp, u.hp + (u.stats.hpRegen + (resting ? u.stats.maxHp * PG.restRegenRate : 0)) * dt);
-    u.mp = Math.min(u.stats.maxMp, u.mp + (u.stats.mpRegen + (resting ? u.stats.maxMp * PG.restMpRegenRate : 0)) * dt);
+    const resting = u.faction === 'player' && game.time - u.lastHurt >= PROGRESSION.restDelay;
+    u.hp = Math.min(u.stats.maxHp, u.hp + (u.stats.hpRegen + (resting ? u.stats.maxHp * PROGRESSION.restRegenRate : 0)) * dt);
+    u.mp = Math.min(u.stats.maxMp, u.mp + (u.stats.mpRegen + (resting ? u.stats.maxMp * PROGRESSION.restMpRegenRate : 0)) * dt);
   }
   updateCamps(dt);
   updateLoots(dt);
@@ -75,9 +75,9 @@ function advanceTime(t) {
 
 // これからの行動順 (HUD 用)。主人公の陣営と、画面に入っているか追ってきている敵を、早い順に n 回ぶん並べる
 function turnOrder(n) {
-  const vw = W / VIEW, vh = H / VIEW;
+  const vw = VIEW_W / VIEW_SCALE, vh = VIEW_H / VIEW_SCALE;
   const list = units.filter((e) => e.faction !== 'enemy' || e.state === 'chase' ||
-    (e.x > cam.x && e.x < cam.x + vw && e.y > cam.y && e.y < cam.y + vh));
+    (e.x > camera.x && e.x < camera.x + vw && e.y > camera.y && e.y < camera.y + vh));
   const next = list.map((u) => u.next);
   const out = [];
   for (let k = 0; k < n; k++) {

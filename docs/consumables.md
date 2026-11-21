@@ -42,7 +42,7 @@ potion: { name: '回復薬', rarity: 'common', key: 'r', price: 25, max: 20, sta
 
 ## 使う道（`useConsumable`）
 
-- `useConsumable(u, id, t = u)`: キャラ `u` が道具 `id` を `t` に使う（1 行動）。使えたら true。主人公のキー（`consumableByKey`、`src/player.js`）・道具一覧の「使う」はどれもここを通る（`act` に渡す）
+- `useConsumable(u, id, t = u)`: キャラ `u` が道具 `id` を `t` に使う（1 行動）。使えたら true。主人公のキー（`consumableByKey`、`src/player.js`）・道具一覧の「使う」はどれもここを通る（`doPlayerAction` に渡す）
   1. `u` か `t` が倒れていれば何もしない（false）
   2. `consumableBlock(u, id, t)`: `u` の数（`consumableCount`。主人公だけが `consumables` を持ち、ほかのキャラは 0）が 0 なら「〇〇がない。」、効果のどれも効かなければ最初の効果の文をメッセージ欄に出して false
   3. 数を 1 減らし、効く効果だけを効かせ、頭の上に文（2 つ目からは 18px ずつ上）、メッセージ欄に「〇〇を使った。」と効き目の文（色は最初に効いた効果の色）、演出の順に出す

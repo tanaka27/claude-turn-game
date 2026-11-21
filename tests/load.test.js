@@ -26,8 +26,8 @@ test('はじめから: 始まりの町のかがり火に立ち、HP・MP は満�
   g.startGame(null);
   const p = g.player, r = g.WORLD.zones.town.respawn;
   assert.strictEqual(g.zone.id, 'town');
-  assert.strictEqual(p.tx, Math.floor(r.x / g.T));
-  assert.strictEqual(p.ty, Math.floor(r.y / g.T));
+  assert.strictEqual(p.tx, Math.floor(r.x / g.TILE));
+  assert.strictEqual(p.ty, Math.floor(r.y / g.TILE));
   assert.strictEqual(p.hp, p.stats.maxHp);
   assert.strictEqual(p.mp, p.stats.maxMp);
   assert.strictEqual(p.level, 1);

@@ -14,10 +14,10 @@ function roundStat(k, v) {
   const m = info.pct ? 1000 : Math.pow(10, info.dec);
   return Math.max(1 / m, Math.round(v * m) / m);
 }
-const scaled = ([a, b], lv) => a + b * (lv - 1);
-const rarityOf = (id) => IT.rarities.find((r) => r.id === id) || IT.rarities[0];
-const itemValue = (it) => Math.round(scaled(IT.value, it.level) * rarityOf(it.rarity).value);
-const sellPrice = (it) => Math.max(1, Math.floor(itemValue(it) * EC.sellRate));
+const scaledByLevel = ([a, b], lv) => a + b * (lv - 1);
+const rarityOf = (id) => ITEMS.rarities.find((r) => r.id === id) || ITEMS.rarities[0];
+const itemValue = (it) => Math.round(scaledByLevel(ITEMS.value, it.level) * rarityOf(it.rarity).value);
+const sellPrice = (it) => Math.max(1, Math.floor(itemValue(it) * ECON.sellRate));
 let itemSeq = 0;
 
 function pickWeighted(list, key) {
@@ -29,31 +29,31 @@ function pickWeighted(list, key) {
 
 // 装備を作る。rarity を省略するとレア度の出やすさ (boss なら bossWeight) で決める
 function makeItem(slot, level, rarity, boss) {
-  const S = IT.slots[slot];
-  const R = rarity ? rarityOf(rarity) : pickWeighted(IT.rarities, boss ? 'bossWeight' : 'weight');
+  const S = ITEMS.slots[slot];
+  const R = rarity ? rarityOf(rarity) : pickWeighted(ITEMS.rarities, boss ? 'bossWeight' : 'weight');
   const stats = {};
-  for (const k in S.base) stats[k] = roundStat(k, scaled(S.base[k], level) * R.mult);
-  const pool = Object.keys(IT.affixes).filter((k) => !(k in stats));
+  for (const k in S.base) stats[k] = roundStat(k, scaledByLevel(S.base[k], level) * R.mult);
+  const pool = Object.keys(ITEMS.affixes).filter((k) => !(k in stats));
   for (let i = 0; i < R.affixes + S.extraAffixes && pool.length; i++) {
     const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-    stats[k] = roundStat(k, scaled(IT.affixes[k], level) * rand(0.8, 1.2));
+    stats[k] = roundStat(k, scaledByLevel(ITEMS.affixes[k], level) * rand(0.8, 1.2));
   }
-  const name = S.names[Math.min(S.names.length - 1, Math.floor((level - 1) / IT.nameTierEvery))];
+  const name = S.names[Math.min(S.names.length - 1, Math.floor((level - 1) / ITEMS.nameTierEvery))];
   return { id: `${Date.now().toString(36)}-${itemSeq++}`, slot, name, rarity: R.id, level, stats };
 }
 
-const materialOf = (id) => IT.materials[id];
+const materialOf = (id) => ITEMS.materials[id];
 
 // 敵が倒れたマスに素材と装備を落とす。素材の数は敵レベルで増える (端数は確率で切り上げ)
 function dropLoot(e) {
-  const d = e.def, EL = P.enemyLevel;
+  const d = e.def, EL = PARAMS.enemyLevel;
   for (const m of d.drops || []) {
     if (Math.random() >= m.rate) continue;
     const n = (m.count || 1) * (1 + EL.materialGrowth * (e.level - 1));
     const amount = Math.floor(n) + (Math.random() < n % 1 ? 1 : 0);
     if (amount > 0) spawnLoot(e.tx, e.ty, { kind: 'material', id: m.id, amount });
   }
-  const slots = Object.keys(IT.slots);
+  const slots = Object.keys(ITEMS.slots);
   for (let i = 0; i < (d.itemCount || 1); i++) {
     if (Math.random() >= d.itemRate) continue;
     spawnLoot(e.tx, e.ty, { kind: 'item', item: makeItem(slots[Math.floor(Math.random() * slots.length)], e.level, null, e.isBoss) });
@@ -67,7 +67,7 @@ function spawnLoot(tx, ty, data) {
 // 落とし物は lootLife ターンで消える。dt: 進んだ時間 (ターン)
 function updateLoots(dt) {
   for (const l of loots) l.t += dt;
-  loots = loots.filter((l) => l.t < EC.lootLife);
+  loots = loots.filter((l) => l.t < ECON.lootLife);
 }
 
 // そのマスの落とし物を拾う。持ち物がいっぱいなら装備は拾わない (素材はいつも拾う)
@@ -79,14 +79,14 @@ function pickUpAt(tx, ty) {
       const m = materialOf(l.id), rc = rarityOf(m.rarity).color;
       p.materials[l.id] = (p.materials[l.id] || 0) + l.amount;
       floatText(p.x, p.y - 30, txt('items.pickMaterialFloat', { name: m.name, amount: l.amount }), rc, THEME.float.material.size);
-      log(txt('items.pickMaterial', { name: m.name, amount: l.amount }), rc);
+      logMsg(txt('items.pickMaterial', { name: m.name, amount: l.amount }), rc);
       l.taken = true;
-    } else if (p.inventory.length >= EC.inventorySize) {
-      log(txt('items.bagFull', { name: l.item.name }), THEME.msg.bagFull);
+    } else if (p.inventory.length >= ECON.inventorySize) {
+      logMsg(txt('items.bagFull', { name: l.item.name }), THEME.msg.bagFull);
     } else {
       p.inventory.push(l.item);
       floatText(p.x, p.y - 40, l.item.name, rarityOf(l.item.rarity).color, THEME.float.item.size);
-      log(txt('items.pickItem', { name: l.item.name }), rarityOf(l.item.rarity).color);
+      logMsg(txt('items.pickItem', { name: l.item.name }), rarityOf(l.item.rarity).color);
       l.taken = true;
     }
   }
@@ -152,26 +152,26 @@ const ITEM_EFFECTS = {
 const consumableCount = (u, id) => (u.consumables && u.consumables[id]) || 0;
 // u が道具 id を t (省略時は u 自身) に使えるか。使えるなら null、使えないなら { log: メッセージ欄の文, reason: 道具一覧の理由 }
 function consumableBlock(u, id, t = u) {
-  const c = IT.consumables[id];
+  const c = ITEMS.consumables[id];
   if (!(consumableCount(u, id) > 0)) return { log: txt('items.none', { item: c.name }), reason: txt('items.noneReason') };
   if (c.effects.some((e) => ITEM_EFFECTS[e.kind].can(e, t))) return null;
   const e = c.effects[0], K = ITEM_EFFECTS[e.kind];
   return { log: K.refuse(e, t), reason: K.reason(e, t) };
 }
 // 道具の説明 (効果をつなげたもの)。t があれば今の値も出す
-const consumableDesc = (id, t) => IT.consumables[id].effects.map((e) => ITEM_EFFECTS[e.kind].desc(e, t)).join(txt('items.descSep'));
+const consumableDesc = (id, t) => ITEMS.consumables[id].effects.map((e) => ITEM_EFFECTS[e.kind].desc(e, t)).join(txt('items.descSep'));
 
 // キャラ u が道具 id を t (省略時は u 自身) に使う (1 行動)。どのキャラ・どの相手も、使うのはここだけ。使えたら true
 //   数を 1 減らし、効く効果だけを効かせる。文の頭: 主人公以外が使うと「〇〇は」、ほかの相手に使うと「〇〇に」
 function useConsumable(u, id, t = u) {
-  const c = IT.consumables[id];
+  const c = ITEMS.consumables[id];
   if (u.dead || t.dead) return false;
   const block = consumableBlock(u, id, t);
-  if (block) { log(block.log, THEME.msg.refuse); return false; }
+  if (block) { logMsg(block.log, THEME.msg.refuse); return false; }
   u.consumables[id]--;
   const done = c.effects.filter((e) => ITEM_EFFECTS[e.kind].can(e, t)).map((e) => ITEM_EFFECTS[e.kind].apply(e, t, u));
   done.forEach((r, i) => floatText(t.x, t.y - 30 - i * 18, r.float, r.color, r.size));
-  log(txt('items.used', { user: u === player ? '' : txt('items.usedBy', { who: u.name }), target: t === u ? '' : txt('items.usedOn', { who: t.name }),
+  logMsg(txt('items.used', { user: u === player ? '' : txt('items.usedBy', { who: u.name }), target: t === u ? '' : txt('items.usedOn', { who: t.name }),
     item: c.name, effects: done.map((r) => r.text).join('') }), done[0].color);
   for (const r of done) r.fx(t);
   return true;

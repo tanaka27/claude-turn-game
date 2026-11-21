@@ -43,7 +43,7 @@
 | `outlineText(text, x, y, fill, lineWidth, stroke)` | `src/render.js` | 縁取りした文字（縁を描いてから中を塗る）。縁の色の省略時は `THEME.text.outline`。書体・寄せ方は先に決めておく |
 | `drawTooltipBox(title, titleColor, lines, border, minW)` | `src/hud.js` | マウスを重ねたときの説明の枠。マウスの右下に出し、画面からはみ出さないよう寄せる。敵・NPC・強化のアイコンの説明がこれを使う |
 | `fillTiles(tiles, col, fill, line)` | `src/render.js` | マスの集まりを塗る（予告・スキルの範囲・出現予告・判定の光り） |
-| `roundRect` / `bar` / `pathCircle` | `src/hud.js` / `src/render.js` | 角の丸い四角の道、HUD のバー、円の道 |
+| `roundRect` / `drawBar` / `pathCircle` | `src/hud.js` / `src/render.js` | 角の丸い四角の道、HUD のバー、円の道 |
 
 ## 足し方
 

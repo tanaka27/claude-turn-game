@@ -28,7 +28,7 @@ test('回復薬と上回復薬: 最大 HP の割合だけ回復し、文・色�
     assert.ok(Math.abs(p.hp - Math.min(p.stats.maxHp, 2 + heal + p.stats.hpRegen)) < 1e-9, `${id}: ${p.hp}`);
     assert.ok(messages(g).includes(`${consumableDef(g, id).name}を使った。HP が ${heal} 回復した。`), JSON.stringify(messages(g)));
     assert.strictEqual(g.logLines.find((l) => l.text.startsWith(consumableDef(g, id).name)).color, '#69f0ae');
-    const ft = g.texts.find((x) => x.text === `+${heal}`);
+    const ft = g.floatTexts.find((x) => x.text === `+${heal}`);
     assert.ok(ft && ft.color === '#69f0ae' && ft.size === 18 && ft.y === p.y - 30);
     assert.ok(g.effects.length > fx0, '回復の演出');
   }
@@ -108,7 +108,7 @@ test('効果が 2 つの道具: どれか 1 つでも効けば使え、効くも
   assert.strictEqual(useItem(g, p, 'elixir'), true);
   assert.strictEqual(p.hp, 3 + heal);
   assert.strictEqual(lastMsg(g), `霊薬を使った。HP が ${heal} 回復した。`);
-  assert.strictEqual(g.texts.filter((t) => t.x === p.x).length, 2, '頭の上の文は使ったときに効いたものだけ (強化 1 回目・回復)');
+  assert.strictEqual(g.floatTexts.filter((t) => t.x === p.x).length, 2, '頭の上の文は使ったときに効いたものだけ (強化 1 回目・回復)');
   assert.strictEqual(bagOf(p).elixir, 1);
 });
 
@@ -122,7 +122,7 @@ test('仲間に使う: 仲間が回復し、主人公は回復しない。数は
   assert.strictEqual(p.hp, 4);
   assert.strictEqual(bagOf(p).potion, 2);
   assert.strictEqual(lastMsg(g), `リナに回復薬を使った。リナの HP が ${heal} 回復した。`);
-  assert.ok(g.texts.some((t) => t.text === `+${heal}` && t.x === ally.x));
+  assert.ok(g.floatTexts.some((t) => t.text === `+${heal}` && t.x === ally.x));
   // 仲間が満タンなら、主人公の HP が減っていても使わない
   ally.hp = ally.stats.maxHp;
   assert.strictEqual(useItem(g, p, 'potion', ally), false);

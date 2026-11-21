@@ -6,7 +6,7 @@
 // 道具の数 { 道具のキー: 数 } (data/items.js の consumables の start)
 function startConsumables() {
   const n = {};
-  for (const id in IT.consumables) n[id] = IT.consumables[id].start;
+  for (const id in ITEMS.consumables) n[id] = ITEMS.consumables[id].start;
   return n;
 }
 
@@ -15,14 +15,14 @@ function createPlayer() {
   const skillCd = {};
   for (const s of SKILLS) skillCd[s.id] = 0;
   const equip = {};
-  for (const slot in IT.slots) {
+  for (const slot in ITEMS.slots) {
     const e = d.startEquip[slot];
     equip[slot] = e ? makeItem(slot, e.level, e.rarity) : null;
   }
   const p = {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
     stats: null, base: growthBase(1), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
-    gold: EC.startGold, consumables: startConsumables(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
+    gold: ECON.startGold, consumables: startConsumables(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null, control: 'input',
     // 覚えられる技 (data/skills.js 全部)・覚えている技の id (はじめは下の learnSkillsByLevel で Lv1 のもの)・スキル欄 (キー → スキルの id)
     skills: SKILLS, knownSkills: [], skillSlots: d.skillSlots.map((b) => ({ ...b })), skillRule: 'hero', skillCd, buffs: [], hitFlash: 0, dead: false,
@@ -33,7 +33,7 @@ function createPlayer() {
 
 function createEnemy(type, tx, ty, camp, slot) {
   const d = ENEMIES[type];
-  const g = camp.level - 1, EL = P.enemyLevel;
+  const g = camp.level - 1, EL = PARAMS.enemyLevel;
   // 主人公と同じステータスをレベルで補正し、主人公と同じ式で計算する (gear は装備のかわり)
   const b = { ...d.stats };
   b.maxHp = Math.round(b.maxHp * (1 + EL.hpGrowth * g));
@@ -49,7 +49,7 @@ function createEnemy(type, tx, ty, camp, slot) {
     level: camp.level, exp: Math.round(d.exp * (1 + EL.expGrowth * g)), camp, slot, home: { tx, ty },
     state: 'idle', baseStats: b, gear, buffs: [], stats: null, hp: 0, mp: 0, facing: rand(0, TAU),
     // 技の並び・再使用待ちの決まり・再使用待ち (名札 = 技の並びでの位置。湧いてすぐは 0〜2 回待つ)
-    skills: d.attacks, skillRule: 'enemy', skillCd: Object.fromEntries(d.attacks.map((a, i) => [i, randInt(...AI.firstAttackDelay)])), charging: null,
+    skills: d.attacks, skillRule: 'enemy', skillCd: Object.fromEntries(d.attacks.map((a, i) => [i, randInt(...FIELD_AI.firstAttackDelay)])), charging: null,
     // 基本の技 (MP を使わない技のうち下のもの。なければ -1) と、次に狙う技 (src/ai.js の chooseIntent)
     basic: d.attacks.map((a) => !skillMp(a)).lastIndexOf(true), intent: null, intentT: 0,
     invuln: false, hitFlash: 0, dead: false, returnT: 0, control: 'ai', target: null,
@@ -96,7 +96,7 @@ function createNpc(n) {
 // x, y は描く位置 (px)。マスを移ると、描く位置が少し遅れて追いつく (src/main.js の updateFx)
 function placeUnit(u, tx, ty) {
   u.tx = tx; u.ty = ty;
-  u.x = center(tx); u.y = center(ty);
+  u.x = tileCenter(tx); u.y = tileCenter(ty);
 }
 function moveUnitTo(u, tx, ty) {
   if (tx !== u.tx || ty !== u.ty) u.facing = Math.atan2(ty - u.ty, tx - u.tx);
@@ -111,7 +111,7 @@ function unitAt(tx, ty) {
 const isFree = (tx, ty) => !isBlocked(tx, ty) && !unitAt(tx, ty);
 
 // 行動 1 回にかかる時間 (ターン)
-const actionCost = (u) => TN.baseSpeed / Math.max(TN.minSpeed, u.stats.speed);
+const actionCost = (u) => TURN.baseSpeed / Math.max(TURN.minSpeed, u.stats.speed);
 
 // 陣営 faction から見た敵 (倒れていない units。units の順)
 const opponents = (faction) => units.filter((u) => !u.dead && hostileTo(faction, u.faction));
@@ -168,7 +168,7 @@ function tickCooldowns(u) {
 }
 
 // ----- 成長 -----
-const DS = P.derivedStats;
+const DERIVED_STATS = PARAMS.derivedStats;
 
 // ----- スキルの覚え方 (はじめの決まり): data/player.js の learnAtLevel のレベルになったら自動で覚える -----
 // はじめから遊ぶとき (createPlayer)・レベルアップ (levelUp)・セーブを読んだとき (applySave) に呼ぶ。新しく覚えたスキルの並びを返す
@@ -183,7 +183,7 @@ function learnSkillsByLevel(u) {
 // 成長曲線の目安: Lv1 の値 + gain を直線でつないだ増加量
 function growthTarget(k, lv) {
   let prev = [1, 0];
-  for (const pt of PG.growth[k].gain) {
+  for (const pt of PROGRESSION.growth[k].gain) {
     if (lv <= pt[0]) return PLAYER.stats[k] + prev[1] + (pt[1] - prev[1]) * (lv - prev[0]) / (pt[0] - prev[0]);
     prev = pt;
   }
@@ -192,20 +192,20 @@ function growthTarget(k, lv) {
 // そのレベルの目安どおりの成長した値 (はじめから・前のセーブで使う)
 function growthBase(lv) {
   const base = {};
-  for (const k in PG.growth) base[k] = Math.round(growthTarget(k, lv));
+  for (const k in PROGRESSION.growth) base[k] = Math.round(growthTarget(k, lv));
   return base;
 }
 
 // ステータスを計算する (主人公も敵も同じ): もとのステータス + 装備 (gears の各 stats) → 計算で決まるものを計算
 function deriveStats(base, gears) {
   const st = { ...base };
-  for (const k in DS) st[k] = 0;
+  for (const k in DERIVED_STATS) st[k] = 0;
   for (const gs of gears) if (gs) for (const k in gs) st[k] = (st[k] || 0) + gs[k];
-  for (const k in DS) {
-    const d = DS[k];
+  for (const k in DERIVED_STATS) {
+    const d = DERIVED_STATS[k];
     st[k] += d.start + (st[d.from] - d.base) * d.per;
   }
-  for (const k in DS) if (DS[k].max !== undefined) st[k] = Math.min(DS[k].max, st[k]);
+  for (const k in DERIVED_STATS) if (DERIVED_STATS[k].max !== undefined) st[k] = Math.min(DERIVED_STATS[k].max, st[k]);
   return st;
 }
 // ステータスのもと (どのキャラも同じ形): 強化・装備なしのもとのステータス base と、装備の並び gears (各 stats)
@@ -221,7 +221,7 @@ function computeStats(u) {
   const { bare, equip } = statParts(u);
   const st = applyBuffs({ ...bare }, u.buffs);
   for (const k in equip) st[k] = (st[k] || 0) + equip[k];
-  for (const k in DS) if (DS[k].max !== undefined) st[k] = Math.min(DS[k].max, st[k]);
+  for (const k in DERIVED_STATS) if (DERIVED_STATS[k].max !== undefined) st[k] = Math.min(DERIVED_STATS[k].max, st[k]);
   return st;
 }
 // 装備なしのステータス (bare) と、装備で上がる分 (equip = 装備ありで計算した値 − bare)。
@@ -263,7 +263,7 @@ function tickBuffs(u) {
   u.buffs = u.buffs.filter((b) => {
     if (b.fresh) { b.fresh = false; return true; }
     if (--b.left > 0) return true;
-    log(u === player ? txt('units.buffEndSelf', { buff: BUFFS[b.id].name }) : txt('units.buffEndOther', { who: u.name, buff: BUFFS[b.id].name }), THEME.msg.refuse);
+    logMsg(u === player ? txt('units.buffEndSelf', { buff: BUFFS[b.id].name }) : txt('units.buffEndOther', { who: u.name, buff: BUFFS[b.id].name }), THEME.msg.refuse);
     changed = true;
     return false;
   });
@@ -295,16 +295,16 @@ function refreshStats(u, keep = 'clamp') {
 
 function gainExp(n, x, y) {
   const p = player;
-  if (p.level >= PG.maxLevel) return;
+  if (p.level >= PROGRESSION.maxLevel) return;
   p.exp += n;
   floatText(x, y - 24, txt('units.expFloat', { n }), THEME.float.exp.color, THEME.float.exp.size);
   let up = false;
-  while (p.level < PG.maxLevel && p.exp >= expToNext(p.level)) {
+  while (p.level < PROGRESSION.maxLevel && p.exp >= expToNext(p.level)) {
     p.exp -= expToNext(p.level);
     levelUp();
     up = true;
   }
-  if (p.level >= PG.maxLevel) p.exp = 0;
+  if (p.level >= PROGRESSION.maxLevel) p.exp = 0;
   if (up) saveGame();
 }
 
@@ -313,8 +313,8 @@ function levelUp() {
   p.level++;
   // 成長曲線の目安に近づくように、ばらつきながら上がる
   const gains = [];
-  for (const k in PG.growth) {
-    const n = Math.max(0, Math.round(growthTarget(k, p.level) - p.base[k] + rand(-1, 1) * PG.growth[k].spread));
+  for (const k in PROGRESSION.growth) {
+    const n = Math.max(0, Math.round(growthTarget(k, p.level) - p.base[k] + rand(-1, 1) * PROGRESSION.growth[k].spread));
     p.base[k] += n;
     if (n > 0) gains.push(txt('units.statGain', { stat: STATS[k].label, n }));
   }
@@ -323,7 +323,7 @@ function levelUp() {
   const learned = learnSkillsByLevel(p).map((s) => (slotKeyOf(p, s) ? txt('units.learnedKey', { skill: s.name, key: slotKeyOf(p, s).toUpperCase() }) : s.name));
   showMsg(txt('units.levelUp', { level: p.level }), [gains.join(txt('units.statGainSep')),
     learned.length ? txt('units.learned', { skills: learned.join(txt('units.learnedSep')) }) : ''].filter(Boolean).join('\n'));
-  log(txt('units.levelUpLog', { level: p.level }), THEME.msg.levelUp);
+  logMsg(txt('units.levelUpLog', { level: p.level }), THEME.msg.levelUp);
   fxLevelUp(p);
 }
 

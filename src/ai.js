@@ -14,15 +14,15 @@ function attackReach(a) {
 function aggro(e) {
   e.state = 'chase';
   for (const o of units) {
-    if (o !== e && o.camp === e.camp && o.state === 'idle' && dist(o.tx, o.ty, e.tx, e.ty) <= AI.assistRange) o.state = 'chase';
+    if (o !== e && o.camp === e.camp && o.state === 'idle' && tileDist(o.tx, o.ty, e.tx, e.ty) <= FIELD_AI.assistRange) o.state = 'chase';
   }
 }
 
 // 待機中: 湧いた位置のまわりをときどき 1 マスうろつく
 function wander(e) {
-  if (Math.random() >= AI.wanderChance) return;
-  const opts = NB.filter(([dx, dy]) => canStep(e.tx, e.ty, dx, dy) && !unitAt(e.tx + dx, e.ty + dy) &&
-    dist(e.tx + dx, e.ty + dy, e.home.tx, e.home.ty) <= AI.wanderRadius);
+  if (Math.random() >= FIELD_AI.wanderChance) return;
+  const opts = NEIGHBORS.filter(([dx, dy]) => canStep(e.tx, e.ty, dx, dy) && !unitAt(e.tx + dx, e.ty + dy) &&
+    tileDist(e.tx + dx, e.ty + dy, e.home.tx, e.home.ty) <= FIELD_AI.wanderRadius);
   if (!opts.length) return;
   const [dx, dy] = opts[Math.floor(Math.random() * opts.length)];
   moveUnitTo(e, e.tx + dx, e.ty + dy);
@@ -31,7 +31,7 @@ function wander(e) {
 // score が一番大きくなるとなりのマスへ動く (今のマスより良くなるときだけ)。動いたら true
 function stepBest(e, score) {
   let best = score(e.tx, e.ty), pick = null;
-  for (const [dx, dy] of NB) {
+  for (const [dx, dy] of NEIGHBORS) {
     const nx = e.tx + dx, ny = e.ty + dy;
     if (!canStep(e.tx, e.ty, dx, dy) || unitAt(nx, ny)) continue;
     const v = score(nx, ny);
@@ -41,18 +41,18 @@ function stepBest(e, score) {
   return !!pick;
 }
 
-// 相手 t へ近づく (t までの歩数の場 flowTo。主人公なら flow)。道がふさがっていたら、少しでも近づけるマスへ
+// 相手 t へ近づく (t までの歩数の場 flowTo。主人公なら playerFlow)。道がふさがっていたら、少しでも近づけるマスへ
 function approach(e, t) {
   const s = stepDownhill(e, flowTo(t));
   if (s) { moveUnitTo(e, e.tx + s[0], e.ty + s[1]); return; }
-  stepBest(e, (x, y) => -dist(x, y, t.tx, t.ty));
+  stepBest(e, (x, y) => -tileDist(x, y, t.tx, t.ty));
 }
 
 // 狙う相手を選ぶ: 自分の陣営の敵 (opponents) のうち、視線が通るものを先に、近い順 (同じなら units の順 = 主人公が先)。いなければ null
 function chooseTarget(e) {
   let best = null, bestSee = false, bestD = Infinity;
   for (const o of opponents(e.faction)) {
-    const see = hasLOS(e.tx, e.ty, o.tx, o.ty), d = dist(e.tx, e.ty, o.tx, o.ty);
+    const see = hasLOS(e.tx, e.ty, o.tx, o.ty), d = tileDist(e.tx, e.ty, o.tx, o.ty);
     if (!best || (see && !bestSee) || (see === bestSee && d < bestD)) { best = o; bestSee = see; bestD = d; }
   }
   return best;
@@ -62,22 +62,22 @@ function chooseTarget(e) {
 function enemyAct(e) {
   const t = e.target = chooseTarget(e);
   const alive = !!t;
-  const d = alive ? dist(e.tx, e.ty, t.tx, t.ty) : Infinity;
+  const d = alive ? tileDist(e.tx, e.ty, t.tx, t.ty) : Infinity;
   const canSee = alive && hasLOS(e.tx, e.ty, t.tx, t.ty);
-  const fromHome = dist(e.tx, e.ty, e.home.tx, e.home.ty);
+  const fromHome = tileDist(e.tx, e.ty, e.home.tx, e.home.ty);
   if (e.state === 'idle') {
-    if (alive && !inSafeZone() && d <= AI.aggroRange && canSee) aggro(e);
+    if (alive && !inSafeZone() && d <= FIELD_AI.aggroRange && canSee) aggro(e);
     else { wander(e); return; }
   }
-  if (e.state === 'chase' && (!alive || inSafeZone() || fromHome > AI.leashRange)) {
+  if (e.state === 'chase' && (!alive || inSafeZone() || fromHome > FIELD_AI.leashRange)) {
     e.state = 'return';
     e.invuln = true;
-    e.returnT = AI.returnTimeout; // 引っかかって戻れないときの保険
+    e.returnT = FIELD_AI.returnTimeout; // 引っかかって戻れないときの保険
   }
   // 帰還中: 無敵のまま湧いた位置へ戻り、着いたら全回復
   // 戻る途中で（すぐまた諦めない所まで戻っていて）相手が近くに見えたら戦い直す
-  if (e.state === 'return' && alive && !inSafeZone() && fromHome <= AI.leashRange * AI.reengageLeashRatio &&
-    d <= AI.aggroRange && canSee) {
+  if (e.state === 'return' && alive && !inSafeZone() && fromHome <= FIELD_AI.leashRange * FIELD_AI.reengageLeashRatio &&
+    d <= FIELD_AI.aggroRange && canSee) {
     e.invuln = false;
     aggro(e);
   }
@@ -102,8 +102,8 @@ function enemyAct(e) {
 
   // 遠くから撃つつもりで近すぎるときは、まず下がる (下がれなければその場で撃つ)
   const kd = e.def.keepDistance;
-  if (e.intent.far && canSee && d < kd * AI.retreatRatio &&
-    stepBest(e, (x, y) => dist(x, y, t.tx, t.ty))) return;
+  if (e.intent.far && canSee && d < kd * FIELD_AI.retreatRatio &&
+    stepBest(e, (x, y) => tileDist(x, y, t.tx, t.ty))) return;
   // 狙っている技が使えて、相手が範囲に入っていれば使う
   if (canSee && canUseSkill(e, a) && d <= attackReach(a) + 0.01) {
     const h = planAttack(e, a, t.tx, t.ty);
@@ -121,11 +121,11 @@ function enemyAct(e) {
 
   // 移動: 遠くから撃つつもりなら間合いを取り、そうでなければ近づく
   if (e.intent.far) {
-    if (!canSee || d > kd * AI.approachRatio) approach(e, t);
-  } else if (steps(e.tx, e.ty, t.tx, t.ty) > 1) {
+    if (!canSee || d > kd * FIELD_AI.approachRatio) approach(e, t);
+  } else if (tileSteps(e.tx, e.ty, t.tx, t.ty) > 1) {
     closeIn(e, t);
   }
-  if (steps(e.tx, e.ty, t.tx, t.ty) <= 1) e.facing = Math.atan2(t.ty - e.ty, t.tx - e.tx);
+  if (tileSteps(e.tx, e.ty, t.tx, t.ty) <= 1) e.facing = Math.atan2(t.ty - e.ty, t.tx - e.tx);
 }
 
 // ----- 狙う技の選び方 -----
@@ -154,13 +154,13 @@ function attackSituations(a) {
 function situationContext(e, t) {
   const dx = t.tx - e.tx, dy = t.ty - e.ty;
   const canSee = hasLOS(e.tx, e.ty, t.tx, t.ty);
-  const freeAround = NB.filter(([nx, ny]) => canStep(t.tx, t.ty, nx, ny) && !unitAt(t.tx + nx, t.ty + ny)).length;
-  return { target: t, d: dist(e.tx, e.ty, t.tx, t.ty), canSee, aligned: dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy), freeAround };
+  const freeAround = NEIGHBORS.filter(([nx, ny]) => canStep(t.tx, t.ty, nx, ny) && !unitAt(t.tx + nx, t.ty + ny)).length;
+  return { target: t, d: tileDist(e.tx, e.ty, t.tx, t.ty), canSee, aligned: dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy), freeAround };
 }
 // 技の重み = weight (省略時 1) × 状況ごとの倍率
 function attackWeight(e, a, c) {
   let w = a.weight ?? 1;
-  for (const k of attackSituations(a)) w *= SITUATIONS[k](e, a, c, AI.situations[k]);
+  for (const k of attackSituations(a)) w *= SITUATIONS[k](e, a, c, FIELD_AI.situations[k]);
   return w;
 }
 
@@ -174,7 +174,7 @@ function chooseIntent(e, t) {
   atks.forEach((a, i) => { if (i !== e.basic && canUseSkill(e, a)) opts.push(i); });
   let i = e.basic;
   if (opts.length) {
-    const chance = e.def.skillChance ?? AI.skillChance;
+    const chance = e.def.skillChance ?? FIELD_AI.skillChance;
     const c = situationContext(e, t);
     const w = opts.map((k) => attackWeight(e, atks[k], c));
     const plain = opts.reduce((sum, k) => sum + (atks[k].weight ?? 1), 0);
@@ -186,8 +186,8 @@ function chooseIntent(e, t) {
     }
   }
   if (i < 0) i = 0; // 基本の技がなく、使える技もない: いちばん上の技を待つ
-  e.intent = { i, far: !!e.def.keepDistance && attackReach(atks[i]) > AI.meleeReach };
-  e.intentT = AI.intentTimeout;
+  e.intent = { i, far: !!e.def.keepDistance && attackReach(atks[i]) > FIELD_AI.meleeReach };
+  e.intentT = FIELD_AI.intentTimeout;
 }
 
 // ----- 取り囲む -----
@@ -197,13 +197,13 @@ function chooseIntent(e, t) {
 // 自分のまわり limit 歩以内の最短経路 (ほかのキャラのいるマスは通らない)。
 // 戻り値: Map(マスの番号 → { d: 歩数, first: そこへ行く最初の 1 歩 [x, y] })
 function localPaths(e, limit) {
-  const res = new Map([[idx(e.tx, e.ty), { d: 0, first: null, x: e.tx, y: e.ty }]]);
-  let front = [res.get(idx(e.tx, e.ty))];
+  const res = new Map([[tileIndex(e.tx, e.ty), { d: 0, first: null, x: e.tx, y: e.ty }]]);
+  let front = [res.get(tileIndex(e.tx, e.ty))];
   for (let step = 1; step <= limit && front.length; step++) {
     const next = [];
     for (const n of front) {
-      for (const [dx, dy] of NB) {
-        const x = n.x + dx, y = n.y + dy, k = idx(x, y);
+      for (const [dx, dy] of NEIGHBORS) {
+        const x = n.x + dx, y = n.y + dy, k = tileIndex(x, y);
         if (res.has(k) || !canStep(n.x, n.y, dx, dy) || unitAt(x, y)) continue;
         const m = { d: step, first: n.first || [x, y], x, y };
         res.set(k, m);
@@ -217,21 +217,21 @@ function localPaths(e, limit) {
 // 相手 t のまわりで狙う枠を選ぶ (今の自分からの歩数が一番少ない、ほかのキャラに譲らなくてよい枠)。戻り値 { at: [x, y], first } か null
 function surroundSlot(e, t, paths) {
   let best = null;
-  for (const [dx, dy] of NB) {
+  for (const [dx, dy] of NEIGHBORS) {
     const x = t.tx + dx, y = t.ty + dy;
     if (!canStep(t.tx, t.ty, dx, dy)) continue;
-    const p = paths.get(idx(x, y));
+    const p = paths.get(tileIndex(x, y));
     if (!p) continue;
     const taken = units.some((o) => o !== e && !o.dead && o.surroundAt && o.surroundAt[0] === x && o.surroundAt[1] === y &&
-      dist(o.tx, o.ty, x, y) < dist(e.tx, e.ty, x, y));
+      tileDist(o.tx, o.ty, x, y) < tileDist(e.tx, e.ty, x, y));
     if (!taken && (!best || p.d < best.d)) best = { at: [x, y], first: p.first, d: p.d };
   }
   return best;
 }
 // 相手 t へ近づく。近くまで来ていれば、空いている枠へ回り込む
 function closeIn(e, t) {
-  if (e.def.surround !== false && flowTo(t)[idx(e.tx, e.ty)] <= AI.surroundRange) {
-    const s = surroundSlot(e, t, localPaths(e, AI.surroundRange + 2));
+  if (e.def.surround !== false && flowTo(t)[tileIndex(e.tx, e.ty)] <= FIELD_AI.surroundRange) {
+    const s = surroundSlot(e, t, localPaths(e, FIELD_AI.surroundRange + 2));
     if (s && s.first) {
       e.surroundAt = s.at;
       moveUnitTo(e, s.first[0], s.first[1]);
@@ -253,11 +253,11 @@ function pickCampTile(c) {
   for (let i = 0; i < 20; i++) {
     const a = rand(0, TAU), r = rand(0, c.spreadT);
     const x = Math.round(c.tx + Math.cos(a) * r), y = Math.round(c.ty + Math.sin(a) * r);
-    if (isFree(x, y) && gateAt[idx(x, y)] < 0) return [x, y];
+    if (isFree(x, y) && gateAt[tileIndex(x, y)] < 0) return [x, y];
   }
-  for (let r = 0; r <= 3; r++) for (const [dx, dy] of [[0, 0], ...NB]) {
+  for (let r = 0; r <= 3; r++) for (const [dx, dy] of [[0, 0], ...NEIGHBORS]) {
     const x = c.tx + dx * r, y = c.ty + dy * r;
-    if (isFree(x, y) && gateAt[idx(x, y)] < 0) return [x, y];
+    if (isFree(x, y) && gateAt[tileIndex(x, y)] < 0) return [x, y];
   }
   return null;
 }
@@ -283,10 +283,10 @@ function updateCamps(dt) {
       s.timer -= dt;
       if (s.timer > 1e-9) continue; // 1e-9: 細かく区切って引いたときの小数の誤差
       const at = pickCampTile(c);
-      if (!at || (player && !player.dead && dist(player.tx, player.ty, at[0], at[1]) < F.respawnMinDist)) continue;
+      if (!at || (player && !player.dead && tileDist(player.tx, player.ty, at[0], at[1]) < FIELD.respawnMinDist)) continue;
       s.pending = true;
       const late = before > 1e-9 ? Math.max(0, -s.timer) : 0;
-      spawns.push({ type: s.type, tx: at[0], ty: at[1], t: late, total: F.spawnTelegraph, r: ENEMIES[s.type].radius, camp: c, slot: s });
+      spawns.push({ type: s.type, tx: at[0], ty: at[1], t: late, total: FIELD.spawnTelegraph, r: ENEMIES[s.type].radius, camp: c, slot: s });
     }
   }
   for (const s of spawns) {
@@ -294,7 +294,7 @@ function updateCamps(dt) {
       s.done = true;
       s.slot.pending = false;
       placeEnemy(s.type, s.tx, s.ty, s.camp, s.slot);
-      fxSpawn(center(s.tx), center(s.ty), s.r);
+      fxSpawn(tileCenter(s.tx), tileCenter(s.ty), s.r);
     }
   }
   spawns = spawns.filter((s) => !s.done);
