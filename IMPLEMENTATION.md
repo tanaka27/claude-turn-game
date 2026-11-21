@@ -60,8 +60,8 @@
 | `src/render.js` / `src/hud.js` | ワールドの描画（キャラ `drawUnit`・地形 `TERRAIN_DRAW`・演出 `EFFECT_TYPES` の登録表）と描く道具（`fontOf` / `outlineText`）/ HUD・行動順・メッセージ欄・ミニマップ・ツールチップ（`drawTooltipBox`）。色と大きさは `data/theme.js`（[docs/render.md](docs/render.md)） |
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |
-| `tests/run.js` / `tests/harness.js` / `tests/helpers.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）。詳しくは [docs/testing.md](docs/testing.md) |
-| `tests/*.test.js` | テスト本体（ステータス・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・クエストの目標の種類・セーブ・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・画面に出す文章・自動で戦わせる通し試験） |
+| `tests/run.js` / `tests/harness.js` / `tests/helpers.js` / `tests/scope-scan.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）/ トップレベルの名前とそれを隠すローカルの名前を拾うスキャナ。詳しくは [docs/testing.md](docs/testing.md) |
+| `tests/*.test.js` | テスト本体（ステータス・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・クエストの目標の種類・セーブ・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・画面に出す文章・トップレベルの名前の重なりと隠し・自動で戦わせる通し試験） |
 | `start.bat` | ダブルクリックで `server.py` を起動し、ブラウザでゲームを開く（Windows 用。ポートは中の `PORT`。8766 が使われていると止まって知らせる） |
 | `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする）。詳しくは [docs/save.md](docs/save.md) |
 | `.claude/launch.json` | 確認用ローカルサーバーの設定（`python server.py`） |
@@ -75,7 +75,7 @@
 - または `python server.py` を実行して http://localhost:8766/ を開く（`python server.py --open` ならブラウザも開く）。どちらもセーブがサーバーの `saves/save.json` にも残る
 - `index.html` をブラウザで直接開く、または `python -m http.server` でも遊べる（セーブはブラウザの `localStorage` だけ）
 
-> 注意: `src/*.js` はモジュールではなく、ふつうの `<script>` として順に読み込む。トップレベルの `const` / `let` / `function` は全ファイルで共有され、`window` のプロパティにならないもの（`const` / `let`）は名前で直接参照する。ファイルを読み込んだ時点で動く処理（イベントの登録など）は、それより前のファイルのものしか使えない。起動処理は `src/main.js` の最後にまとめる。トップレベルの名前がファイル間で重なると読み込みエラーになる。
+> 注意: `src/*.js` はモジュールではなく、ふつうの `<script>` として順に読み込む。トップレベルの `const` / `let` / `function` は全ファイルで共有され、`window` のプロパティにならないもの（`const` / `let`）は名前で直接参照する。ファイルを読み込んだ時点で動く処理（イベントの登録など）は、それより前のファイルのものしか使えない。起動処理は `src/main.js` の最後にまとめる。トップレベルの名前がファイル間で重なると読み込みエラーになる。重なりと、ローカルの名前がトップレベルの名前を隠すことは `tests/globals.test.js` が見張る（[docs/testing.md](docs/testing.md) の「トップレベルの名前」）。
 
 ## メインループ（`frame`、`src/main.js`）
 

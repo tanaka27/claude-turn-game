@@ -160,6 +160,7 @@ function loadGame(opts = {}) {
   sandbox.window = sandbox;
   sandbox.globalThis = sandbox;
   const context = vm.createContext(sandbox);
+  const sandboxKeys = Object.keys(sandbox); // ゲームを読み込む前からある名前 (ブラウザの代わり。tests/globals.test.js が使う)
   // vm の中の Math.random を差し替える (ゲームは Math.random を直接呼ぶ)
   vm.runInContext('Math', context).random = rng;
 
@@ -170,7 +171,7 @@ function loadGame(opts = {}) {
   const read = (name) => (getters[name] = getters[name] || vm.runInContext(`(() => ${name})`, context))();
   const write = (name, v) => (setters[name] = setters[name] || vm.runInContext(`((__v) => { ${name} = __v; })`, context))(v);
   const special = {
-    rng, consoleLog, storage, elements, windowListeners, context, server,
+    rng, consoleLog, storage, elements, windowListeners, context, server, sandboxKeys,
     eval: (code) => vm.runInContext(code, context),
     set: write,
   };
