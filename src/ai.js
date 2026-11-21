@@ -294,7 +294,7 @@ function updateCamps(dt) {
       s.done = true;
       s.slot.pending = false;
       placeEnemy(s.type, s.tx, s.ty, s.camp, s.slot);
-      effects.push({ type: 'ring', x: center(s.tx), y: center(s.ty), r0: s.r, r1: s.r * 2.5, t: 0, life: 0.3, color: THEME.spawn });
+      fxSpawn(center(s.tx), center(s.ty), s.r);
     }
   }
   spawns = spawns.filter((s) => !s.done);

@@ -5,7 +5,7 @@ const assert = require('assert');
 const { loadGame } = require('./harness');
 const {
   newGame, arena, addAlly, applyBuff, press, castAt, step, nextToNpc, useSkillBy, enemyAttack, setCooldown,
-  renderFrame, hoverTile, hoverBuffIcon, fakeSpriteLoaded, dropAt, skill, teach,
+  renderFrame, hoverTile, hoverBuffIcon, fakeSpriteLoaded, dropAt, skill, teach, dataProblems,
 } = require('./helpers');
 
 // コンソールにエラーや [データの確認] が出ていない
@@ -60,6 +60,10 @@ test('町 (NPC・話しかける案内・NPC の説明・強化のアイコン�
   renderFrame(g);
   assert.ok(hoverBuffIcon(g), '仲間の欄に強化のアイコンがある');
   renderFrame(g);
+  // NPC に絵を付けても描ける (world.js の NPC の sprite。ここではゾーンに読み込んだ NPC に直接付ける)
+  captain.sprite = 'assets/sprites/npcs/test.png';
+  fakeSpriteLoaded(g, captain.sprite);
+  renderFrame(g);
   press(g, 'm');                         // 世界地図 (テスト用のゾーンは地図の位置がないので、本物のゾーンで)
   assert.ok(g.worldMapOn);
   renderFrame(g);
@@ -98,4 +102,15 @@ test('画面 (道具一覧・キャラクター・一時停止) を開いたま�
   assert.ok(g.game.paused);
   renderFrame(g);
   noProblems(g);
+});
+
+test('データの確認: NPC の絵の形と、キャラの描き方 (UNIT_LOOK) の頭上の表示の名前を見る', () => {
+  const g = newGame();
+  assert.deepStrictEqual(dataProblems(g), []);
+  const npc = g.WORLD.zones.town.npcs[0];
+  npc.sprite = 'assets/sprites/npcs/x.gif';
+  g.UNIT_LOOK.ally.overlays = ['buffs', 'nameplate'];
+  const problems = dataProblems(g);
+  assert.ok(problems.some((m) => m.includes(`NPC '${npc.id}'`) && m.includes('sprite')), problems.join(' / '));
+  assert.ok(problems.some((m) => m.includes('UNIT_LOOK.ally') && m.includes('nameplate')), problems.join(' / '));
 });

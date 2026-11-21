@@ -321,8 +321,7 @@ function levelUp() {
   const learned = learnSkillsByLevel(p).map((s) => (slotKeyOf(p, s) ? `${s.name}（${slotKeyOf(p, s).toUpperCase()}）` : s.name));
   showMsg(`LEVEL UP!  Lv ${p.level}`, [gains.join('　'), learned.length ? `新しいスキル: ${learned.join('、')}` : ''].filter(Boolean).join('\n'));
   log(`レベルが ${p.level} に上がった！`, '#ffd54f');
-  effects.push({ type: 'ring', x: p.x, y: p.y, r0: p.r, r1: p.r * 5, t: 0, life: 0.6, color: '255,213,79' });
-  burst(p.x, p.y, '#ffd54f', 30, 260);
+  fxLevelUp(p);
 }
 
 // 倒れたら最後に立ち寄った町 (player.home) のかがり火に戻る (失うものは倒れたときに減らしている)

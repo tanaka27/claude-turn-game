@@ -27,6 +27,7 @@
 //               商人は shop: data/items.js の ITEMS.shops のキー、鍛冶屋は smith: ITEMS.smiths のキー (町ごとに品ぞろえが違う)
 //               NPC のマスは通れない。となりのマスから話しかける (NPC のマスへ移動しようとしても話しかける)
 //               kind: ステータスの種類 (data/npcs.js の NPC_KINDS のキー)。今は NPC に攻撃は当たらない
+//               sprite: 絵 (省略可。右向きの透明 PNG / WebP。省略するか読み込めないと、color の丸に glyph の字で描く。docs/drawing.md)
 //
 // 【地形の種類 (terrain)】
 //   blocksShots : true なら移動も攻撃も遮る。false なら移動だけを遮る

@@ -80,21 +80,16 @@ function resolveAttack(h) {
         const t = opponents(h.faction).find((o) => !o.dead && o.tx === x && o.ty === y);
         if (t && strike(t) && !a.pierce) { end = [x, y]; break; }
       }
-      effects.push({ type: 'bolt', x0: center(u.tx), y0: center(u.ty), x1: center(end[0]), y1: center(end[1]), t: 0, life: 0.16, faction: h.faction });
+      fxBolt(center(u.tx), center(u.ty), center(end[0]), center(end[1]), h.faction);
     }
   } else {
     for (const t of [...opponents(h.faction)]) if (h.keys.has(tileKey(t.tx, t.ty))) strike(t);
     if (a.type === 'lob') {
-      for (const [cx, cy] of h.centers) {
-        const x = center(cx), y = center(cy), col = FC[h.faction].rgb;
-        effects.push({ type: 'arc', x0: center(u.tx), y0: center(u.ty), x1: x, y1: y, t: 0, life: 0.22, faction: h.faction });
-        effects.push({ type: 'ring', x, y, r0: a.radius * T * 0.3, r1: (a.radius + 0.5) * T, t: 0, life: 0.4, color: col });
-        burst(x, y, FC[h.faction].spark, 20, 260);
-      }
+      for (const [cx, cy] of h.centers) fxLobImpact(center(u.tx), center(u.ty), center(cx), center(cy), a.radius, h.faction);
       addShake(a.radius > 2 ? 9 : 5);
     } else if (a.shape === 'circle' && a.range >= 2) addShake(5);
   }
-  effects.push({ type: 'tiles', tiles: h.tiles, t: 0, life: 0.3, faction: h.faction });
+  fxTiles(h.tiles, h.faction, FX.slash.life);
 }
 
 // 予告を出す (使った者の次の行動で判定)
@@ -149,8 +144,7 @@ function castBuff(u, sk) {
   addBuff(u, sk.buff, sk.duration);
   log(`${u === player ? '' : u.name + 'の'}${sk.name}！ ${b.name}（${sk.duration} 行動）`, '#ffab91');
   floatText(u.x, u.y - u.r - 30, `${STATS[b.stat].label}${b.mult < 1 ? '↓' : '↑'}`, b.color, 17);
-  effects.push({ type: 'ring', x: u.x, y: u.y, r0: u.r, r1: u.r * 3, t: 0, life: 0.45, color: '255,138,101' });
-  burst(u.x, u.y, '#ffab91', 16, 180);
+  fxBuff(u);
 }
 
 // ダッシュ: 狙ったマスの向き (8 方向) へ、ふさがるまで distance マス一気に進む。進めなければ false
@@ -164,7 +158,7 @@ function dash(u, sk, tx, ty) {
   let moved = 0;
   for (let i = 0; i < sk.distance; i++) {
     if (!canStep(u.tx, u.ty, dx, dy) || !isFree(u.tx + dx, u.ty + dy)) break;
-    effects.push({ type: 'ghost', x: center(u.tx), y: center(u.ty), r: u.r, t: 0, life: 0.25, color: u.color });
+    fxGhost(center(u.tx), center(u.ty), u.r, u.color);
     moveUnitTo(u, u.tx + dx, u.ty + dy);
     if (hero) pickUpAt(u.tx, u.ty);
     moved++;
@@ -229,7 +223,7 @@ function dealDamage(src, tgt, a, what) {
   log(damageLine(src, tgt, what, dmg, crit), ours ? '#ff8a80' : crit ? '#ffab40' : '#e6edf3');
   floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, crit ? dmg + '!' : String(dmg),
     ours ? '#ff5252' : crit ? '#ffab40' : '#ffffff', crit ? 24 : 17);
-  burst(tgt.x, tgt.y, ours ? '#ff8a80' : tgt.color, crit ? 10 : 5, 160);
+  fxHit(tgt, ours, crit);
   if (tgt === player) addShake(6);
   if (tgt.hp <= 0) kill(tgt);
   return true;
@@ -242,8 +236,7 @@ function kill(u) {
   u.hp = 0;
   cancelCharge(u);
   if (u !== player) clearBuffs(u); // 強化・弱体は消す (主人公は復活するときに消す。倒れている間はアイコンを残す)
-  burst(u.x, u.y, u.color, u.isBoss ? 60 : 18, u.isBoss ? 380 : 220);
-  effects.push({ type: 'ring', x: u.x, y: u.y, r0: u.r, r1: u.r * 3, t: 0, life: 0.4, color: '255,255,255' });
+  fxDeath(u);
   if (u === player) heroDown(u);
   else if (u.faction === 'enemy') enemyDefeated(u);
   else allyDown(u);

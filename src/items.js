@@ -104,6 +104,6 @@ function usePotion(id) {
   p.potions[id]--;
   floatText(p.x, p.y - 30, `+${heal}`, '#69f0ae', 18);
   log(`${po.name}を使った。HP が ${heal} 回復した。`, '#69f0ae');
-  burst(p.x, p.y, '#69f0ae', 14, 140);
+  fxHeal(p);
   return true;
 }

@@ -16,7 +16,7 @@
 | `data/quests.js` | `QUESTS` | 討伐クエスト（依頼する NPC・倒す敵・数・報酬・前提） |
 | `data/stats.js` | `STATS` | ステータスの表示名・桁数（並び順がキャラクターの画面のつよさの並び順） |
 | `data/buffs.js` | `BUFFS` | 強化・弱体（バフ・デバフ）の種類（表示名・変えるステータスと倍率・アイコンの字と色）。倍率が 1 より小さいものが弱体。どのキャラにもかけられる。今かける手段は `data/skills.js` の `type: 'buff'` の技（自分を強化）だけ（[combat.md](combat.md)） |
-| `data/theme.js` | `THEME` / `UNIT_SPRITE` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、仲間の HP バー、MP のゲージと消費 MP の色）と、canvas に描く色と大きさのまとまり（`font` / `background` / `text` / `bars` / `hud` / `map` / `tooltip` / `buffIcon` / `field` / `unit` / `npc`。中身は [render.md](render.md)）、キャラの絵の大きさ。HTML の画面の見た目は `style.css` |
+| `data/theme.js` | `THEME` / `UNIT_SPRITE` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、仲間の HP バー、MP のゲージと消費 MP の色）と、canvas に描く色と大きさのまとまり（`font` / `background` / `text` / `bars` / `hud` / `map` / `tooltip` / `buffIcon` / `field` / `unit` / `npc` / `fx`。中身は [render.md](render.md)）、キャラの種類ごとの描き方（`UNIT_LOOK`。[drawing.md](drawing.md)）、キャラの絵の大きさ。HTML の画面の見た目は `style.css` |
 | `world.js` | `WORLD` | 世界地図（`worldMap`、ゾーンの `mapPos`）、地形の種類（`terrain`）、ゾーン、門、湧き場所、NPC（位置は px で書き、読み込むときにマスに直す。ステータスの種類は `kind`） |
 
 読み込み順は `params.js` → `data/*.js` → `world.js` → `src/*.js`（`index.html`）。どれも `const` なので `window` のプロパティにはならず、名前で直接参照する。
@@ -27,7 +27,7 @@
 - 装備の名前・性能を変える: `data/items.js` の `slots` / `affixes`
 - 店を足す: 商人は `data/items.js` の `shops` に 1 つ足し、`world.js` の NPC に `role: 'shop', shop: '店のキー'` を書く。鍛冶屋は `smiths` に足し、NPC に `role: 'smith', smith: '鍛冶屋のキー'` を書く。新しい種類の施設（役目）を足すときは [screens.md](screens.md) の「施設の足し方」
 - 入れる建物を足す・話すだけの NPC を足す: [buildings.md](buildings.md)
-- NPC を足す: `world.js` の `npcs` に足し、`kind` に `data/npcs.js` の種類を書く。合う種類がなければ `NPC_KINDS` に 1 つ足す
+- NPC を足す: `world.js` の `npcs` に足し、`kind` に `data/npcs.js` の種類を書く。合う種類がなければ `NPC_KINDS` に 1 つ足す。絵を付けるなら `sprite`（[drawing.md](drawing.md)）
 - クエストを足す: `data/quests.js` に 1 つ足す（`giver` は `world.js` の NPC の `id`。くり返し受けられるものは `repeatable: true`）。`id` はセーブに残るので、あとから変えるときはセーブの版を上げて古い id を直す（[save-versions.md](save-versions.md)）
 - ステータスを足す: `data/stats.js` に 1 行足し、`data/player.js` の `stats` に Lv1 の値を書く。レベルで上げるなら `params.js` の `progression.growth`、ほかのステータスから計算するなら `params.js` の `derivedStats` に書く（このときは `stats` に書かない）。それ以外の効き目は `src/` に書く
 - 強化を足す: `data/buffs.js` に 1 つ足し、`data/skills.js` に `type: 'buff', buff: 'キー', duration: 行動回数` の技を足す
@@ -47,6 +47,7 @@
 - スキルの覚え方 `learnAtLevel` のスキルが `data/skills.js` にあり、レベルが 1〜最大レベルの整数か、Lv1 で覚えるスキルがあるか。スキル欄 `skillSlots` のスキルが `data/skills.js` にあるか、同じスキルを 2 つのキーに置いていないか、キーの重なり、キーが移動・画面のキーと重なっていないか（`data/player.js`）
 - 敵のステータスが主人公と同じものだけそろっているか（計算で決まるものを書いていないか）、`gear` のステータスが `data/stats.js` にあるか、技の `cooldown` が 1 以上か、技の `mp` が 0 以上で Lv1 の `maxMp` 以下か、MP を使わない基本の技があるか、`skillChance` が 0〜1・`keepDistance` と技の `weight` が 0 より大きいか、技の `situations` が `params.js` にあるか、`surround` が true / false か（`data/enemies.js`）。`src/ai.js` の `SITUATIONS` の数値が `params.js` にあるか
 - 技の `kind` が physical か magic か、物理の技に `power`、術に `base` があるか（主人公と敵）
+- NPC の絵 `sprite` が PNG か WebP のパスか（`world.js`。起動時に読み込みを始める）、キャラの描き方 `UNIT_LOOK` にどの種類もあり `overlays` が `UNIT_OVERLAYS`（`src/render.js`）にあるか（`data/theme.js`）
 - 復活地点・門の `spawn`・湧き場所の中心が通れるマスにあるか、NPC のとなりに通れるマスがあるか（`world.js`。ゾーンを 1 つずつ読み込んで調べる）
 - 装備の性能・追加性能のステータスが `data/stats.js` にあるか、商人の回復薬・鍛冶屋の部位とレア度があるか、回復薬のキーが重なっていないか（移動・画面・スキルのキーとも）
 - NPC の種類のステータスが主人公と同じものだけそろっているか、`gear` のステータスが `data/stats.js` にあるか（`data/npcs.js`）

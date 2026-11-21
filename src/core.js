@@ -80,15 +80,55 @@ const $ = (id) => document.getElementById(id);
 
 // ===================================================================
 //  エフェクト (実時間で動く)
+//  演出は下の fx〇〇 で作る (effects に足すのはここだけ)。種類ごとの描き方は src/render.js の EFFECT_TYPES、
+//  意味のある色・大きさ・続く秒数は data/theme.js の THEME.fx
 // ===================================================================
+const FX = THEME.fx;
 function floatText(x, y, text, color, size) {
   texts.push({ x, y, text, color, size, t: 0, life: 0.9, vy: -50 });
 }
+// 種類 type の演出を 1 つ足す (t: 経った秒数。life になったら消える)
+function addEffect(type, props) {
+  const f = { type, t: 0, ...props };
+  effects.push(f);
+  return f;
+}
+// 火花を n 個、ばらばらの向きに飛ばす (速さは sp × minSpeed〜sp)。乱数は 1 個につき 向き・速さ・life・size の順に引く
 function burst(x, y, color, n, sp) {
+  const P = FX.particle;
   for (let i = 0; i < n; i++) {
-    const a = rand(0, TAU), s = rand(sp * 0.3, sp);
-    effects.push({ type: 'particle', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0, life: rand(0.25, 0.55), color, size: rand(2, 4) });
+    const a = rand(0, TAU), s = rand(sp * P.minSpeed, sp);
+    addEffect('particle', { x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(P.life[0], P.life[1]), color, size: rand(P.size[0], P.size[1]) });
   }
+}
+// 形ごとの演出: 広がる輪 (半径 r0 → r1、color は 'r,g,b') / マスが光る / 弾の線 / 投げたものの放物線 / ダッシュの残像
+const fxRing = (x, y, r0, r1, life, color) => addEffect('ring', { x, y, r0, r1, life, color });
+const fxTiles = (tiles, faction, life) => addEffect('tiles', { tiles, life, faction });
+const fxBolt = (x0, y0, x1, y1, faction) => addEffect('bolt', { x0, y0, x1, y1, life: FX.bolt.life, faction });
+const fxArc = (x0, y0, x1, y1, faction) => addEffect('arc', { x0, y0, x1, y1, life: FX.lob.arcLife, faction });
+const fxGhost = (x, y, r, color) => addEffect('ghost', { x, y, r, life: FX.ghost.life, color });
+// 意味ごとの演出 (色と数は THEME.fx)
+// 当たった (ours: 主人公の陣営が受けた。crit: 会心)
+function fxHit(u, ours, crit) { const H = FX.hit; burst(u.x, u.y, ours ? H.ours : u.color, crit ? H.critN : H.n, H.speed); }
+// 倒れた (火花のあと白い輪)
+function fxDeath(u) {
+  const D = FX.death;
+  burst(u.x, u.y, u.color, u.isBoss ? D.bossN : D.n, u.isBoss ? D.bossSpeed : D.speed);
+  fxRing(u.x, u.y, u.r, u.r * D.ringScale, D.life, D.ring);
+}
+// レベルアップ / 自分を強化した (輪のあと火花)
+function fxLevelUp(u) { const L = FX.levelUp; fxRing(u.x, u.y, u.r, u.r * L.ringScale, L.life, L.ring); burst(u.x, u.y, L.spark, L.n, L.speed); }
+function fxBuff(u) { const B = FX.buff; fxRing(u.x, u.y, u.r, u.r * B.ringScale, B.life, B.ring); burst(u.x, u.y, B.spark, B.n, B.speed); }
+// 回復薬
+function fxHeal(u) { burst(u.x, u.y, FX.heal.spark, FX.heal.n, FX.heal.speed); }
+// 敵が湧いた (半径 r の輪が広がる)
+function fxSpawn(x, y, r) { fxRing(x, y, r, r * FX.spawn.ringScale, FX.spawn.life, THEME.spawn); }
+// 投げる技: (x0, y0) から (x, y) へ放物線で飛び、半径 radius (マス) の輪と陣営の色の火花
+function fxLobImpact(x0, y0, x, y, radius, faction) {
+  const L = FX.lob;
+  fxArc(x0, y0, x, y, faction);
+  fxRing(x, y, radius * T * L.ringFrom, (radius + L.ringPad) * T, L.ringLife, FC[faction].rgb);
+  burst(x, y, FC[faction].spark, L.n, L.speed);
 }
 const addShake = (v) => { game.shake = Math.max(game.shake, v); };
 function showMsg(m, sub) { game.msg = m; game.sub = sub || ''; game.msgT = 2.2; }

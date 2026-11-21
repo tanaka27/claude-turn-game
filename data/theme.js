@@ -41,6 +41,7 @@ const THEME = {
     unitBack: '#000a',        // 頭上の HP バーの下地
     enemyHp: '#ef5350',       // 敵の頭上の HP (仲間は allyHp)
     returnHp: '#8b949e',      // 諦めて帰っている敵の頭上の HP
+    unitMinW: 30, unitWPerR: 2.2, unitH: 4, // 頭上の HP バーの幅 (最小 px と、大きさ r の何倍か) と高さ (px)
   },
 
   // ----- HUD (src/hud.js) -----
@@ -107,11 +108,54 @@ const THEME = {
   unit: {
     shadow: 'rgba(0,0,0,0.3)', hitFlash: '#ffffff', edge: 'rgba(0,0,0,0.6)', glyph: 'rgba(0,0,0,0.75)',
     heroEdge: '#e1f5fe', weapon: '#e0f7fa', eyes: '#fff', bossEyes: '#ffeb3b', bossRing: '#ffd54f', charge: '#ff7043',
+    shadowShape: { dy: 0.7, rx: 1, ry: 0.45 }, // 足元の影の楕円 (大きさ r の何倍か。dy: 中心から下へのずれ)
+    footRingPad: 6,                            // 絵のときの足元の輪の、影より大きい分 (px)
   },
   npc: { name: '#ffe082', quest: '#ffd54f', report: '#69f0ae', hint: '#fff', nearEdge: '#fff' }, // quest: 受けられる「!」 / report: 報告できる「?」
+
+  // ----- 演出 (src/core.js の fx〇〇 が作る。描き方は src/render.js の EFFECT_TYPES) -----
+  // life: 続く秒数 / ring: 広がる輪の色 ('r,g,b') / ringScale: 輪の広がり (大きさ r の何倍まで) / spark: 火花の色 / n: 火花の数 / speed: 火花の速さ (px/秒)
+  fx: {
+    particle: { life: [0.25, 0.55], size: [2, 4], minSpeed: 0.3, drag: 0.92 }, // 火花 1 つ (life・size はこの間でばらつく。速さは speed × minSpeed〜speed。drag: 毎フレームの減り方)
+    hit: { ours: '#ff8a80', n: 5, critN: 10, speed: 160 },  // 当たったとき (主人公の陣営が受けたら ours、ほかは受けた側の色。会心は critN 個)
+    death: { ring: '255,255,255', ringScale: 3, life: 0.4, n: 18, bossN: 60, speed: 220, bossSpeed: 380 }, // 倒れたとき (火花の色は倒れた側の色)
+    levelUp: { ring: '255,213,79', ringScale: 5, life: 0.6, spark: '#ffd54f', n: 30, speed: 260 },
+    buff: { ring: '255,138,101', ringScale: 3, life: 0.45, spark: '#ffab91', n: 16, speed: 180 }, // 自分を強化したとき
+    heal: { spark: '#69f0ae', n: 14, speed: 140 },          // 回復薬
+    spawn: { ringScale: 2.5, life: 0.3 },                   // 敵が湧いたとき (色は spawn)
+    lob: { arcLife: 0.22, ringFrom: 0.3, ringPad: 0.5, ringLife: 0.4, n: 20, speed: 260 }, // 投げる技の着弾 (輪は半径 × ringFrom マスから 半径 + ringPad マスまで。色は陣営の faction)
+    bolt: { life: 0.16 },   // 弾の線
+    slash: { life: 0.3 },   // 技の範囲のマスが光る
+    bump: { life: 0.25 },   // 移動でぶつかって殴ったマスが光る
+    ghost: { life: 0.25 },  // ダッシュの残像
+  },
 };
 
-// 主人公と敵の絵の描き方 (絵は data/player.js・data/enemies.js の sprite)
+// キャラの種類ごとの描き方 (src/render.js の drawUnit)。種類 (unitKind): hero 主人公 / enemy 敵 / boss ボス / ally 主人公の陣営のほかのキャラ / npc 町の人
+//   絵 (sprite) のありか: 主人公は data/player.js、敵・ボス・仲間はその種類 (data/enemies.js など)、NPC は world.js の NPC の sprite
+//   footRing : 絵のときの足元の輪 { color ('own' ならキャラの色), width, nearOnly (主人公のとなりにいるときだけ) }。なければ描かない
+//   絵がないときの形の部品 (描く順): weapon (武器の線の色) / ears (耳) / 丸い体 (縁は edge、となりにいるときは nearEdge) / eyes (目の色) / bodyRing (体の輪の色) / glyph (字。glyphPx: 字の大きさ。省略時は r と同じ)
+//   overlays : 体の上に描くもの (描く順。src/render.js の UNIT_OVERLAYS の名前): buffs 強化のアイコン / hpBar 頭上の HP バー / level レベル / charge 構えの「!」 / name 名前 / questMark クエストの「!」「?」 / talkHint 話しかける案内
+//   buffLift : 強化のアイコンを頭 (絵の上端か体の上端) からどれだけ上に出すか (px) / hp, hpReturn: 頭上の HP バーの色 (ふつう / 帰還中)
+//   onTile, r, shadow: 描く位置を持たないキャラ (NPC) はいるマスの中心に、大きさ r (px)、影 { dy, rx, ry } (px) で描く
+//   nameLift / markLift / hintDrop: 名前・クエストの印を頭から上へ / 話しかける案内を中心から下へ (px)
+const ENEMY_OVERLAYS = ['buffs', 'hpBar', 'level', 'charge'];
+const UNIT_LOOK = {
+  hero: { footRing: { color: 'own', width: 2.5 }, weapon: THEME.unit.weapon, edge: THEME.unit.heroEdge, overlays: ['buffs'], buffLift: 4 },
+  enemy: { ears: true, eyes: THEME.unit.eyes, glyph: true, edge: THEME.unit.edge, overlays: ENEMY_OVERLAYS, buffLift: 14, hp: THEME.bars.enemyHp, hpReturn: THEME.bars.returnHp },
+  boss: {
+    footRing: { color: THEME.unit.bossRing, width: 3 }, ears: true, eyes: THEME.unit.bossEyes, bodyRing: THEME.unit.bossRing, glyph: true, edge: THEME.unit.edge,
+    overlays: ENEMY_OVERLAYS, buffLift: 14, hp: THEME.bars.enemyHp, hpReturn: THEME.bars.returnHp,
+  },
+  ally: { ears: true, eyes: THEME.unit.eyes, glyph: true, edge: THEME.unit.edge, overlays: ENEMY_OVERLAYS, buffLift: 14, hp: THEME.allyHp, hpReturn: THEME.allyHp },
+  npc: {
+    onTile: true, r: 15, shadow: { dy: 11, rx: 15, ry: 6 }, footRing: { color: THEME.npc.nearEdge, width: 2.5, nearOnly: true },
+    glyph: true, glyphPx: 16, edge: THEME.unit.edge, nearEdge: THEME.npc.nearEdge,
+    overlays: ['name', 'questMark', 'talkHint'], nameLift: 12, markLift: 33, hintDrop: 32,
+  },
+};
+
+// キャラの絵の描き方 (絵のありかは上の UNIT_LOOK の説明)
 const UNIT_SPRITE = {
   scale: 3.8,     // 絵の高さ (と幅) = radius × これ。足元は影の中心にそろえる
   turnDeadZone: 0.15, // 向きの左右成分 (cos) がこれより小さいときは反転を変えない (上下に動くたびにちらつかないように)

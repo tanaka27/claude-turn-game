@@ -28,8 +28,9 @@
 | [docs/screens.md](docs/screens.md) | 画面の登録表（`SCREENS`。開く・閉じる・キー・ボタンの振り分け）、NPC の役目（`NPC_ROLES`）、施設（宿屋・倉庫・新しい店など）の足し方 | 画面や NPC の役目を足す・キーや閉じ方を変える |
 | [docs/save.md](docs/save.md) | セーブの中身と保存先（ブラウザ・サーバー）、`server.py` の API | 保存する項目を増やす・変える、サーバーを直す |
 | [docs/save-versions.md](docs/save-versions.md) | セーブの形の版と移し替え（`SAVE_MIGRATIONS`）、版の足し方、使えないセーブ（新しい版・壊れたもの）の扱い | 保存する項目を増やす・形を変える。セーブが読めないときの動きを変える |
-| [docs/ui.md](docs/ui.md) | HUD（仲間の欄・行動順・スキル欄・メッセージ欄・地図・ツールチップ）に何を出すか | HUD の表示を変える |
-| [docs/render.md](docs/render.md) | 描画の作り（色と大きさの置き場所 `data/theme.js`・`style.css`、描く道具、ワールドに何をどう描くか）、色・絵・演出・地形の足し方 | 見た目を変える（色・絵・演出・地形・画面の CSS） |
+| [docs/ui.md](docs/ui.md) | HUD（仲間の欄・行動順・スキル欄・メッセージ欄・地図・ツールチップ）とワールド（予告・キャラ・落とし物・門・NPC など）に何を出すか | 画面に出すものを変える |
+| [docs/drawing.md](docs/drawing.md) | キャラ（主人公・敵・ボス・仲間・NPC）の描く手順と種類ごとの描き方 `UNIT_LOOK`、絵のありか（NPC の絵）・アニメーションの入り口、地形 `TERRAIN_DRAW`・演出 `EFFECT_TYPES` の登録表と演出を作る関数 `fx〇〇`、それぞれの足し方 | キャラ・NPC・地形・演出の見た目を変える・足す |
+| [docs/render.md](docs/render.md) | 描画の作り（色と大きさの置き場所 `data/theme.js`・`style.css`、`THEME` のまとまり、描く道具）、色の足し方 | 色・大きさ・書体・画面の CSS を変える |
 | [docs/image-assets.md](docs/image-assets.md) | 画像素材を Codex CLI（`image_gen`）で作る方法、`tools/codex_image.py` の使い方、`assets/` の置き場所 | 画像素材を作る・足す |
 | [docs/testing.md](docs/testing.md) | 自動テスト（`node tests/run.js`）の動かし方、ゲームの読み込み方、乱数の固定、テストの足し方、テストが頼っている内部の名前 | テストを動かす・足す。大きく作りを変える前後 |
 | [docs/history.md](docs/history.md) | 修正履歴（追記専用） | 変更を記録するとき。過去の経緯を調べるとき |
@@ -43,7 +44,7 @@
 | `params.js` | **ゲーム全体のしくみの数値**（ターンと速度、ダメージ計算、主人公のステータスの計算式、成長曲線、敵のレベル補正、お金・持ち物、敵の動き、セーブ） |
 | `data/*.js` | **中身の定義**（主人公（スキルの覚え方・スキル欄の並びを含む）・スキル（`data/skills.js`）・敵・NPC の種類・装備・クエスト・ステータスの表示・強化・弱体（バフ・デバフ）・色）。詳しくは [docs/data.md](docs/data.md) |
 | `world.js` | **マップの配置**（世界地図の並び（`mapPos`）と大きさ、地形の種類、ゾーンごとの大きさ、障害物、門、湧き場所とその敵レベル・再出現ターン数、復活地点、NPC（店の NPC はどの店か）、地面の色。px で書き、読み込むときにマスに直す） |
-| `src/core.js` | 共通（ユーティリティ、画面の大きさ、ゲームの状態 `game`、戦うキャラ全員 `units` と主人公 `player`、陣営（`factionUnits` / `hostileTo`）、演出の追加、メッセージ欄 `log`） |
+| `src/core.js` | 共通（ユーティリティ、画面の大きさ、ゲームの状態 `game`、戦うキャラ全員 `units` と主人公 `player`、陣営（`factionUnits` / `hostileTo`）、演出を作る関数（`fxRing` / `fxHit` など）、メッセージ欄 `log`） |
 | `src/map.js` | マス目（通れるか・攻撃が通るか）、視線、直線のマス、経路探索、ゾーンの読み込みと切り替え、門 |
 | `src/units.js` | 主人公と敵（とテスト用の仲間 `createAlly` / `addUnit`）の生成、マスの上の位置、そのマスのキャラ（`unitAt`）・敵の陣営（`opponents`）、行動 1 回にかかる時間、ステータスの計算（どのキャラも同じ `computeStats` / `refreshStats`）、強化・弱体（`addBuff` / `tickBuffs` / `clearBuffs`）、技の再使用待ちと MP の決まり（`SKILL_RULES` / `cooldownLeft` / `enoughMp` / `canUseSkill`）、覚えているスキルとスキル欄（`knowsSkill` / `teachSkill` / `skillSlotsOf`）、スキルの覚え方（`learnSkillsByLevel`）、経験値・レベル・復活 |
 | `src/combat.js` | 技の範囲（マス）・判定・ダメージ（物理・術）、予告（出す・消す・判定する）、どのキャラも同じ技を使う道（`useSkill`、強化 `castBuff`、ダッシュ `dash`）、倒れたとき（主人公・敵・仲間で分ける） |
@@ -53,7 +54,7 @@
 | `src/ai.js` | 敵の AI（狙う相手の選び方、1 回の行動、狙う技の選び方）、湧き場所 |
 | `src/turn.js` | ターンの進め方（速度による行動順、キャラごとの行動の決め方 `CONTROLLERS`、予告した技を出す・再使用待ちを減らすとき、行動の後始末 `endTurn`、時間を進める、行動順の表示用） |
 | `src/ui.js` / `src/quests.js` | 画面の登録表（`SCREENS` / `registerScreen` / `openScreen` / `closeMenu`・画面のキー `screenKey`）、道具一覧と店とキャラクター・NPC の役目（`NPC_ROLES` / `talkTo`）・会話・一時停止の画面 / クエスト（クエストの画面も登録表に入れる） |
-| `src/render.js` / `src/hud.js` | ワールドの描画と描く道具（`fontOf` / `outlineText`）/ HUD・行動順・メッセージ欄・ミニマップ・ツールチップ（`drawTooltipBox`）。色と大きさは `data/theme.js`（[docs/render.md](docs/render.md)） |
+| `src/render.js` / `src/hud.js` | ワールドの描画（キャラ `drawUnit`・地形 `TERRAIN_DRAW`・演出 `EFFECT_TYPES` の登録表）と描く道具（`fontOf` / `outlineText`）/ HUD・行動順・メッセージ欄・ミニマップ・ツールチップ（`drawTooltipBox`）。色と大きさは `data/theme.js`（[docs/render.md](docs/render.md)） |
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |
 | `tests/run.js` / `tests/harness.js` / `tests/helpers.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）。詳しくは [docs/testing.md](docs/testing.md) |

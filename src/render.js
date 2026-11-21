@@ -64,26 +64,22 @@ function getSprite(src) {
   return s.ready ? s : null;
 }
 
-// 主人公・敵の絵 (data/player.js・data/enemies.js の sprite)
-function unitSprite(u) { return getSprite(u.isPlayer ? PLAYER.sprite : u.def.sprite); }
-
-// 主人公・敵の絵を描き、絵の上端の y を返す (HP バーをその上に出すため)。絵がまだなければ null
-function drawUnitSprite(u) {
-  const s = unitSprite(u);
-  if (!s) return null;
-  // 右向きの絵。向きの左右成分で反転する (真上・真下に近いときは前の向きのまま)
-  const c = Math.cos(u.facing);
-  if (c > UNIT_SPRITE.turnDeadZone) u.spriteFlip = false;
-  else if (c < -UNIT_SPRITE.turnDeadZone) u.spriteFlip = true;
-  const h = u.r * UNIT_SPRITE.scale, w = h * s.img.naturalWidth / s.img.naturalHeight;
-  const foot = u.y + u.r * 0.7;   // 影の中心
-  ctx.save();
-  ctx.translate(u.x, foot);
-  if (u.spriteFlip) ctx.scale(-1, 1);
-  ctx.drawImage(u.hitFlash > 0 ? s.flash : s.img, -w / 2, -h, w, h);
-  ctx.restore();
-  return foot - h;
-}
+// ----- キャラの絵 -----
+// 種類 (unitKind) ごとの絵の指定のありか。主人公は data/player.js、敵・ボス・仲間はその種類 (def)、NPC は world.js の NPC の sprite
+const SPRITE_SOURCE = {
+  hero: () => PLAYER.sprite,
+  enemy: (u) => u.def.sprite,
+  boss: (u) => u.def.sprite,
+  ally: (u) => u.def.sprite,
+  npc: (u) => u.sprite,
+};
+// 絵の指定 (entry) から、いま描く 1 枚の絵のパスを選ぶ。今は指定がそのまま 1 枚の絵のパス (右向きの PNG / WebP)。
+// アニメーションのコマ・向きごとの絵を足すときは、指定を { frames: [...], ... } のようなオブジェクトにして、ここで
+// u (向き u.facing、描く位置が追いついたか、game.rt など) からコマを選んで返す
+// (起動時のデータの確認 src/validate.js の sprite の形の確認も合わせて直す。docs/render.md の「アニメーションを足すとき」)
+function spriteFrameSrc(entry, u) { return typeof entry === 'string' ? entry : null; }
+// キャラ u の読み込み済みの絵 (まだないか、指定がなければ null。そのときは図形で描く)
+function unitSprite(u) { return getSprite(spriteFrameSrc(SPRITE_SOURCE[unitKind(u)](u), u)); }
 
 // マスの集まりを塗る。col: 'r,g,b' / fill・line: 透明度
 function fillTiles(tiles, col, fill, line) {
@@ -114,14 +110,15 @@ function drawHazard(h) {
   outlineText(`あと${n}`, center(best[0]), center(best[1]), THEME.field.hazardCount, 3);
 }
 
-// 地形を描く。色は world.js の terrain[種類].colors
-function drawObstacle(o) {
-  const c = WORLD.terrain[o.kind].colors;
-  if (o.kind === 'wall') {
+// 地形の種類 (world.js の terrain のキー) → 描き方 (o: 障害物 { kind, x, y, w, h } (px)、c: その種類の colors)。
+// 種類を足すときは world.js の terrain に 1 行、ここに 1 つ足す (ここにない種類は柵と同じ描き方になる)
+const TERRAIN_DRAW = {
+  wall(o, c) {
     ctx.fillStyle = c.base; ctx.fillRect(o.x, o.y, o.w, o.h);
     ctx.fillStyle = c.top; ctx.fillRect(o.x, o.y, o.w, Math.min(8, o.h));
     ctx.strokeStyle = c.edge; ctx.lineWidth = 2; ctx.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
-  } else if (o.kind === 'water') {
+  },
+  water(o, c) {
     ctx.fillStyle = c.base; ctx.fillRect(o.x, o.y, o.w, o.h);
     ctx.strokeStyle = c.wave; ctx.lineWidth = 2;
     for (let y = o.y + 16; y < o.y + o.h; y += 22) {
@@ -133,12 +130,14 @@ function drawObstacle(o) {
       ctx.stroke();
     }
     ctx.strokeStyle = c.edge; ctx.strokeRect(o.x, o.y, o.w, o.h);
-  } else if (o.kind === 'tree') {
+  },
+  tree(o, c) {
     const r = Math.min(o.w, o.h) * 0.45;
     ctx.fillStyle = c.dark; roundRect(o.x, o.y, o.w, o.h, r); ctx.fill();
     ctx.fillStyle = c.mid; roundRect(o.x + 6, o.y + 4, o.w - 12, o.h - 14, r * 0.8); ctx.fill();
     ctx.fillStyle = c.light; pathCircle(o.x + o.w * 0.4, o.y + o.h * 0.38, r * 0.45); ctx.fill();
-  } else if (o.kind === 'house') {
+  },
+  house(o, c) {
     ctx.fillStyle = c.wall; ctx.fillRect(o.x, o.y, o.w, o.h);
     ctx.fillStyle = c.roof; ctx.fillRect(o.x, o.y, o.w, o.h * 0.62);
     ctx.strokeStyle = c.roofLine; ctx.lineWidth = 2;
@@ -146,88 +145,165 @@ function drawObstacle(o) {
     ctx.fillStyle = c.door; ctx.fillRect(o.x + o.w / 2 - 12, o.y + o.h - 34, 24, 34);
     ctx.fillStyle = c.window; ctx.fillRect(o.x + 20, o.y + o.h * 0.7, 18, 14); ctx.fillRect(o.x + o.w - 38, o.y + o.h * 0.7, 18, 14);
     ctx.strokeStyle = c.edge; ctx.lineWidth = 2; ctx.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
-  } else if (o.kind === 'table') {
+  },
+  table(o, c) {
     ctx.fillStyle = c.edge; roundRect(o.x + 3, o.y + 5, o.w - 6, o.h - 6, 5); ctx.fill();
     ctx.fillStyle = c.top; roundRect(o.x + 3, o.y + 3, o.w - 6, o.h - 12, 5); ctx.fill();
     ctx.fillStyle = c.shine; ctx.fillRect(o.x + 8, o.y + 7, o.w - 16, 4);
-  } else { // fence
+  },
+  fence(o, c) {
     ctx.fillStyle = c.rail;
     ctx.fillRect(o.x, o.y + o.h * 0.3, o.w, 5); ctx.fillRect(o.x, o.y + o.h * 0.65, o.w, 5);
     ctx.fillStyle = c.post;
     for (let x = o.x; x < o.x + o.w; x += 20) ctx.fillRect(x, o.y, 7, o.h);
-  }
-}
+  },
+};
+function drawObstacle(o) { (TERRAIN_DRAW[o.kind] || TERRAIN_DRAW.fence)(o, WORLD.terrain[o.kind].colors); }
 
-function drawUnit(u) {
-  const C = THEME.unit;
-  ctx.fillStyle = C.shadow;
-  ctx.beginPath(); ctx.ellipse(u.x, u.y + u.r * 0.7, u.r, u.r * 0.45, 0, 0, TAU); ctx.fill();
-  ctx.globalAlpha = u.invuln ? 0.5 : 1;
-  const c = Math.cos(u.facing), s = Math.sin(u.facing);
-  // 絵があれば絵で描く (主人公は足元に水色の輪、ボスは金の輪)。なければ下の図形で描く
-  if ((u.isPlayer || u.isBoss) && unitSprite(u)) {
-    ctx.lineWidth = u.isPlayer ? 2.5 : 3; ctx.strokeStyle = u.isPlayer ? u.color : C.bossRing;
-    ctx.beginPath(); ctx.ellipse(u.x, u.y + u.r * 0.7, u.r + 6, (u.r + 6) * 0.45, 0, 0, TAU); ctx.stroke();
+// ----- キャラ (主人公・敵・ボス・仲間・NPC) -----
+// 描き方の種類 (data/theme.js の UNIT_LOOK のキー)
+const unitKind = (u) => (u.isPlayer ? 'hero' : u.faction === 'npc' ? 'npc' : u.isBoss ? 'boss' : u.faction === 'player' ? 'ally' : 'enemy');
+const glyphOf = (u) => (u.def ? u.def.glyph : u.glyph);
+
+// 足元の影の楕円 (中心の下へのずれ dy と半径 rx, ry)。種類に shadow (px) があればそれ、なければ大きさ r に THEME.unit.shadowShape を掛ける
+function shadowOf(v) {
+  const S = THEME.unit.shadowShape;
+  return v.look.shadow || { dy: v.r * S.dy, rx: v.r * S.rx, ry: v.r * S.ry };
+}
+function drawShadow(v) {
+  const sh = shadowOf(v);
+  ctx.fillStyle = THEME.unit.shadow;
+  ctx.beginPath(); ctx.ellipse(v.x, v.y + sh.dy, sh.rx, sh.ry, 0, 0, TAU); ctx.fill();
+}
+// 絵で描くときの足元の輪 (種類の footRing。color が 'own' ならキャラの色。nearOnly ならとなりにいるときだけ)
+function drawFootRing(v) {
+  const R = v.look.footRing;
+  if (!R || (R.nearOnly && !v.near)) return;
+  const rx = v.r + THEME.unit.footRingPad;
+  ctx.lineWidth = R.width; ctx.strokeStyle = R.color === 'own' ? v.u.color : R.color;
+  ctx.beginPath(); ctx.ellipse(v.x, v.y + shadowOf(v).dy, rx, rx * THEME.unit.shadowShape.ry, 0, 0, TAU); ctx.stroke();
+}
+// 絵を描き、絵の上端の y を返す (頭上のものをその上に出すため)。足元は影の中心にそろえる。
+// 右向きの絵を、向きの左右成分で反転する (真上・真下に近いときは前の向きのまま)。当たった瞬間は同じ形の白
+function drawUnitSprite(v, s) {
+  const u = v.u, c = Math.cos(u.facing);
+  if (c > UNIT_SPRITE.turnDeadZone) u.spriteFlip = false;
+  else if (c < -UNIT_SPRITE.turnDeadZone) u.spriteFlip = true;
+  const h = v.r * UNIT_SPRITE.scale, w = h * s.img.naturalWidth / s.img.naturalHeight;
+  const foot = v.y + shadowOf(v).dy;
+  ctx.save();
+  ctx.translate(v.x, foot);
+  if (u.spriteFlip) ctx.scale(-1, 1);
+  ctx.drawImage(u.hitFlash > 0 ? s.flash : s.img, -w / 2, -h, w, h);
+  ctx.restore();
+  return foot - h;
+}
+// 絵がないときの形: 種類の部品を順に描く (武器の線 weapon → 耳 ears → 丸い体 → 目 eyes → 体の輪 bodyRing → 字 glyph)
+function drawUnitShape(v) {
+  const u = v.u, L = v.look, C = THEME.unit, x = v.x, y = v.y, r = v.r;
+  if (L.weapon) {
+    const c = Math.cos(u.facing), s = Math.sin(u.facing);
+    ctx.strokeStyle = L.weapon; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x + c * r * 0.6, y + s * r * 0.6);
+    ctx.lineTo(x + c * (r + 14), y + s * (r + 14)); ctx.stroke();
   }
-  const spriteTop = drawUnitSprite(u);
-  if (spriteTop !== null) {
-    // 絵で描いた。体・耳・目・字・剣の線は描かない
-  } else if (u.isPlayer) {
-    // 武器
-    ctx.strokeStyle = C.weapon; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(u.x + c * u.r * 0.6, u.y + s * u.r * 0.6);
-    ctx.lineTo(u.x + c * (u.r + 14), u.y + s * (u.r + 14)); ctx.stroke();
-  } else {
-    // モンスターの耳 (向いている側の左右に 2 つの三角)
+  if (L.ears) {
+    // 向いている側の左右に 2 つの三角
     ctx.fillStyle = u.color; ctx.strokeStyle = C.edge; ctx.lineWidth = 2;
     for (const side of [-1, 1]) {
       const a = u.facing + side * 0.75;
-      const bx = u.x + Math.cos(a) * u.r * 0.85, by = u.y + Math.sin(a) * u.r * 0.85;
+      const bx = x + Math.cos(a) * r * 0.85, by = y + Math.sin(a) * r * 0.85;
       ctx.beginPath();
-      ctx.moveTo(bx + Math.cos(a + side * 0.5) * u.r * 0.35, by + Math.sin(a + side * 0.5) * u.r * 0.35);
-      ctx.lineTo(u.x + Math.cos(a) * u.r * 1.4, u.y + Math.sin(a) * u.r * 1.4);
-      ctx.lineTo(bx + Math.cos(a - side * 0.9) * u.r * 0.35, by + Math.sin(a - side * 0.9) * u.r * 0.35);
+      ctx.moveTo(bx + Math.cos(a + side * 0.5) * r * 0.35, by + Math.sin(a + side * 0.5) * r * 0.35);
+      ctx.lineTo(x + Math.cos(a) * r * 1.4, y + Math.sin(a) * r * 1.4);
+      ctx.lineTo(bx + Math.cos(a - side * 0.9) * r * 0.35, by + Math.sin(a - side * 0.9) * r * 0.35);
       ctx.closePath(); ctx.fill(); ctx.stroke();
     }
   }
-  if (spriteTop === null) {
-    // 体
-    pathCircle(u.x, u.y, u.r);
-    ctx.fillStyle = u.hitFlash > 0 ? C.hitFlash : u.color; ctx.fill();
-    ctx.lineWidth = 2.5; ctx.strokeStyle = u.isPlayer ? C.heroEdge : C.edge; ctx.stroke();
-    if (!u.isPlayer) {
-      // 目 (向いている方向に 2 つ)
-      ctx.fillStyle = u.isBoss ? C.bossEyes : C.eyes;
-      for (const side of [-1, 1]) {
-        const a = u.facing + side * 0.45;
-        pathCircle(u.x + Math.cos(a) * u.r * 0.62, u.y + Math.sin(a) * u.r * 0.62, Math.max(2, u.r * 0.14)); ctx.fill();
-      }
-    }
-    if (u.isBoss) { ctx.lineWidth = 3; ctx.strokeStyle = C.bossRing; pathCircle(u.x, u.y, u.r + 4); ctx.stroke(); }
-    if (!u.isPlayer) {
-      ctx.fillStyle = C.glyph;
-      ctx.font = fontOf(Math.round(u.r * 1.0));
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(u.def.glyph, u.x, u.y + 1);
+  pathCircle(x, y, r);
+  ctx.fillStyle = u.hitFlash > 0 ? C.hitFlash : u.color; ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = v.near && L.nearEdge ? L.nearEdge : L.edge; ctx.stroke();
+  if (L.eyes) {
+    // 向いている方向に 2 つ
+    ctx.fillStyle = L.eyes;
+    for (const side of [-1, 1]) {
+      const a = u.facing + side * 0.45;
+      pathCircle(x + Math.cos(a) * r * 0.62, y + Math.sin(a) * r * 0.62, Math.max(2, r * 0.14)); ctx.fill();
     }
   }
-  // 頭上の強化・弱体のアイコン (主人公は頭のすぐ上。敵・仲間は HP バーのさらに上)
-  if (u.buffs && u.buffs.length) drawBuffRow(u, u.x, (spriteTop !== null ? spriteTop : u.y - u.r) - (u.isPlayer ? 4 : 14), THEME.buffIcon.fieldSize);
-  if (!u.isPlayer) {
-    // 頭上の HP バーとレベル (絵のときは絵の上端の上)
-    ctx.textBaseline = 'middle';
-    const w = Math.max(30, u.r * 2.2), y = spriteTop !== null ? spriteTop - 4 : u.y - u.r - 9;
-    const B = THEME.bars;
-    ctx.fillStyle = B.unitBack; ctx.fillRect(u.x - w / 2 - 1, y - 1, w + 2, 6);
-    ctx.fillStyle = u.faction === 'player' ? THEME.allyHp : u.state === 'return' ? B.returnHp : B.enemyHp; ctx.fillRect(u.x - w / 2, y, w * u.hp / u.stats.maxHp, 4);
-    ctx.font = fontOf(11); ctx.textAlign = 'right';
-    outlineText(`Lv${u.level}`, u.x - w / 2 - 3, y + 3, levelColor(u.level), 3);
-    // 技の構え中 (予告を出している) の印
-    if (u.charging) {
-      ctx.textAlign = 'center'; ctx.font = fontOf(18);
-      outlineText('!', u.x + w / 2 + 6, y - 2, C.charge, 4);
-    }
+  if (L.bodyRing) { ctx.lineWidth = 3; ctx.strokeStyle = L.bodyRing; pathCircle(x, y, r + 4); ctx.stroke(); }
+  if (L.glyph) {
+    ctx.fillStyle = C.glyph;
+    ctx.font = fontOf(L.glyphPx || Math.round(r * 1.0));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(glyphOf(u), x, y + 1);
   }
+}
+
+// 頭 (絵の上端か、図形の体の上端) の y
+const headOf = (v) => (v.spriteTop !== null ? v.spriteTop : v.y - v.r);
+// 頭上の HP バーの幅 w と上端 y (絵のときは絵の上端の上、図形のときは体の上)
+function headBar(v) {
+  const B = THEME.bars;
+  return { w: Math.max(B.unitMinW, v.r * B.unitWPerR), y: v.spriteTop !== null ? v.spriteTop - 4 : v.y - v.r - 9 };
+}
+// 頭上などに描くもの (UNIT_LOOK の overlays に書く名前 → 描き方)。v: { u: キャラ, look: 種類の描き方, x, y, r, near, spriteTop }
+const UNIT_OVERLAYS = {
+  // 強化・弱体のアイコン (頭から look.buffLift 上に並べる)
+  buffs(v) {
+    if (v.u.buffs && v.u.buffs.length) drawBuffRow(v.u, v.x, headOf(v) - v.look.buffLift, THEME.buffIcon.fieldSize);
+  },
+  // HP バー (帰還中は look.hpReturn の色)
+  hpBar(v) {
+    const u = v.u, B = THEME.bars, { w, y } = headBar(v);
+    ctx.fillStyle = B.unitBack; ctx.fillRect(v.x - w / 2 - 1, y - 1, w + 2, B.unitH + 2);
+    ctx.fillStyle = u.state === 'return' ? v.look.hpReturn : v.look.hp; ctx.fillRect(v.x - w / 2, y, w * u.hp / u.stats.maxHp, B.unitH);
+  },
+  // HP バーの左にレベル (主人公とのレベル差で色分け)
+  level(v) {
+    const { w, y } = headBar(v);
+    ctx.textBaseline = 'middle'; ctx.font = fontOf(11); ctx.textAlign = 'right';
+    outlineText(`Lv${v.u.level}`, v.x - w / 2 - 3, y + 3, levelColor(v.u.level), 3);
+  },
+  // 技の構え中 (予告を出している) の「!」 (HP バーの右)
+  charge(v) {
+    if (!v.u.charging) return;
+    const { w, y } = headBar(v);
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.font = fontOf(18);
+    outlineText('!', v.x + w / 2 + 6, y - 2, THEME.unit.charge, 4);
+  },
+  // 名前 (頭から look.nameLift 上)
+  name(v) {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(13);
+    outlineText(v.u.name, v.x, headOf(v) - v.look.nameLift, THEME.npc.name, 3);
+  },
+  // 受けられるクエストの「!」・報告できるクエストの「?」 (頭から look.markLift 上で上下に揺れる)
+  questMark(v) {
+    const mark = npcMark(v.u);
+    if (!mark) return;
+    ctx.font = fontOf(24);
+    outlineText(mark, v.x, headOf(v) - v.look.markLift + Math.sin(game.rt * 4) * 3, mark === '?' ? THEME.npc.report : THEME.npc.quest, 4);
+  },
+  // となりにいるときの操作の案内 (中心から look.hintDrop 下)
+  talkHint(v) {
+    if (!v.near) return;
+    ctx.font = fontOf(13);
+    outlineText('F: 話しかける', v.x, v.y + v.look.hintDrop, THEME.npc.hint, 3);
+  },
+};
+
+// キャラを描く: 影 → 体 (絵があれば足元の輪と絵、なければ図形) → 種類の overlays を順に。
+// 種類ごとの違いは data/theme.js の UNIT_LOOK に書く。near: (NPC が) 主人公のとなりにいるか
+function drawUnit(u, near = false) {
+  const look = UNIT_LOOK[unitKind(u)];
+  // NPC (look.onTile) は描く位置 (x, y) を持たないので、いるマスの中心に描く
+  const v = { u, look, near, x: look.onTile ? center(u.tx) : u.x, y: look.onTile ? center(u.ty) : u.y, r: look.r || u.r, spriteTop: null };
+  drawShadow(v);
+  ctx.globalAlpha = u.invuln ? 0.5 : 1;
+  const s = unitSprite(u);
+  if (s) { drawFootRing(v); v.spriteTop = drawUnitSprite(v, s); }
+  else drawUnitShape(v);
+  for (const o of look.overlays) UNIT_OVERLAYS[o](v);
   ctx.globalAlpha = 1;
 }
 
@@ -263,32 +339,59 @@ function drawCursor() {
   }
 }
 
+// 演出の種類 (effects の type) → 描き方 draw(f, k) (k: 0〜1 の進み具合 t / life)。
+//   under: true ならキャラより下に描く / update(f, dt): 毎フレーム動かすもの (src/main.js の updateFx が呼ぶ)
+// 種類を足すときはここに 1 つと、src/core.js に作る関数 (fxRing など) を 1 つ足す
+const EFFECT_TYPES = {
+  // 飛び散る火花 (burst)。だんだん薄く・遅くなる
+  particle: {
+    draw(f, k) {
+      ctx.globalAlpha = 1 - k; ctx.fillStyle = f.color;
+      ctx.fillRect(f.x - f.size / 2, f.y - f.size / 2, f.size, f.size);
+    },
+    update(f, dt) {
+      const drag = THEME.fx.particle.drag;
+      f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= drag; f.vy *= drag;
+    },
+  },
+  // 広がる輪 (color は 'r,g,b')
+  ring: {
+    draw(f, k) {
+      ctx.strokeStyle = `rgba(${f.color},${1 - k})`; ctx.lineWidth = 4 * (1 - k) + 1;
+      pathCircle(f.x, f.y, f.r0 + (f.r1 - f.r0) * k); ctx.stroke();
+    },
+  },
+  // 判定の出たマスが一瞬光る
+  tiles: { draw(f, k) { fillTiles(f.tiles, FC[f.faction].slash, 0.5 * (1 - k)); } },
+  // 弾: 線の上を先端が走る
+  bolt: {
+    draw(f, k) {
+      const col = FC[f.faction].rgb, m = Math.min(1, k * 1.4);
+      const x = f.x0 + (f.x1 - f.x0) * m, y = f.y0 + (f.y1 - f.y0) * m;
+      ctx.strokeStyle = `rgba(${col},${0.6 * (1 - k)})`; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(f.x0, f.y0); ctx.lineTo(x, y); ctx.stroke();
+      ctx.fillStyle = THEME.text.white; pathCircle(x, y, 5); ctx.fill();
+    },
+  },
+  // 投げたもの: 放物線を描いて落ちる
+  arc: {
+    draw(f, k) {
+      const fc = FC[f.faction];
+      const x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k - Math.sin(Math.PI * k) * 90;
+      ctx.fillStyle = fc.orbGlow; pathCircle(x, y, 16); ctx.fill();
+      ctx.fillStyle = fc.orb; pathCircle(x, y, 7); ctx.fill();
+    },
+  },
+  // ダッシュの残像 (キャラより下)
+  ghost: {
+    under: true,
+    draw(f, k) { ctx.globalAlpha = 0.35 * (1 - k); ctx.fillStyle = f.color; pathCircle(f.x, f.y, f.r); ctx.fill(); },
+  },
+};
+const effectUnder = (f) => !!(EFFECT_TYPES[f.type] && EFFECT_TYPES[f.type].under);
 function drawEffect(f) {
-  const k = f.t / f.life;
-  if (f.type === 'particle') {
-    ctx.globalAlpha = 1 - k; ctx.fillStyle = f.color;
-    ctx.fillRect(f.x - f.size / 2, f.y - f.size / 2, f.size, f.size);
-  } else if (f.type === 'ring') {
-    ctx.strokeStyle = `rgba(${f.color},${1 - k})`; ctx.lineWidth = 4 * (1 - k) + 1;
-    pathCircle(f.x, f.y, f.r0 + (f.r1 - f.r0) * k); ctx.stroke();
-  } else if (f.type === 'tiles') {
-    fillTiles(f.tiles, FC[f.faction].slash, 0.5 * (1 - k));
-  } else if (f.type === 'bolt') {
-    // 弾: 線の上を先端が走る
-    const col = FC[f.faction].rgb, m = Math.min(1, k * 1.4);
-    const x = f.x0 + (f.x1 - f.x0) * m, y = f.y0 + (f.y1 - f.y0) * m;
-    ctx.strokeStyle = `rgba(${col},${0.6 * (1 - k)})`; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(f.x0, f.y0); ctx.lineTo(x, y); ctx.stroke();
-    ctx.fillStyle = THEME.text.white; pathCircle(x, y, 5); ctx.fill();
-  } else if (f.type === 'arc') {
-    // 投げたもの: 放物線を描いて落ちる
-    const fc = FC[f.faction];
-    const x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k - Math.sin(Math.PI * k) * 90;
-    ctx.fillStyle = fc.orbGlow; pathCircle(x, y, 16); ctx.fill();
-    ctx.fillStyle = fc.orb; pathCircle(x, y, 7); ctx.fill();
-  } else if (f.type === 'ghost') {
-    ctx.globalAlpha = 0.35 * (1 - k); ctx.fillStyle = f.color; pathCircle(f.x, f.y, f.r); ctx.fill();
-  }
+  const d = EFFECT_TYPES[f.type];
+  if (d) d.draw(f, f.t / f.life);
   ctx.globalAlpha = 1;
 }
 
@@ -365,28 +468,6 @@ function drawLoot(l) {
   ctx.globalAlpha = 1;
 }
 
-// NPC: 体と名前。となりのマスにいると操作の案内を出す
-function drawNpc(n, near) {
-  const x = center(n.tx), y = center(n.ty), C = THEME.npc;
-  ctx.fillStyle = THEME.unit.shadow;
-  ctx.beginPath(); ctx.ellipse(x, y + 11, 15, 6, 0, 0, TAU); ctx.fill();
-  pathCircle(x, y, 15); ctx.fillStyle = n.color; ctx.fill();
-  ctx.lineWidth = 2.5; ctx.strokeStyle = near ? C.nearEdge : THEME.unit.edge; ctx.stroke();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = THEME.unit.glyph; ctx.font = fontOf(16); ctx.fillText(n.glyph, x, y + 1);
-  ctx.font = fontOf(13);
-  outlineText(n.name, x, y - 27, C.name, 3);
-  const mark = npcMark(n);
-  if (mark) {
-    ctx.font = fontOf(24);
-    outlineText(mark, x, y - 48 + Math.sin(game.rt * 4) * 3, mark === '?' ? C.report : C.quest, 4);
-  }
-  if (near) {
-    ctx.font = fontOf(13);
-    outlineText('F: 話しかける', x, y + 32, C.hint, 3);
-  }
-}
-
 function drawWorld() {
   ctx.fillStyle = zone.theme.ground; ctx.fillRect(0, 0, MAP_W, MAP_H);
   ctx.fillStyle = zone.theme.tile;
@@ -408,11 +489,11 @@ function drawWorld() {
   for (const g of zone.gates) drawGateLabel(g);
   for (const l of loots) drawLoot(l);
   const near = nearNpc();
-  for (const n of zone.npcs || []) drawNpc(n, n === near);
-  for (const e of effects) if (e.type === 'ghost') drawEffect(e);
+  for (const n of zone.npcs || []) drawUnit(n, n === near);
+  for (const e of effects) if (effectUnder(e)) drawEffect(e);
   for (const u of units) if (u !== player) drawUnit(u);
   if (player && !player.dead) drawUnit(player);
-  for (const e of effects) if (e.type !== 'ghost') drawEffect(e);
+  for (const e of effects) if (!effectUnder(e)) drawEffect(e);
   drawAimPreview();
   drawCursor();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

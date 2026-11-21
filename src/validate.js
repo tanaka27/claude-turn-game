@@ -44,6 +44,9 @@ function validateData() {
       check(role, `world.js ${zid} の NPC '${n.id}': 役目 role '${n.role}' が NPC_ROLES (src/ui.js) にない`);
       check(!role || SCREENS[role.screen], `world.js ${zid} の NPC '${n.id}': 役目 '${n.role}' の画面 '${role && role.screen}' が SCREENS にない`);
       for (const msg of (role && role.check ? role.check(n) : [])) check(false, `world.js ${zid} の NPC '${n.id}': ${msg}`);
+      // 絵 (省略可。省略するか読み込めないと丸と字で描く)。起動時に読み込みを始める
+      check(n.sprite === undefined || (typeof n.sprite === 'string' && /\.(png|webp)$/i.test(n.sprite)), `world.js ${zid} の NPC '${n.id}': sprite は PNG か WebP のパスにする`);
+      if (n.sprite) getSprite(n.sprite);
     }
   }
   check(WORLD.zones[WORLD.start] && WORLD.zones[WORLD.start].respawn, `world.js: start のゾーン '${WORLD.start}' に respawn がない`);
@@ -130,6 +133,9 @@ function validateData() {
   if (PLAYER.sprite) getSprite(PLAYER.sprite);
   check(PLAYER.face === undefined || (typeof PLAYER.face === 'string' && /\.(png|webp)$/i.test(PLAYER.face)), 'data/player.js: face は PNG か WebP のパスにする');
   if (PLAYER.face) getSprite(PLAYER.face);
+  // キャラの描き方 (data/theme.js の UNIT_LOOK): どの種類もあり、overlays が src/render.js の UNIT_OVERLAYS にあるか
+  for (const kind of ['hero', 'enemy', 'boss', 'ally', 'npc']) check(UNIT_LOOK[kind], `data/theme.js: UNIT_LOOK に ${kind} がない`);
+  for (const [kind, look] of Object.entries(UNIT_LOOK)) for (const o of look.overlays || []) check(UNIT_OVERLAYS[o], `data/theme.js UNIT_LOOK.${kind}: overlays の '${o}' が UNIT_OVERLAYS (src/render.js) にない`);
   for (const [type, d] of Object.entries(ENEMIES)) {
     // 敵も主人公と同じステータスを持つ (計算で決まるものは書かない)
     for (const k in PLAYER.stats) check(Number.isFinite(d.stats[k]) && d.stats[k] >= 0, `data/enemies.js ${type}: stats に ${k} がない`);

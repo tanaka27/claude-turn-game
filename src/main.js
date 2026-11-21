@@ -83,7 +83,8 @@ function updateFx(dt) {
   }
   for (const f of effects) {
     f.t += dt;
-    if (f.type === 'particle') { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.92; f.vy *= 0.92; }
+    const d = EFFECT_TYPES[f.type]; // 動く演出 (火花など) は種類の update で動かす (src/render.js)
+    if (d && d.update) d.update(f, dt);
   }
   effects = effects.filter((f) => f.t < f.life);
   for (const t of texts) { t.t += dt; t.y += t.vy * dt; t.vy *= 0.94; }

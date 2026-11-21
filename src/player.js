@@ -118,7 +118,7 @@ function tryMove(dx, dy) {
 function bumpAttack(e) {
   const p = player;
   p.facing = Math.atan2(e.ty - p.ty, e.tx - p.tx);
-  effects.push({ type: 'tiles', tiles: [[e.tx, e.ty]], t: 0, life: 0.25, faction: 'player' });
+  fxTiles([[e.tx, e.ty]], 'player', FX.bump.life);
   dealDamage(p, e, BASIC, BASIC.name);
 }
 
