@@ -107,7 +107,7 @@ function drawHazard(h) {
   if (!best) return;
   for (const t of h.tiles) if (dist(t[0], t[1], player.tx, player.ty) < dist(best[0], best[1], player.tx, player.ty)) best = t;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(13);
-  outlineText(`あと${n}`, center(best[0]), center(best[1]), THEME.field.hazardCount, 3);
+  outlineText(txt('world.hazardLeft', { n }), center(best[0]), center(best[1]), THEME.field.hazardCount, 3);
 }
 
 // 地形の種類 (world.js の terrain のキー) → 描き方 (o: 障害物 { kind, x, y, w, h } (px)、c: その種類の colors)。
@@ -263,32 +263,32 @@ const UNIT_OVERLAYS = {
   level(v) {
     const { w, y } = headBar(v);
     ctx.textBaseline = 'middle'; ctx.font = fontOf(11); ctx.textAlign = 'right';
-    outlineText(`Lv${v.u.level}`, v.x - w / 2 - 3, y + 3, levelColor(v.u.level), 3);
+    outlineText(txt('world.unitLevel', { level: v.u.level }), v.x - w / 2 - 3, y + 3, levelColor(v.u.level), 3);
   },
   // 技の構え中 (予告を出している) の「!」 (HP バーの右)
   charge(v) {
     if (!v.u.charging) return;
     const { w, y } = headBar(v);
     ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.font = fontOf(18);
-    outlineText('!', v.x + w / 2 + 6, y - 2, THEME.unit.charge, 4);
+    outlineText(txt('world.chargeMark'), v.x + w / 2 + 6, y - 2, THEME.unit.charge, 4);
   },
   // 名前 (頭から look.nameLift 上)
   name(v) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(13);
     outlineText(v.u.name, v.x, headOf(v) - v.look.nameLift, THEME.npc.name, 3);
   },
-  // 受けられるクエストの「!」・報告できるクエストの「?」 (頭から look.markLift 上で上下に揺れる)
+  // 受けられるクエストの「!」・報告できるクエストの「?」 (頭から look.markLift 上で上下に揺れる。npcMark の '!' / '?' で分け、書く字は data/text.js)
   questMark(v) {
     const mark = npcMark(v.u);
     if (!mark) return;
     ctx.font = fontOf(24);
-    outlineText(mark, v.x, headOf(v) - v.look.markLift + Math.sin(game.rt * 4) * 3, mark === '?' ? THEME.npc.report : THEME.npc.quest, 4);
+    outlineText(txt(mark === '?' ? 'world.reportMark' : 'world.questMark'), v.x, headOf(v) - v.look.markLift + Math.sin(game.rt * 4) * 3, mark === '?' ? THEME.npc.report : THEME.npc.quest, 4);
   },
   // となりにいるときの操作の案内 (中心から look.hintDrop 下)
   talkHint(v) {
     if (!v.near) return;
     ctx.font = fontOf(13);
-    outlineText('F: 話しかける', v.x, v.y + v.look.hintDrop, THEME.npc.hint, 3);
+    outlineText(txt('world.talkHint'), v.x, v.y + v.look.hintDrop, THEME.npc.hint, 3);
   },
 };
 
@@ -437,7 +437,7 @@ function drawGateLabel(g) {
   }
   const lx = ((g.tx + g.tw / 2) * T + center(g.sx)) / 2, ly = ((g.ty + g.th / 2) * T + center(g.sy)) / 2;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(14);
-  outlineText(`→ ${dest.name}（${zoneLevelText(dest)}）`, lx, ly, THEME.field.gateLabel, 4);
+  outlineText(txt('world.gateLabel', { zone: dest.name, level: zoneLevelText(dest) }), lx, ly, THEME.field.gateLabel, 4);
 }
 
 function drawLoot(l) {

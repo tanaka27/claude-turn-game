@@ -273,24 +273,23 @@ const loadSave = () => saveStore.cached;
 function saveProblemText() {
   const ps = saveStore.problems;
   if (!ps.length) return '';
-  const where = (q) => (q.where === 'server' ? 'サーバー（saves/save.json）' : 'ブラウザ');
+  const where = (q) => (q.where === 'server' ? txt('save.whereServer') : txt('save.whereLocal'));
   const newer = ps.find((q) => q.problem === 'newer');
   if (newer) {
-    return `${where(newer)}のセーブデータは新しい版のゲームで保存されたもの（形 v${newer.v}。この版は v${SAVE_VERSION} まで）なので、この版では読めません。続きは新しい版のゲームで遊んでください。` +
-      '「はじめから」を選ぶとセーブデータが上書きされます（上書きする前の控えは残します）。';
+    return txt('save.newer', { where: where(newer), v: newer.v, max: SAVE_VERSION });
   }
-  const names = ps.map(where).join('と');
-  if (saveStore.cached) return `${names}のセーブデータは壊れているか古すぎて読めなかったので、もう一方のセーブを使います（控えを残して上書きします）。`;
-  return `${names}にセーブデータがありますが、壊れているか古すぎて読めませんでした。「はじめから」を選ぶと上書きされます（上書きする前の控えは残します）。`;
+  const names = ps.map(where).join(txt('save.whereSep'));
+  if (saveStore.cached) return txt('save.brokenOther', { where: names });
+  return txt('save.broken', { where: names });
 }
 
 // 一時停止画面・タイトルに出す、保存先の説明
 function saveWhereText() {
   if (!saveStore.server && saveStore.problems.some((q) => q.where === 'server' && q.problem === 'newer')) {
-    return 'サーバーに新しい版のゲームのセーブがあるため、サーバーには保存していません。ブラウザには保存しています。';
+    return txt('save.serverNewer');
   }
-  if (!saveStore.server && saveStore.unreachable) return 'サーバーから返事がありません。ブラウザには保存しています（次の保存でもう一度サーバーを試します）。';
-  if (!saveStore.server) return '進行はブラウザ（localStorage）に自動で保存されています。サーバーにも保存するには python server.py で起動してください。';
-  if (saveStore.error) return `サーバーに保存できませんでした（${saveStore.error}）。ブラウザには保存しています。`;
-  return '進行はサーバー（saves/save.json）とブラウザに自動で保存されています。そのままブラウザを閉じても大丈夫です。';
+  if (!saveStore.server && saveStore.unreachable) return txt('save.unreachable');
+  if (!saveStore.server) return txt('save.browserOnly');
+  if (saveStore.error) return txt('save.serverError', { error: saveStore.error });
+  return txt('save.both');
 }

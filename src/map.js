@@ -236,10 +236,10 @@ function loadZone(id) {
 
 // 敵レベルの範囲 (表示用)
 function zoneLevelText(z) {
-  if (z.safe || !z.camps || !z.camps.length) return '安全地帯';
+  if (z.safe || !z.camps || !z.camps.length) return txt('zone.safe');
   const lv = z.camps.map((c) => c.level);
   const lo = Math.min(...lv), hi = Math.max(...lv);
-  return lo === hi ? `Lv${lo}` : `Lv${lo}〜${hi}`;
+  return lo === hi ? txt('zone.level', { lo }) : txt('zone.levelRange', { lo, hi });
 }
 
 // 今のゾーンの湧き場所の状態を覚えておく (戻ってきたとき、倒した敵がすぐ復活しないように)
@@ -273,7 +273,7 @@ function enterZone(id, tx, ty) {
   }));
   computeFlow(player.tx, player.ty, flow);
   showMsg(zone.name, zoneLevelText(zone));
-  log(`${zone.name}に入った。`, '#80deea');
+  log(txt('zone.entered', { zone: zone.name }), THEME.msg.zone);
 }
 
 // 主人公が門のマスに立ったら行き先のゾーンへ移る

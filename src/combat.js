@@ -128,9 +128,9 @@ function useSkill(u, sk, tx, ty, plan) {
     u.facing = h.dir;
     if (sk.charge) {
       startCharge(u, h);
-      log(`${u.name}は${sk.name}の構えをとった。`, '#ffab40');
+      log(txt('combat.charge', { who: u.name, skill: sk.name }), THEME.msg.charge);
     } else {
-      if (u === player) log(`${sk.name}！`, '#80d8ff'); // ほかのキャラはダメージの文に名前が出る
+      if (u === player) log(txt('combat.heroSkill', { skill: sk.name }), THEME.msg.skill); // ほかのキャラはダメージの文に名前が出る
       resolveAttack(h);
     }
   }
@@ -142,8 +142,9 @@ function useSkill(u, sk, tx, ty, plan) {
 function castBuff(u, sk) {
   const b = BUFFS[sk.buff];
   addBuff(u, sk.buff, sk.duration);
-  log(`${u === player ? '' : u.name + 'の'}${sk.name}！ ${b.name}（${sk.duration} 行動）`, '#ffab91');
-  floatText(u.x, u.y - u.r - 30, `${STATS[b.stat].label}${b.mult < 1 ? '↓' : '↑'}`, b.color, 17);
+  log(u === player ? txt('combat.buffSelf', { skill: sk.name, buff: b.name, actions: sk.duration })
+    : txt('combat.buffOther', { who: u.name, skill: sk.name, buff: b.name, actions: sk.duration }), THEME.msg.buff);
+  floatText(u.x, u.y - u.r - 30, buffFloatText(b), b.color, THEME.float.buff.size);
   fxBuff(u);
 }
 
@@ -164,7 +165,7 @@ function dash(u, sk, tx, ty) {
     moved++;
     if (gateAt[idx(u.tx, u.ty)] >= 0) break;
   }
-  if (!moved) { if (hero) log('その方向には進めない。', '#9da7b3'); return false; }
+  if (!moved) { if (hero) log(txt('combat.noDash'), THEME.msg.refuse); return false; }
   if (hero) checkGate();
   return true;
 }
@@ -195,24 +196,24 @@ function rollDamage(src, tgt, a) {
 
 // メッセージ欄の文。主人公が受けたときは相手の名前、主人公が与えたときは受けた側の名前、どちらでもないときは両方の名前を出す
 function damageLine(src, tgt, what, dmg, crit) {
-  const c = crit ? '（会心）' : '';
-  if (tgt === player) return dmg === 0 ? `${src.name}の${what}！ ミス！ ダメージを受けない` : `${src.name}の${what}！ ${dmg} のダメージを受けた${c}`;
-  const head = src === player ? `${what}: ` : `${src.name}の${what}！ `;
-  return dmg === 0 ? `${head}ミス！ ${tgt.name}にダメージを与えられない` : `${head}${tgt.name}に ${dmg} のダメージ${c}`;
+  const c = crit ? txt('combat.critMark') : '';
+  if (tgt === player) return dmg === 0 ? txt('combat.heroHurtMiss', { src: src.name, what }) : txt('combat.heroHurt', { src: src.name, what, dmg, crit: c });
+  const head = src === player ? txt('combat.headHero', { what }) : txt('combat.headOther', { src: src.name, what });
+  return dmg === 0 ? txt('combat.dealMiss', { head, tgt: tgt.name }) : txt('combat.deal', { head, tgt: tgt.name, dmg, crit: c });
 }
 
 // a: 技 (物理か術か・威力)。戻り値: 当たったか (ミスも当たったことにする。帰還中で無効のときは当たっていない)
 // 色は受けた側の陣営で決める (主人公の陣営が受けたら赤っぽく)。歩くのをやめる・画面の揺れは主人公だけ
 function dealDamage(src, tgt, a, what) {
   if (tgt.dead) return false;
-  if (tgt.invuln) { floatText(tgt.x, tgt.y - tgt.r - 6, '無効', '#80deea', 15); return false; }
+  if (tgt.invuln) { floatText(tgt.x, tgt.y - tgt.r - 6, txt('combat.invulnFloat'), THEME.float.invuln.color, THEME.float.invuln.size); return false; }
   const { dmg, crit } = rollDamage(src, tgt, a);
   const ours = tgt.faction === 'player';
   if (dmg === 0) {
     if (tgt === player) tgt.travel = null;
     if (tgt.state === 'idle') aggro(tgt);
-    log(damageLine(src, tgt, what, 0, false), '#9e9e9e');
-    floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, 'ミス', '#9e9e9e', 15);
+    log(damageLine(src, tgt, what, 0, false), THEME.msg.miss);
+    floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, txt('combat.missFloat'), THEME.float.miss.color, THEME.float.miss.size);
     return true;
   }
   tgt.hp -= dmg;
@@ -220,9 +221,10 @@ function dealDamage(src, tgt, a, what) {
   tgt.lastHurt = game.time;
   if (tgt === player) tgt.travel = null;
   if (tgt.state === 'idle') aggro(tgt);
-  log(damageLine(src, tgt, what, dmg, crit), ours ? '#ff8a80' : crit ? '#ffab40' : '#e6edf3');
-  floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, crit ? dmg + '!' : String(dmg),
-    ours ? '#ff5252' : crit ? '#ffab40' : '#ffffff', crit ? 24 : 17);
+  const FD = THEME.float.damage;
+  log(damageLine(src, tgt, what, dmg, crit), ours ? THEME.msg.hurt : crit ? THEME.msg.crit : THEME.msg.hit);
+  floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, txt(crit ? 'combat.critFloat' : 'combat.damageFloat', { dmg }),
+    ours ? FD.hurt : crit ? FD.crit : FD.hit, crit ? FD.critSize : FD.size);
   fxHit(tgt, ours, crit);
   if (tgt === player) addShake(6);
   if (tgt.hp <= 0) kill(tgt);
@@ -249,7 +251,7 @@ function heroDown(u) {
   u.gold -= game.deathLoss.gold;
   game.state = 'dying';
   game.dyingT = 1.4;
-  log('力尽きた…', '#ff5252');
+  log(txt('combat.heroDown'), THEME.msg.heroDown);
   saveGame();
 }
 
@@ -257,14 +259,14 @@ function enemyDefeated(u) {
   game.kills++;
   u.slot.enemy = null;
   u.slot.timer = u.camp.respawn;
-  log(`${u.name}を倒した。`, '#b39ddb');
+  log(txt('combat.defeated', { who: u.name }), THEME.msg.defeated);
   const gray = player.level - u.level >= P.enemyLevel.grayDiff;
   gainExp(Math.max(1, Math.round(u.exp * (gray ? P.enemyLevel.grayExpMult : 1))), u.x, u.y);
   dropLoot(u);
   questEvent('kill', u);
-  if (u.isBoss) { addShake(14); showMsg('BOSS 撃破！'); }
+  if (u.isBoss) { addShake(14); showMsg(txt('combat.bossDefeated')); }
 }
 
 function allyDown(u) {
-  log(`${u.name}は倒れた。`, '#ff8a80');
+  log(txt('combat.allyDown', { who: u.name }), THEME.msg.allyDown);
 }

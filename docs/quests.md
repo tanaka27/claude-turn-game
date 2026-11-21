@@ -40,9 +40,9 @@
 | `on` | `{ 出来事の名前: (goal, st, …出来事の引数) }`。受けている（`active`）ときにその出来事で `st`（`player.quests[id]`）を進める。数を覚えない種類（`collect`）は何もしない関数を書く（出来事のたびに達成を確かめ直すため） |
 | `progress(goal, st)` | 今の数 |
 | `need(goal)` | 目標の数（省略すると `goal.count`。`talk` は 1） |
-| `text(goal)` | クエストの画面の「内容」の文 |
+| `text(goal)` | クエストの画面の「内容」の文（文のひな形は `data/text.js` の `quests.killText` など。[text.md](text.md)） |
 | `short(goal)` | キャラクターの画面で「3 / 8」の前に書く名前（`kill` は敵の名前） |
-| `activeHint` | 受けているときに詳細の下に出す案内（`kill` は「受けている（倒した数は受けたあとから数える）」） |
+| `activeHint` | 受けているときに詳細の下に出す案内（`kill` は「受けている（倒した数は受けたあとから数える）」。読み込むときに `txt('quests.killHint')` などで `data/text.js` から引く） |
 | `claim(goal)` | 報告したときにすること（省略可。`collect` は素材を渡す） |
 | `check(goal)` | データの食い違いの文の並び（起動時の `validateData` が「data/quests.js 'id': …」を付けて出す） |
 

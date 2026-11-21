@@ -247,6 +247,8 @@ function applyBuffs(st, buffs) {
   for (const b of buffs || []) { const d = BUFFS[b.id]; if (d) st[d.stat] *= d.mult; }
   return st;
 }
+// 強化・弱体をかけたときに頭の上に浮かぶ文字 (「こうげき力↑」。弱体は ↓)
+const buffFloatText = (b) => txt(b.mult < 1 ? 'combat.statDown' : 'combat.statUp', { stat: STATS[b.stat].label });
 // u に強化・弱体をかける (n 行動続く)。同じものなら残りの長いほうにする (重ねがけしない)
 //   src: かけた者 (省略時は u 自身)。自分にかけたときは、かけた行動の終わりでは減らさない。ほかの者がかけたときは u の次の行動から数える
 function addBuff(u, id, n, src = u) {
@@ -261,7 +263,7 @@ function tickBuffs(u) {
   u.buffs = u.buffs.filter((b) => {
     if (b.fresh) { b.fresh = false; return true; }
     if (--b.left > 0) return true;
-    log(u === player ? `${BUFFS[b.id].name}の効果が切れた。` : `${u.name}の${BUFFS[b.id].name}の効果が切れた。`, '#9da7b3');
+    log(u === player ? txt('units.buffEndSelf', { buff: BUFFS[b.id].name }) : txt('units.buffEndOther', { who: u.name, buff: BUFFS[b.id].name }), THEME.msg.refuse);
     changed = true;
     return false;
   });
@@ -295,7 +297,7 @@ function gainExp(n, x, y) {
   const p = player;
   if (p.level >= PG.maxLevel) return;
   p.exp += n;
-  floatText(x, y - 24, `+${n} EXP`, '#b39ddb', 14);
+  floatText(x, y - 24, txt('units.expFloat', { n }), THEME.float.exp.color, THEME.float.exp.size);
   let up = false;
   while (p.level < PG.maxLevel && p.exp >= expToNext(p.level)) {
     p.exp -= expToNext(p.level);
@@ -314,13 +316,14 @@ function levelUp() {
   for (const k in PG.growth) {
     const n = Math.max(0, Math.round(growthTarget(k, p.level) - p.base[k] + rand(-1, 1) * PG.growth[k].spread));
     p.base[k] += n;
-    if (n > 0) gains.push(`${STATS[k].label} +${n}`);
+    if (n > 0) gains.push(txt('units.statGain', { stat: STATS[k].label, n }));
   }
   refreshStats(p, 'full');
   // 新しく覚えたスキル (はじめの覚え方)。スキル欄に置いてあればキーも出す
-  const learned = learnSkillsByLevel(p).map((s) => (slotKeyOf(p, s) ? `${s.name}（${slotKeyOf(p, s).toUpperCase()}）` : s.name));
-  showMsg(`LEVEL UP!  Lv ${p.level}`, [gains.join('　'), learned.length ? `新しいスキル: ${learned.join('、')}` : ''].filter(Boolean).join('\n'));
-  log(`レベルが ${p.level} に上がった！`, '#ffd54f');
+  const learned = learnSkillsByLevel(p).map((s) => (slotKeyOf(p, s) ? txt('units.learnedKey', { skill: s.name, key: slotKeyOf(p, s).toUpperCase() }) : s.name));
+  showMsg(txt('units.levelUp', { level: p.level }), [gains.join(txt('units.statGainSep')),
+    learned.length ? txt('units.learned', { skills: learned.join(txt('units.learnedSep')) }) : ''].filter(Boolean).join('\n'));
+  log(txt('units.levelUpLog', { level: p.level }), THEME.msg.levelUp);
   fxLevelUp(p);
 }
 
@@ -333,7 +336,7 @@ function respawnPlayer() {
   Object.assign(p, { hp: p.stats.maxHp, mp: p.stats.maxMp, dead: false, facing: -Math.PI / 2 });
   enterZone(home, tileOf(r.x), tileOf(r.y));
   game.state = 'play';
-  const lost = [game.deathLoss.exp > 0 ? `EXP -${game.deathLoss.exp}` : '', game.deathLoss.gold > 0 ? `-${game.deathLoss.gold} G` : ''].filter(Boolean);
-  showMsg(['力尽きた…', ...lost].join('  '), zone.name);
+  const lost = [game.deathLoss.exp > 0 ? txt('units.lostExp', { n: game.deathLoss.exp }) : '', game.deathLoss.gold > 0 ? txt('units.lostGold', { n: game.deathLoss.gold }) : ''].filter(Boolean);
+  showMsg([txt('units.respawn'), ...lost].join(txt('units.lostSep')), zone.name);
   saveGame();
 }

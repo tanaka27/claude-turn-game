@@ -228,6 +228,17 @@ function validateData() {
     }
   }
 
+  // 画面に出す文章 (data/text.js): どの文も文字列で、{ } は {名前} の形だけ (使っているキーと値の名前は、引くとき txt が調べる)
+  const walkText = (o, path) => {
+    for (const [k, v] of Object.entries(o)) {
+      const key = path ? `${path}.${k}` : k;
+      if (v && typeof v === 'object') { walkText(v, key); continue; }
+      check(typeof v === 'string', `data/text.js '${key}': 文は文字列にする`);
+      if (typeof v === 'string') check(!/[{}]/.test(v.replace(/\{\w+\}/g, '')), `data/text.js '${key}': { } は {名前} の形で書く`);
+    }
+  };
+  walkText(TEXT, '');
+
   for (let n = SAVE_OLDEST; n < SAVE_VERSION; n++) {
     check(typeof SAVE_MIGRATIONS[n] === 'function', `src/save.js: セーブの形 v${n} → v${n + 1} の直し方 (SAVE_MIGRATIONS[${n}]) がない`);
   }

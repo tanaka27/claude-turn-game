@@ -19,7 +19,7 @@ function startGame(save) {
   player.mp = Number.isFinite(at.mp) ? clamp(at.mp, 0, player.stats.maxMp) : player.stats.maxMp;
   player.next = game.time;
   enterZone(at.zone, at.tx, at.ty);
-  if (!save) showMsg('冒険の始まり', zone.name);
+  if (!save) showMsg(txt('title.start'), zone.name);
   for (const id of ['title', 'pause', ...Object.values(SCREENS).map((s) => s.overlay)]) $(id).classList.remove('show');
   saveGame();
 }
@@ -30,13 +30,13 @@ function refreshTitle() {
   $('continueBtn').style.display = save ? '' : 'none';
   $('startBtn').className = save ? 'secondary' : '';
   $('startBtn').disabled = false;
-  if (save) $('continueBtn').textContent = `続きから（Lv ${save.player.level}・${WORLD.zones[save.location.zone].name}）`;
+  if (save) $('continueBtn').textContent = txt('title.continue', { level: save.player.level, zone: WORLD.zones[save.location.zone].name });
   $('saveInfo').textContent = [saveProblemText(), saveWhereText()].filter(Boolean).join(' ');
 }
 $('continueBtn').onclick = () => { const save = loadSave(); if (save) startGame(save); };
 $('startBtn').onclick = () => {
-  if (loadSave() && !confirm('セーブデータを消して、はじめから遊びますか？')) return;
-  if (!loadSave() && saveStore.problems.length && !confirm('この版で読めないセーブデータを上書きして、はじめから遊びますか？（上書きする前の控えは残します）')) return;
+  if (loadSave() && !confirm(txt('title.confirmRestart'))) return;
+  if (!loadSave() && saveStore.problems.length && !confirm(txt('title.confirmOverwrite'))) return;
   startGame(null);
 };
 validateData();
@@ -54,7 +54,7 @@ function stepTravel() {
   const hot = hazards.some((h) => h.keys.has(tileKey(nx, ny)));
   if (danger || hot || !isFree(nx, ny)) {
     p.travel = null;
-    if (danger) log('敵に気づかれている。歩くのをやめた。', '#ffab40');
+    if (danger) log(txt('title.travelStop'), THEME.msg.alert);
     return;
   }
   p.travel.shift();

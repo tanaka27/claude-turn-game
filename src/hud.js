@@ -77,12 +77,12 @@ function drawPartyCard(u, x, y) {
     bx += bs + CARD.buffGap;
   }
   ctx.font = fontOf(14);
-  ctx.textAlign = 'right'; ctx.fillStyle = CARD.level; ctx.fillText(`Lv ${u.level}`, tx + bw, y + 21);
+  ctx.textAlign = 'right'; ctx.fillStyle = CARD.level; ctx.fillText(txt('hud.level', { level: u.level }), tx + bw, y + 21);
   const hpR = u.hp / st.maxHp;
-  bar(tx, y + 30, bw, 16, hpR, hpR > THEME.bars.hpLowRatio ? THEME.bars.hp : THEME.bars.hpLow, `HP ${Math.ceil(u.hp)} / ${Math.round(st.maxHp)}`);
+  bar(tx, y + 30, bw, 16, hpR, hpR > THEME.bars.hpLowRatio ? THEME.bars.hp : THEME.bars.hpLow, txt('hud.hpBar', { hp: Math.ceil(u.hp), max: Math.round(st.maxHp) }));
   bar(tx, y + 52, bw, 12, u.mp / st.maxMp, THEME.mp);
   ctx.fillStyle = CARD.mpText; ctx.font = fontOf(11); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(`MP ${Math.floor(u.mp)} / ${Math.round(st.maxMp)}`, tx + bw / 2, y + 59);
+  ctx.fillText(txt('hud.mpBar', { mp: Math.floor(u.mp), max: Math.round(st.maxMp) }), tx + bw / 2, y + 59);
   ctx.textBaseline = 'alphabetic';
 }
 
@@ -99,9 +99,9 @@ function drawHUD() {
 
   // スキルバー (主人公のスキル欄の並び。覚えていないスキルは lock に出す文)
   const slots = skillSlotsOf(p).map(({ key, sk: s }) => ({ label: key.toUpperCase(), name: s.name, cd: cooldownLeft(p, s), max: skillCooldown(p, s), active: aiming === s,
-      lock: knowsSkill(p, s) ? '' : learnLevelOf(s) ? `Lv${learnLevelOf(s)} で解放` : '未習得', mp: skillMp(s), short: !enoughMp(p, s) }))
+      lock: knowsSkill(p, s) ? '' : learnLevelOf(s) ? txt('hud.skillLocked', { level: learnLevelOf(s) }) : txt('hud.skillUnknown'), mp: skillMp(s), short: !enoughMp(p, s) }))
     .concat(Object.entries(IT.consumables).map(([id, c]) => ({ label: c.key.toUpperCase(), name: c.name, cd: 0, max: 1, count: consumableCount(p, id) })))
-    .concat([{ label: 'I', name: '道具', cd: 0, max: 1, button: 'items' }]);
+    .concat([{ label: txt('hud.itemsKey'), name: txt('hud.itemsButton'), cd: 0, max: 1, button: 'items' }]);
   const SB = THEME.hud.skillBar;
   const sz = SB.size, gap = SB.gap, total = slots.length * sz + (slots.length - 1) * gap;
   let sx = (W - total) / 2;
@@ -127,13 +127,13 @@ function drawHUD() {
       // 消費 MP (足りないときは色を変える)
       ctx.textAlign = 'right'; ctx.font = fontOf(12);
       ctx.fillStyle = s.short ? THEME.mpShort : THEME.mp;
-      ctx.fillText(`MP${s.mp}`, sx + sz - 6, sy + 15);
+      ctx.fillText(txt('hud.skillMp', { mp: s.mp }), sx + sz - 6, sy + 15);
       ctx.textAlign = 'center';
     }
     if (s.count !== undefined) {
       ctx.textAlign = 'right'; ctx.font = fontOf(13);
       ctx.fillStyle = s.count > 0 ? SB.countOk : SB.countNone;
-      ctx.fillText(`×${s.count}`, sx + sz - 6, sy + 16);
+      ctx.fillText(txt('hud.itemCount', { n: s.count }), sx + sz - 6, sy + 16);
       ctx.textAlign = 'center';
     }
     if (s.cd > 0) {
@@ -157,7 +157,8 @@ function drawHUD() {
   if (boss) {
     // 画面が狭いと左上の仲間の欄と重なるので、そのときは欄の下に出す
     const bw = Math.min(520, W - 420), bx = (W - bw) / 2;
-    bar(bx, bx < 16 + CARD.w + 12 ? partyBottom + 4 : 58, bw, 18, boss.hp / boss.stats.maxHp, THEME.bars.boss, `Lv${boss.level} ${boss.name}  ${Math.ceil(boss.hp)} / ${boss.stats.maxHp}`);
+    bar(bx, bx < 16 + CARD.w + 12 ? partyBottom + 4 : 58, bw, 18, boss.hp / boss.stats.maxHp, THEME.bars.boss,
+      txt('hud.bossBar', { level: boss.level, name: boss.name, hp: Math.ceil(boss.hp), max: boss.stats.maxHp }));
   }
 
   drawTurnOrder();
@@ -193,7 +194,7 @@ function drawMinimap() {
   const C = THEME.map;
   const s = Math.min(200 / MAP_W, 150 / MAP_H), mw = MAP_W * s, mh = MAP_H * s, mx = W - mw - 16, my = H - mh - 16;
   hudButtons.push({ id: 'map', x: mx - 3, y: my - 3, w: mw + 6, h: mh + 6 });
-  mapHint(mx - 3, my - 3, mw + 6, 'M: 世界地図');
+  mapHint(mx - 3, my - 3, mw + 6, txt('hud.mapHintWorld'));
   ctx.fillStyle = C.bg; ctx.fillRect(mx - 3, my - 3, mw + 6, mh + 6);
   for (const o of obstacles) {
     ctx.fillStyle = WORLD.terrain[o.kind].minimap;
@@ -237,7 +238,7 @@ function drawWorldMap() {
   const ww = cols * cellW + (cols - 1) * M.gap + pad * 2, wh = rows * (cellH + labelH) + (rows - 1) * M.gap + pad * 2;
   const ox = W - ww - margin, oy = H - wh - margin;
   hudButtons.push({ id: 'map', x: ox, y: oy, w: ww, h: wh });
-  mapHint(ox, oy, ww, 'M: このエリアの地図');
+  mapHint(ox, oy, ww, txt('hud.mapHintZone'));
   ctx.fillStyle = C.worldBg; roundRect(ox, oy, ww, wh, 8); ctx.fill();
   // 縮尺: fullW の幅が枠いっぱい。高さが枠をはみ出すゾーンがあればそれに合わせて小さくする
   const zs = Math.min(cellW / M.fullW, ...zones.map(([, z]) => cellH / z.h));
@@ -287,14 +288,19 @@ function drawTooltip() {
   const e = factionUnits('enemy').find((u) => u.tx === mouse.tx && u.ty === mouse.ty);
   if (!e) { drawNpcTooltip(); return; }
   const st = e.stats;
-  drawTooltipBox(`Lv${e.level} ${e.name}`, levelColor(e.level), [
-    `HP ${Math.ceil(e.hp)} / ${st.maxHp}　MP ${Math.floor(e.mp)} / ${st.maxMp}`, `${STATS.atk.label} ${st.atk.toFixed(0)}  ${STATS.def.label} ${st.def.toFixed(0)}  ${STATS.int.label} ${st.int.toFixed(0)}  ${STATS.mdef.label} ${st.mdef.toFixed(0)}`,
-    `速度 ${Math.round(st.speed)}（あなたの ${(st.speed / player.stats.speed).toFixed(2)} 倍）`,
-    `技: ${e.def.attacks.map((a) => a.name + (a.kind === 'magic' ? '（術）' : '') + (a.mp ? ` MP${a.mp}` : '')).join(' / ')}`,
-    `素材: ${(e.def.drops || []).map((m) => IT.materials[m.id].name).join(' / ')}`,
-    `経験値 ${e.exp}　${e.camp.name}`,
+  drawTooltipBox(txt('hud.unitTitle', { level: e.level, name: e.name }), levelColor(e.level), [
+    hpMpLine(e), stats4Line(st),
+    txt('hud.speed', { speed: Math.round(st.speed), ratio: (st.speed / player.stats.speed).toFixed(2) }),
+    txt('hud.attacks', { list: e.def.attacks.map((a) => a.name + (a.kind === 'magic' ? txt('hud.attackMagic') : '') + (a.mp ? txt('hud.attackMp', { mp: a.mp }) : '')).join(txt('hud.listSep')) }),
+    txt('hud.drops', { list: (e.def.drops || []).map((m) => IT.materials[m.id].name).join(txt('hud.listSep')) }),
+    txt('hud.expCamp', { exp: e.exp, camp: e.camp.name }),
   ], e.color, 100);
 }
+
+// ツールチップの HP・MP の行と、こうげき・まもり・かしこさ・まほうのまもりの行 (敵・NPC)
+const hpMpLine = (u) => txt('hud.hpMp', { hp: Math.ceil(u.hp), maxHp: u.stats.maxHp, mp: Math.floor(u.mp), maxMp: u.stats.maxMp });
+const stats4Line = (st) => txt('hud.stats4', { atkLabel: STATS.atk.label, atk: st.atk.toFixed(0), defLabel: STATS.def.label, def: st.def.toFixed(0),
+  intLabel: STATS.int.label, int: st.int.toFixed(0), mdefLabel: STATS.mdef.label, mdef: st.mdef.toFixed(0) });
 
 // 仲間の欄の強化のアイコンにマウスを乗せたとき: 名前・効果・残り。出したら true
 function drawBuffTooltip() {
@@ -302,7 +308,7 @@ function drawBuffTooltip() {
   if (!it) return false;
   const d = BUFFS[it.b.id];
   const pct = Math.round((d.mult - 1) * 100);
-  drawTooltipBox(d.name, THEME.tooltip.buffTitle, [`${STATS[d.stat].label} ${pct >= 0 ? '+' : ''}${pct}%`, `あと ${it.b.left} 行動`], d.color, 110);
+  drawTooltipBox(d.name, THEME.tooltip.buffTitle, [txt('hud.buffEffect', { stat: STATS[d.stat].label, pct: `${pct >= 0 ? '+' : ''}${pct}` }), txt('hud.buffLeft', { n: it.b.left })], d.color, 110);
   return true;
 }
 
@@ -311,11 +317,10 @@ function drawNpcTooltip() {
   const n = (zone.npcs || []).find((u) => u.tx === mouse.tx && u.ty === mouse.ty);
   if (!n) return;
   const st = n.stats;
-  drawTooltipBox(`${n.name}（${n.kindLabel}）`, n.color, [
-    `HP ${Math.ceil(n.hp)} / ${st.maxHp}　MP ${Math.floor(n.mp)} / ${st.maxMp}`,
-    `${STATS.atk.label} ${st.atk.toFixed(0)}  ${STATS.def.label} ${st.def.toFixed(0)}  ${STATS.int.label} ${st.int.toFixed(0)}  ${STATS.mdef.label} ${st.mdef.toFixed(0)}`,
-    `${STATS.speed.label} ${Math.round(st.speed)}  ${STATS.critRate.label} ${Math.round(st.critRate * 100)}%`,
-    '攻撃は当たらない',
+  drawTooltipBox(txt('hud.npcTitle', { name: n.name, kind: n.kindLabel }), n.color, [
+    hpMpLine(n), stats4Line(st),
+    txt('hud.npcSpeed', { speedLabel: STATS.speed.label, speed: Math.round(st.speed), critLabel: STATS.critRate.label, crit: Math.round(st.critRate * 100) }),
+    txt('hud.npcNoHit'),
   ], n.color, 100);
 }
 
@@ -327,13 +332,13 @@ function drawTurnOrder() {
   const x0 = (W - w) / 2, y = O.top;
   ctx.fillStyle = O.bg; roundRect(x0 - 60, y - 6, w + 70, sz + 12, 8); ctx.fill();
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = O.label; ctx.font = fontOf(12);
-  ctx.fillText('行動順', x0 - 52, y + sz / 2);
+  ctx.fillText(txt('hud.turnOrder'), x0 - 52, y + sz / 2);
   list.forEach((u, i) => {
     const x = x0 + i * (sz + gap);
     ctx.fillStyle = u.faction === 'player' ? O.cellOurs : O.cellTheirs; roundRect(x, y, sz, sz, 6); ctx.fill();
     ctx.lineWidth = 2; ctx.strokeStyle = u.isPlayer ? O.edgeHero : u.charging ? O.edgeCharging : u.color; ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = u.isPlayer ? O.heroGlyph : u.color; ctx.font = fontOf(15);
-    ctx.fillText(u.isPlayer ? '自' : u.def.glyph, x + sz / 2, y + sz / 2 + 1);
+    ctx.fillText(u.isPlayer ? txt('hud.turnHero') : u.def.glyph, x + sz / 2, y + sz / 2 + 1);
   });
   ctx.textBaseline = 'alphabetic';
 }

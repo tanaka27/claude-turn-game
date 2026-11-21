@@ -55,9 +55,9 @@ window.addEventListener('keydown', (e) => {
   const sk = skillByKey(k);
   if (sk && !knowsSkill(player, sk)) {
     // まだ覚えていない (はじめの覚え方で覚えるレベルがあれば、それを知らせる)
-    log(learnLevelOf(sk) ? `${sk.name}は Lv${learnLevelOf(sk)} で使えるようになる。` : `${sk.name}はまだ覚えていない。`, '#9da7b3');
+    log(learnLevelOf(sk) ? txt('skills.locked', { skill: sk.name, level: learnLevelOf(sk) }) : txt('skills.unknown', { skill: sk.name }), THEME.msg.refuse);
   } else if (sk && cooldownLeft(player, sk) > 0) {
-    log(`${sk.name}はあと ${Math.ceil(cooldownLeft(player, sk))} 行動で使える。`, '#9da7b3');
+    log(txt('skills.cooldown', { skill: sk.name, n: Math.ceil(cooldownLeft(player, sk)) }), THEME.msg.refuse);
   } else if (sk && !enoughMp(player, sk)) {
     logNoMp(sk);
   } else if (sk && sk.type === 'buff') {
@@ -135,4 +135,4 @@ function castSkill(sk, tx, ty) {
   if (useSkill(player, sk, tx, ty)) endPlayerAction();
 }
 
-const logNoMp = (sk) => log(`MP が足りない（${sk.name}は MP ${skillMp(sk)}、今 ${Math.floor(player.mp)}）。`, '#9da7b3');
+const logNoMp = (sk) => log(txt('skills.noMp', { skill: sk.name, cost: skillMp(sk), mp: Math.floor(player.mp) }), THEME.msg.refuse);

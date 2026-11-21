@@ -51,7 +51,7 @@
 ## 当たったとき（dealDamage）
 
 - 数字・メッセージ・飛び散る色は受けた側の陣営で決める（主人公の陣営なら赤っぽく）。歩くのをやめる（`travel`）・画面の揺れは主人公だけ。受けた時刻は `lastHurt`
-- メッセージ欄の文（`damageLine`）:
+- メッセージ欄の文（`damageLine`。ひな形は `data/text.js` の `combat.heroHurt` / `heroHurtMiss` / `headHero` / `headOther` / `deal` / `dealMiss` / `critMark`）:
 
 | 場合 | 文 |
 |---|---|

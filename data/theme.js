@@ -129,6 +129,39 @@ const THEME = {
     bump: { life: 0.25 },   // 移動でぶつかって殴ったマスが光る
     ghost: { life: 0.25 },  // ダッシュの残像
   },
+
+  // ----- メッセージ欄の文の色 (文は data/text.js。log(文, 色) の色) -----
+  // 拾った素材・装備はレア度の色 (data/items.js)、道具を使った文は最初に効いた効果の浮かぶ文字の色
+  msg: {
+    normal: '#c9d1d9',    // 色を指定しないとき
+    refuse: '#9da7b3',    // できなかった (進めない・覚えていない・再使用待ち・MP 不足・道具が効かない・話しかける人がいない) / 強化が切れた
+    charge: '#ffab40',    // 予告ありの技を構えた
+    skill: '#80d8ff',     // 主人公が技を出した
+    buff: '#ffab91',      // 自分を強化した
+    miss: '#9e9e9e',      // ミス
+    hurt: '#ff8a80',      // 主人公の陣営が受けたダメージ
+    crit: '#ffab40',      // 会心 (主人公の陣営以外が受けた)
+    hit: '#e6edf3',       // ダメージ (主人公の陣営以外が受けた)
+    heroDown: '#ff5252',  // 主人公が倒れた
+    allyDown: '#ff8a80',  // 主人公の陣営のほかのキャラが倒れた
+    defeated: '#b39ddb',  // 敵を倒した
+    levelUp: '#ffd54f',
+    zone: '#80deea',      // ゾーンに入った
+    bagFull: '#ff8a80',   // 持ち物がいっぱいで拾えない
+    alert: '#ffab40',     // 敵に気づかれて歩くのをやめた
+  },
+  // ----- 頭の上に浮かぶ文字の色と大きさ (px。文は data/text.js) -----
+  float: {
+    damage: { hurt: '#ff5252', crit: '#ffab40', hit: '#ffffff', size: 17, critSize: 24 }, // ダメージの数 (主人公の陣営が受けた / 会心 / ほか。会心は critSize)
+    miss: { color: '#9e9e9e', size: 15 },
+    invuln: { color: '#80deea', size: 15 },  // 帰還中の敵に当たった「無効」
+    buff: { size: 17 },                      // 強化・弱体 (色はその強化の色 data/buffs.js)
+    exp: { color: '#b39ddb', size: 14 },
+    material: { size: 14 },                  // 拾った素材 (色はレア度)
+    item: { size: 16 },                      // 拾った装備 (色はレア度)
+    healHp: { color: '#69f0ae', size: 18 },  // 道具で HP 回復
+    healMp: { size: 18 },                    // 道具で MP 回復 (色は mp)
+  },
 };
 
 // キャラの種類ごとの描き方 (src/render.js の drawUnit)。種類 (unitKind): hero 主人公 / enemy 敵 / boss ボス / ally 主人公の陣営のほかのキャラ / npc 町の人

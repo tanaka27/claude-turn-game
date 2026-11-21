@@ -26,6 +26,32 @@ function norm(x, y) {
   return l > 1e-6 ? [x / l, y / l] : [0, 0];
 }
 
+// ===================================================================
+//  画面に出す文章 (data/text.js の TEXT)
+//  txt('combat.heroHurt', { src: 'ウルフ', ... }): TEXT のキー (まとまり.名前) の文の {名前} に値を入れて返す
+//  キーがない・{名前} に入れる値がないときは、コンソールに [データの確認] を 1 回だけ出す (キーがなければキーをそのまま返す)
+// ===================================================================
+const textNoticed = new Set();
+function textProblem(msg) {
+  if (textNoticed.has(msg)) return;
+  textNoticed.add(msg);
+  console.error('[データの確認]', msg);
+}
+// 文の {名前} に values の値を入れる (値は文字列にする。テンプレートリテラルの ${} と同じ)
+function fmt(template, values = {}) {
+  return template.replace(/\{(\w+)\}/g, (m, k) => {
+    if (Object.prototype.hasOwnProperty.call(values, k)) return String(values[k]);
+    textProblem(`data/text.js の文の {${k}} に入れる値がない: ${template}`);
+    return m;
+  });
+}
+const textTemplate = (key) => key.split('.').reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), TEXT);
+function txt(key, values) {
+  const t = textTemplate(key);
+  if (typeof t !== 'string') { textProblem(`文 '${key}' が data/text.js にない`); return key; }
+  return fmt(t, values);
+}
+
 const FC = THEME.faction; // 陣営ごとの色 (FC.player / FC.enemy)
 
 // ===================================================================
@@ -139,6 +165,6 @@ function showMsg(m, sub) { game.msg = m; game.sub = sub || ''; game.msgT = 2.2; 
 const logLines = [];
 const LOG_MAX = 7;
 function log(text, color) {
-  logLines.push({ text, color: color || '#c9d1d9', rt: game.rt });
+  logLines.push({ text, color: color || THEME.msg.normal, rt: game.rt });
   if (logLines.length > LOG_MAX) logLines.shift();
 }

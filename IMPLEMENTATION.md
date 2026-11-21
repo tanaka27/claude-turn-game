@@ -32,6 +32,7 @@
 | [docs/save-versions.md](docs/save-versions.md) | セーブの形の版と移し替え（`SAVE_MIGRATIONS`）、版の足し方、使えないセーブ（新しい版・壊れたもの）の扱い | 保存する項目を増やす・形を変える。セーブが読めないときの動きを変える |
 | [docs/ui.md](docs/ui.md) | HUD（仲間の欄・行動順・スキル欄・メッセージ欄・地図・ツールチップ）とワールド（予告・キャラ・落とし物・門・NPC など）に何を出すか | 画面に出すものを変える |
 | [docs/drawing.md](docs/drawing.md) | キャラ（主人公・敵・ボス・仲間・NPC）の描く手順と種類ごとの描き方 `UNIT_LOOK`、絵のありか（NPC の絵）・アニメーションの入り口、地形 `TERRAIN_DRAW`・演出 `EFFECT_TYPES` の登録表と演出を作る関数 `fx〇〇`、それぞれの足し方 | キャラ・NPC・地形・演出の見た目を変える・足す |
+| [docs/text.md](docs/text.md) | 画面に出す文章の置き場所（`data/text.js` の `TEXT`）、ひな形の `{名前}` と `txt` / `fmt`、メッセージ欄・浮かぶ文字の色（`THEME.msg` / `THEME.float`）、言い回しの変え方、`src/` と `index.html` に残る文字 | メッセージ・画面の文の言い回しを変える。文を足す |
 | [docs/render.md](docs/render.md) | 描画の作り（色と大きさの置き場所 `data/theme.js`・`style.css`、`THEME` のまとまり、描く道具）、色の足し方 | 色・大きさ・書体・画面の CSS を変える |
 | [docs/image-assets.md](docs/image-assets.md) | 画像素材を Codex CLI（`image_gen`）で作る方法、`tools/codex_image.py` の使い方、`assets/` の置き場所 | 画像素材を作る・足す |
 | [docs/testing.md](docs/testing.md) | 自動テスト（`node tests/run.js`）の動かし方、ゲームの読み込み方、乱数の固定、テストの足し方、テストが頼っている内部の名前 | テストを動かす・足す。大きく作りを変える前後 |
@@ -44,9 +45,9 @@
 | `index.html` | 画面の土台。canvas、タイトル（続きから／はじめから）／道具一覧・店・キャラクター／クエスト／会話／一時停止の各画面（HTML だけ。見た目は `style.css`）。`params.js` → `data/*.js` → `world.js` → `src/*.js`（`main.js` が最後）の順に読み込む |
 | `style.css` | HTML の画面（タイトル・道具一覧・店・キャラクター・クエスト・会話・一時停止）の見た目。`index.html` が `<link>` で読み込む（`index.html` を直接開いても読める）。canvas の中の色と大きさは `data/theme.js` |
 | `params.js` | **ゲーム全体のしくみの数値**（ターンと速度、ダメージ計算、主人公のステータスの計算式、成長曲線、敵のレベル補正、お金・持ち物、敵の動き、セーブ） |
-| `data/*.js` | **中身の定義**（主人公（スキルの覚え方・スキル欄の並びを含む）・スキル（`data/skills.js`）・敵・NPC の種類・装備・クエスト・ステータスの表示・強化・弱体（バフ・デバフ）・色）。詳しくは [docs/data.md](docs/data.md) |
+| `data/*.js` | **中身の定義**（主人公（スキルの覚え方・スキル欄の並びを含む）・スキル（`data/skills.js`）・敵・NPC の種類・装備・クエスト・ステータスの表示・強化・弱体（バフ・デバフ）・色・画面に出す文章（`data/text.js`））。詳しくは [docs/data.md](docs/data.md) |
 | `world.js` | **マップの配置**（世界地図の並び（`mapPos`）と大きさ、地形の種類、ゾーンごとの大きさ、障害物、門、湧き場所とその敵レベル・再出現ターン数、復活地点、NPC（店の NPC はどの店か）、地面の色。px で書き、読み込むときにマスに直す） |
-| `src/core.js` | 共通（ユーティリティ、画面の大きさ、ゲームの状態 `game`、戦うキャラ全員 `units` と主人公 `player`、陣営（`factionUnits` / `hostileTo`）、演出を作る関数（`fxRing` / `fxHit` など）、メッセージ欄 `log`） |
+| `src/core.js` | 共通（ユーティリティ、画面の大きさ、ゲームの状態 `game`、戦うキャラ全員 `units` と主人公 `player`、陣営（`factionUnits` / `hostileTo`）、演出を作る関数（`fxRing` / `fxHit` など）、メッセージ欄 `log`、画面に出す文章を引く `txt` / `fmt`） |
 | `src/map.js` | マス目（通れるか・攻撃が通るか）、視線、直線のマス、経路探索、ゾーンの読み込みと切り替え、門 |
 | `src/units.js` | 主人公と敵（とテスト用の仲間 `createAlly` / `addUnit`）の生成、マスの上の位置、そのマスのキャラ（`unitAt`）・敵の陣営（`opponents`）、行動 1 回にかかる時間、ステータスの計算（どのキャラも同じ `computeStats` / `refreshStats`）、強化・弱体（`addBuff` / `tickBuffs` / `clearBuffs`）、技の再使用待ちと MP の決まり（`SKILL_RULES` / `cooldownLeft` / `enoughMp` / `canUseSkill`）、覚えているスキルとスキル欄（`knowsSkill` / `teachSkill` / `skillSlotsOf`）、スキルの覚え方（`learnSkillsByLevel`）、経験値・レベル・復活 |
 | `src/combat.js` | 技の範囲（マス）・判定・ダメージ（物理・術）、予告（出す・消す・判定する）、どのキャラも同じ技を使う道（`useSkill`、強化 `castBuff`、ダッシュ `dash`）、倒れたとき（主人公・敵・仲間で分ける） |
@@ -60,7 +61,7 @@
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |
 | `tests/run.js` / `tests/harness.js` / `tests/helpers.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）。詳しくは [docs/testing.md](docs/testing.md) |
-| `tests/*.test.js` | テスト本体（ステータス・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・クエストの目標の種類・セーブ・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・自動で戦わせる通し試験） |
+| `tests/*.test.js` | テスト本体（ステータス・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・クエストの目標の種類・セーブ・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・画面に出す文章・自動で戦わせる通し試験） |
 | `start.bat` | ダブルクリックで `server.py` を起動し、ブラウザでゲームを開く（Windows 用。ポートは中の `PORT`。8766 が使われていると止まって知らせる） |
 | `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする）。詳しくは [docs/save.md](docs/save.md) |
 | `.claude/launch.json` | 確認用ローカルサーバーの設定（`python server.py`） |
@@ -96,6 +97,5 @@
 - 効果音・BGM
 - 敵の種類や、状態異常の追加。強化・弱体（ステータスに倍率を掛けるもの。`data/buffs.js`）のしくみは主人公・敵・仲間のだれにでも効くようになった（速度を下げれば行動の回数も減る）が、データにあるのは攻撃力アップ（主人公が自分にかける闘気）だけ。弱体の種類、敵の技・主人公の技で相手に弱体をかける（技に「当たったらかける効果」を書けるようにする）、敵が使う強化（技を使う道はどのキャラも同じ `useSkill` になったので、敵も強化の技を自分に使えるが、データと敵の AI の選び方がない）は未実装。毒（行動ごとのダメージ）・スタン（行動できない）のような別の種類の効果も未実装（足す場所は [docs/combat.md](docs/combat.md) の「強化・弱体」）
 - スマートフォン（タッチ操作）への対応
-- 画面に出す文章（メッセージ欄など、`src/` に直接書いてあるもの）をデータに分ける
 - セーブスロットを複数にする（今は 1 つ。サーバーの API は `/api/save` だけ）
 - 道具を仲間に使う画面（相手を選ぶ。使う道 `useConsumable(主人公, id, 仲間)` はもうある）、弱体・状態異常を消す道具（効果の種類 `cure`）、MP 回復・強化の道具（効果の種類 `healMp` / `addBuff` はあるが、今の道具には使っていない）、道具を売る（[docs/consumables.md](docs/consumables.md)）
