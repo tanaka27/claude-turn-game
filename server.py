@@ -67,6 +67,14 @@ def write_save(data, current):
 
 
 class Handler(SimpleHTTPRequestHandler):
+    # ゲームのファイルの Content-Type は決めておく (Windows ではレジストリの設定しだいで .css / .js が text/plain になり、
+    # ブラウザが読まないことがあるため)。ほかの拡張子は標準の mimetypes にまかせる
+    extensions_map = {
+        **SimpleHTTPRequestHandler.extensions_map,
+        '.css': 'text/css; charset=utf-8',
+        '.js': 'text/javascript; charset=utf-8',
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
 

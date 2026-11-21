@@ -377,7 +377,31 @@ const roleNames = (g) => Object.keys(g.NPC_ROLES);
 // 鍛冶屋の今の品ぞろえ (開いたときに作られる)
 const smithStock = (g, id) => (g.shopStocks[id] ? Array.from(g.shopStocks[id].items) : []);
 
+// ----- 描画 (src/render.js / src/hud.js) -----
+// 土台の canvas は何も描かない代わりなので、描く処理が例外を出さないことだけを確かめるのに使う
+// 1 フレーム分描く (メインループと同じく、カメラを合わせてから render)
+function renderFrame(g) { g.updateCamera(); g.render(); }
+// マウスをマス (tx, ty) に重ねる (敵・NPC の説明を出す)
+function hoverTile(g, tx, ty) {
+  g.updateCamera();
+  g.mouse.x = (g.center(tx) - g.cam.x) * g.VIEW; g.mouse.y = (g.center(ty) - g.cam.y) * g.VIEW;
+}
+// マウスを仲間の欄の強化のアイコンに重ねる (renderFrame でアイコンの場所が決まってから)。アイコンがなければ false
+function hoverBuffIcon(g) {
+  const b = g.buffIcons[0];
+  if (!b) return false;
+  g.mouse.x = b.x + b.s / 2; g.mouse.y = b.y + b.s / 2;
+  return true;
+}
+// 絵 (src) を読み込み終わったことにする (土台の Image は読み込まないので、そのままだと図形でしか描かれない)
+function fakeSpriteLoaded(g, src) {
+  if (src) g.sprites[src] = { img: { naturalWidth: 128, naturalHeight: 128 }, flash: {}, ready: true };
+}
+// 落とし物を (tx, ty) に置く。data: { kind: 'material', id, amount } / { kind: 'item', item }
+function dropAt(g, tx, ty, data) { g.spawnLoot(tx, ty, data); }
+
 module.exports = {
+  renderFrame, hoverTile, hoverBuffIcon, fakeSpriteLoaded, dropAt,
   el, shown, textOf, htmlOf, screenNodes, findButton, buttonLabels, clickNode, clickButton, clickStaleButton, staleSelect, clickGear, clickTool, clickMat, clickPopBackdrop, clickTalkText,
   questRows, clickQuestRow, openScreen, clickHud, trackSaves, nextToNpc, giveItem, fillInventory, smithStock, defineScreen, defineRole, screenNames, roleNames,
   plain, newGame, arena, allUnits, livingEnemies, addAlly, unitOn, targetOf, isHostile, isReturning, isIdle, isInvulnerable, moveTo, setNextAction,

@@ -46,7 +46,7 @@ const WORLD = {
     wall: { name: '壁', blocksShots: true, minimap: '#5a6272', colors: { base: '#3b4250', top: '#4b5363', edge: '#1b1f27' } },
     tree: { name: '木', blocksShots: true, minimap: '#5a6272', colors: { dark: '#16301d', mid: '#21452a', light: '#2e5c37' } },
     house: { name: '家', blocksShots: true, minimap: '#5a6272',
-      colors: { wall: '#4a3f35', roof: '#7b3f32', door: '#2b231d', window: '#ffcc80', edge: '#1b1f27' } },
+      colors: { wall: '#4a3f35', roof: '#7b3f32', roofLine: 'rgba(0,0,0,0.25)', door: '#2b231d', window: '#ffcc80', edge: '#1b1f27' } },
     water: { name: '水場', blocksShots: false, minimap: '#1d4f73', colors: { base: '#1d4f73', edge: '#2f6f99', wave: 'rgba(160,220,255,0.25)' } },
     table: { name: '机', blocksShots: false, minimap: '#6d4c33', colors: { top: '#8a6142', edge: '#4e3423', shine: 'rgba(255,220,170,0.18)' } },
     fence: { name: '柵', blocksShots: false, minimap: '#7a5640', colors: { rail: '#5d4030', post: '#7a5640' } },

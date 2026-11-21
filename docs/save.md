@@ -52,7 +52,7 @@
 - `127.0.0.1`（IPv4）と `::1`（IPv6）の両方で待ち受ける。ブラウザは `localhost` を `::1` から試すので、IPv4 だけだと Windows では断られるまで約 2 秒待たされる。IPv6 が使えない PC では IPv4 だけで動く
 - ポートが（IPv4・IPv6 のどちらかで）ほかのプログラムに使われているときは、メッセージを出して終わる。Windows では `SO_REUSEADDR` だと使用中のポートにも入れてしまうため、付けずに `SO_EXCLUSIVEADDRUSE` で確保する
 - `start.bat`（Windows）: `PORT`（8766）が使われていないかを `netstat` で確かめてから `server.py %PORT% --open` を起動する。ファイルは UTF-8 で、先頭で `chcp 65001` にしている（Shift_JIS のコンソールでも文字化けしないように）
-- ゲームのファイルを配る（キャッシュさせない）。`saves/` の中は配らない
+- ゲームのファイルを配る（キャッシュさせない）。`saves/` の中は配らない。`.css` / `.js` の Content-Type は `Handler.extensions_map` で決めてある（`text/css; charset=utf-8` / `text/javascript; charset=utf-8`。Windows のレジストリの設定で `text/plain` になって読まれないことがないように）。ほかは標準の `mimetypes`
 
 | API | 動き |
 |---|---|

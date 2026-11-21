@@ -48,5 +48,5 @@ HTML の画面（道具一覧・キャラクター・商人・鍛冶屋・クエ
 2. **NPC**: `world.js` のゾーンの `npcs` に NPC を足し、`role: 'inn'` と役目に要るもの（例: `inn: 'townInn'`）を書く。種類（`kind`）が新しければ `data/npcs.js` にも足す
 3. **役目**: `src/ui.js` の `NPC_ROLES` に 1 行（例: `inn: { screen: 'inn', arg: (n) => n.inn, check: (n) => (IT.inns[n.inn] ? [] : [...]) }`）
 4. **画面**: `registerScreen('inn', { … })` を 1 つ。今の `#menu` に収まるなら `menuScreen({ title, defs, shopList, actions, closeKeys, … })` で作り、別の見た目なら `overlay` に新しい要素の id を書いて `render` / `keys` / `actions` / `click` を書く。`src/quests.js` のように別のファイルに置くなら、`index.html` で `src/ui.js` より後に読み込む
-5. **画面の土台**（別の見た目のときだけ）: `index.html` に `<div id="…" class="overlay">` と、必要なら CSS
+5. **画面の土台**（別の見た目のときだけ）: `index.html` に `<div id="…" class="overlay">` と、必要なら `style.css` に CSS
 6. **ドキュメントとテスト**: この表（`SCREENS` / `NPC_ROLES`）、[menu.md](menu.md) の開き方の表、データの表（[items.md](items.md) など）、`tests/` に開く・キー・ボタン・閉じるのテスト（`tests/registry.test.js` にテストだけで足した施設の例がある）
