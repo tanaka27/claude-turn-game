@@ -78,6 +78,7 @@ const THEME = {
     gate: '#80deea', link: 'rgba(128,222,234,0.55)', bonfire: '#ff9800', npc: '#ffe082', view: 'rgba(255,255,255,0.4)', spawn: '#b388ff',
     boss: '#ffd54f', enemyChase: '#ff1744', enemy: '#c96b6b', ours: '#4fc3f7', // ours: 主人公と主人公の陣営のキャラ
     zoneEdge: 'rgba(255,255,255,0.25)', here: '#4fc3f7', name: '#e6edf3', level: '#9da7b3', safeLevel: '#a5d6a7',
+    town: '#ffcc80', dungeon: '#ef5350', region: 'rgba(255,255,255,0.35)', // 世界地図の町・ダンジョンの印と、地方の名前
   },
 
   // ----- マウスを重ねたときの説明 (敵・NPC・強化のアイコン) -----
@@ -100,6 +101,11 @@ const THEME = {
     hazardCount: '#ffccbc',                                  // 予告の「あと N」
     gate: '100,220,255', gateLabel: '#80deea',               // 門 ('r,g,b') と行き先の名前
     door: '255,204,128', doorLabel: '#ffe0b2',               // 建物の入口 ('r,g,b') と建物の名前
+    townLabel: '#ffe0b2', dungeonLabel: '#ef9a9a',            // ワールドマップの入口の名前 (町・ダンジョン)
+    place: {                                                 // ワールドマップの入口の絵 (glow は 'r,g,b')
+      town: { glow: '255,204,128', wall: '#6d5a48', house: '#8d7a66', roof: '#b0503d', door: '#2b231d' },
+      dungeon: { glow: '239,83,80', rock: '#5a5148', hole: '#0b0a0d' },
+    },
     bonfire: { glow: 'rgba(255,152,0,0.25)', log: '#5d4030', flame: '#ff9800', core: '#ffe082' },
     chest: '#5d4030', lootEdge: 'rgba(0,0,0,0.7)',           // 落とし物 (宝箱の地・素材の縁)
   },

@@ -48,6 +48,7 @@ const ITEMS = {
     townGeneral: { name: '始まりの町の商店', consumables: ['potion'] },
     wayTools: { name: '宿場の道具屋', consumables: ['potion'] },
     hamletHerbs: { name: '隠れ里の薬師', consumables: ['potion', 'hiPotion'] },
+    rockTools: { name: '岩根の村の道具屋', consumables: ['potion', 'hiPotion'] },
   },
   // 鍛冶屋。world.js の NPC (role: 'smith') の smith にキーを書く。装備を買う・売る (町ごとに品ぞろえが違う)
   //   name: 画面の見出し / gear: 売る装備 [部位, レア度] (1 つずつ並ぶ)

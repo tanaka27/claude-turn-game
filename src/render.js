@@ -129,7 +129,19 @@ const TERRAIN_DRAW = {
       }
       ctx.stroke();
     }
-    ctx.strokeStyle = c.edge; ctx.strokeRect(o.x, o.y, o.w, o.h);
+    if (!o.fromGrid) { ctx.strokeStyle = c.edge; ctx.strokeRect(o.x, o.y, o.w, o.h); } // ワールドマップの海はつなぎ目を描かない
+  },
+  // 山 (ワールドマップ。1 マスずつ): 三角の山に、明るい左の斜面と雪をのせる
+  mountain(o, c) {
+    const x = o.x, y = o.y, w = o.w, h = o.h, top = x + w * 0.5;
+    ctx.fillStyle = c.base;
+    ctx.beginPath(); ctx.moveTo(x + 1, y + h - 2); ctx.lineTo(top, y + 3); ctx.lineTo(x + w - 1, y + h - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = c.light;
+    ctx.beginPath(); ctx.moveTo(x + 1, y + h - 2); ctx.lineTo(top, y + 3); ctx.lineTo(top - 2, y + h - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = c.snow;
+    ctx.beginPath(); ctx.moveTo(top - w * 0.14, y + h * 0.3); ctx.lineTo(top, y + 3); ctx.lineTo(top + w * 0.14, y + h * 0.3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = c.edge; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x + 1, y + h - 2); ctx.lineTo(top, y + 3); ctx.lineTo(x + w - 1, y + h - 2); ctx.stroke();
   },
   tree(o, c) {
     const r = Math.min(o.w, o.h) * 0.45;
@@ -419,6 +431,7 @@ function levelColor(lv) {
 function drawGate(g) {
   const pulse = 0.5 + 0.5 * Math.sin(game.rt * 3);
   const x = g.tx * TILE, y = g.ty * TILE, w = g.tw * TILE, h = g.th * TILE;
+  if (g.place) { drawPlaceIcon(g.place, x, y, w, h, pulse); return; }
   if (g.door) {
     // 建物の入口: 家の扉の下を少し光らせるだけ
     ctx.fillStyle = `rgba(${THEME.field.door},${0.25 + 0.25 * pulse})`; ctx.fillRect(x + w / 2 - 14, y + h - 6, 28, 6);
@@ -427,8 +440,34 @@ function drawGate(g) {
   ctx.fillStyle = `rgba(${THEME.field.gate},${0.15 + 0.15 * pulse})`; ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = `rgba(${THEME.field.gate},0.85)`; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
 }
+// ワールドマップの入口の絵。町: 屋根の家 2 軒と城壁 / ダンジョン: 岩山にあいた暗い穴。足元を少し光らせる
+function drawPlaceIcon(icon, x, y, w, h, pulse) {
+  const C = THEME.field.place[icon];
+  ctx.fillStyle = `rgba(${C.glow},${0.18 + 0.2 * pulse})`; pathCircle(x + w / 2, y + h / 2, w * 0.62); ctx.fill();
+  if (icon === 'town') {
+    ctx.fillStyle = C.wall; ctx.fillRect(x + 3, y + h * 0.55, w - 6, h * 0.4);
+    for (const [ox, s] of [[0.08, 0.5], [0.46, 0.46]]) {
+      const hx = x + w * ox, hw = w * s, hy = y + h * 0.3;
+      ctx.fillStyle = C.house; ctx.fillRect(hx + 2, hy + h * 0.18, hw - 4, h * 0.4);
+      ctx.fillStyle = C.roof; ctx.beginPath(); ctx.moveTo(hx, hy + h * 0.2); ctx.lineTo(hx + hw / 2, hy - h * 0.1); ctx.lineTo(hx + hw, hy + h * 0.2); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = C.door; ctx.fillRect(x + w / 2 - 4, y + h * 0.7, 8, h * 0.25);
+  } else {
+    ctx.fillStyle = C.rock;
+    ctx.beginPath(); ctx.moveTo(x + 1, y + h - 2); ctx.lineTo(x + w * 0.3, y + 6); ctx.lineTo(x + w * 0.7, y + 4); ctx.lineTo(x + w - 1, y + h - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = C.hole; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h - 4, w * 0.24, h * 0.36, 0, Math.PI, 0); ctx.fill();
+  }
+}
+
 function drawGateLabel(g) {
   const dest = WORLD.zones[g.to];
+  if (g.place) {
+    // ワールドマップの入口: 名前を入口の上に出す (ダンジョンは敵レベルも)
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(13);
+    const label = g.place === 'dungeon' ? txt('world.placeLevel', { name: dest.name, level: zoneLevelText(dest) }) : dest.name;
+    outlineText(label, (g.tx + 0.5) * TILE, g.ty * TILE - 8, g.place === 'dungeon' ? THEME.field.dungeonLabel : THEME.field.townLabel, 4);
+    return;
+  }
   if (g.door) {
     // 建物の入口は名前だけを家の扉の上に小さく出す
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(12);
@@ -437,7 +476,8 @@ function drawGateLabel(g) {
   }
   const lx = ((g.tx + g.tw / 2) * TILE + tileCenter(g.sx)) / 2, ly = ((g.ty + g.th / 2) * TILE + tileCenter(g.sy)) / 2;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(14);
-  outlineText(txt('world.gateLabel', { zone: dest.name, level: zoneLevelText(dest) }), lx, ly, THEME.field.gateLabel, 4);
+  const label = g.to === WORLD.overworld ? txt('world.gateOutLabel', { zone: dest.name }) : txt('world.gateLabel', { zone: dest.name, level: zoneLevelText(dest) });
+  outlineText(label, lx, ly, THEME.field.gateLabel, 4);
 }
 
 function drawLoot(l) {
@@ -468,19 +508,30 @@ function drawLoot(l) {
   ctx.globalAlpha = 1;
 }
 
+// (x, y, w, h) (px) が画面に映る範囲にかかるか (広いマップで、映らないものを描かないため)
+function inView(x, y, w, h) {
+  const vw = VIEW_W / VIEW_SCALE, vh = VIEW_H / VIEW_SCALE, m = TILE;
+  return x < camera.x + vw + m && x + w > camera.x - m && y < camera.y + vh + m && y + h > camera.y - m;
+}
+
 function drawWorld() {
   ctx.fillStyle = zone.theme.ground; ctx.fillRect(0, 0, MAP_W, MAP_H);
-  ctx.fillStyle = zone.theme.tile;
-  for (let y = 0; y < MAP_H; y += 80) for (let x = (y / 80) % 2 ? 80 : 0; x < MAP_W; x += 160) ctx.fillRect(x, y, Math.min(80, MAP_W - x), Math.min(80, MAP_H - y));
-  for (const d of decor) { ctx.fillStyle = d.c; ctx.fillRect(d.x, d.y, d.s, d.s); }
+  if (zone.grounds) {
+    // grid で描くゾーン: 地面の種類ごとに塗る (市松模様は描かない)
+    for (const [kind, x, y, w, h] of zone.grounds) if (inView(x, y, w, h)) { ctx.fillStyle = WORLD.grounds[kind].color; ctx.fillRect(x, y, w, h); }
+  } else {
+    ctx.fillStyle = zone.theme.tile;
+    for (let y = 0; y < MAP_H; y += 80) for (let x = (y / 80) % 2 ? 80 : 0; x < MAP_W; x += 160) ctx.fillRect(x, y, Math.min(80, MAP_W - x), Math.min(80, MAP_H - y));
+  }
+  for (const d of decor) if (inView(d.x, d.y, d.s, d.s)) { ctx.fillStyle = d.c; ctx.fillRect(d.x, d.y, d.s, d.s); }
   // マス目の線
   ctx.strokeStyle = THEME.field.grid; ctx.lineWidth = 1;
   ctx.beginPath();
   for (let x = TILE; x < MAP_W; x += TILE) { ctx.moveTo(x, 0); ctx.lineTo(x, MAP_H); }
   for (let y = TILE; y < MAP_H; y += TILE) { ctx.moveTo(0, y); ctx.lineTo(MAP_W, y); }
   ctx.stroke();
-  for (const o of obstacles) if (!o.blocksShots) drawObstacle(o);
-  for (const o of obstacles) if (o.blocksShots) drawObstacle(o);
+  for (const o of obstacles) if (!o.blocksShots && inView(o.x, o.y, o.w, o.h)) drawObstacle(o);
+  for (const o of obstacles) if (o.blocksShots && inView(o.x, o.y, o.w, o.h)) drawObstacle(o);
   for (const g of zone.gates) drawGate(g);
   drawBonfire();
 

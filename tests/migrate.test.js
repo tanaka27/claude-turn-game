@@ -30,7 +30,7 @@ const V1_SAVE = {
     },
   },
   progress: { kills: 70, time: 1352.5 },
-  location: { zone: 'plains', tx: 31, ty: 32 },
+  location: { zone: 'world', tx: 20, ty: 50 },
   home: 'waystation',
 };
 const V2_QUESTS = {
@@ -54,7 +54,7 @@ const V2_SAVE = {
     quests: { c_wolf: { state: 'claimed', count: 8 }, c_bee: { state: 'active', count: 1 } },
   },
   progress: { kills: 40, time: 800 },
-  location: { zone: 'plains', tx: 31, ty: 32 },
+  location: { zone: 'world', tx: 20, ty: 50 },
   home: 'town',
 };
 // 形 v3 のセーブ (道具の数がまだ player.potions だったころ)。今はない道具の id も入っている。そのまま書いておく
@@ -72,7 +72,7 @@ const V3_SAVE = {
     knownSkills: ['shockwave', 'whirlwind', 'meteor', 'dash', 'battleAura'],
   },
   progress: { kills: 120, time: 2400 },
-  location: { zone: 'forest', tx: 10, ty: 10 },
+  location: { zone: 'world', tx: 21, ty: 52 },
   home: 'hamlet',
 };
 const copy = (x) => JSON.parse(JSON.stringify(x));
@@ -104,8 +104,8 @@ test('v1 のセーブは今の形に直して読め、クエストの進み具�
   assert.deepStrictEqual(plain(p.quests), V2_QUESTS);
   assert.strictEqual(g.questStatus(g.questById('c_salamander')), 'ready');
   assert.strictEqual(g.questStatus(g.questById('c_wolfKing')), 'locked', '前のクエストを報告するまでは受けられない');
-  assert.strictEqual(g.zone.id, 'plains');
-  assert.deepStrictEqual([p.tx, p.ty], [31, 32]);
+  assert.strictEqual(g.zone.id, 'world');
+  assert.deepStrictEqual([p.tx, p.ty], [20, 50]);
   assert.strictEqual(p.home, 'waystation');
   assert.strictEqual(g.game.kills, 70);
   assert.strictEqual(g.game.time, 1352.5);
@@ -197,7 +197,7 @@ test('v3 のセーブは、回復薬の数 (potions) が道具の数 (consumable
   const p = g.player;
   assert.deepStrictEqual(plain(bagOf(p)), { potion: 12, hiPotion: 4 });
   assert.strictEqual(p.gold, 480);
-  assert.strictEqual(g.zone.id, 'forest');
+  assert.strictEqual(g.zone.id, 'world');
   // 書いたものは今の形で、読み直してまた書いても同じ
   const saved = JSON.parse(g.storage.get('zankai-turn-save'));
   assert.strictEqual(saved.v, CURRENT);
@@ -262,7 +262,7 @@ test('壊れた・形のおかしいセーブは落ちずに「読めない」�
   assert.strictEqual(g.zone.id, 'town');
   const g2 = loadGame();
   const odd = g2.migrateSave({ v: 1, player: { level: 'x', inventory: 'x', equip: 5, materials: null, quests: 3, potions: 'a', base: 7, hp: 'x', mp: 'x' },
-    progress: { kills: null }, location: { zone: 'plains', tx: 31, ty: 32 } });
+    progress: { kills: null }, location: { zone: 'world', tx: 20, ty: 50 } });
   assert.doesNotThrow(() => g2.startGame(odd));
   assert.strictEqual(g2.player.hp, g2.player.stats.maxHp);
   assert.deepStrictEqual(plain(g2.player.inventory), []);

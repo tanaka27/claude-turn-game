@@ -196,6 +196,10 @@ function drawMinimap() {
   hudButtons.push({ id: 'map', x: mx - 3, y: my - 3, w: mw + 6, h: mh + 6 });
   mapHint(mx - 3, my - 3, mw + 6, txt('hud.mapHintWorld'));
   ctx.fillStyle = C.bg; ctx.fillRect(mx - 3, my - 3, mw + 6, mh + 6);
+  for (const [kind, x, y, w, h] of zone.grounds || []) {
+    ctx.fillStyle = WORLD.grounds[kind].minimap;
+    ctx.fillRect(mx + x * s, my + y * s, Math.max(1, w * s), Math.max(1, h * s));
+  }
   for (const o of obstacles) {
     ctx.fillStyle = WORLD.terrain[o.kind].minimap;
     ctx.fillRect(mx + o.x * s, my + o.y * s, Math.max(1, o.w * s), Math.max(1, o.h * s));
@@ -219,66 +223,55 @@ function drawMinimap() {
   pathCircle(mx + player.x * s, my + player.y * s, 3.5); ctx.fill();
 }
 
-// 世界地図: 全ゾーンを world.js の mapPos に並べ、地形・門・かがり火・NPC と、門どうしのつながりを描く。
-// 今いるゾーンは枠を明るくし、主人公の位置を出す。ゾーンの大きさは実際の比率 (fullW が枠の幅いっぱい)
-// 建物の中 (parent のあるゾーン) は描かず、外のゾーンの入口にいることにする
+// 世界地図: ワールドマップ (WORLD.overworld) 全体を縮めて描き、町・ダンジョンの入口に印と名前、地方の名前を出す。
+// 主人公の位置: ワールドマップにいるときはその場所、町・ダンジョン・建物の中にいるときはその入口
+// 地形の絵は一度だけ別のキャンバスに描いておく (1 マス = 1 px)
+let worldMapImage = null;
+function worldMapCanvas() {
+  if (worldMapImage) return worldMapImage;
+  const z = WORLD.zones[WORLD.overworld], cv = document.createElement('canvas');
+  cv.width = z.w / TILE; cv.height = z.h / TILE;
+  const g = cv.getContext('2d');
+  g.fillStyle = WORLD.grounds[z.ground].minimap; g.fillRect(0, 0, cv.width, cv.height);
+  for (const [kind, x, y, w, h] of z.grounds) { g.fillStyle = WORLD.grounds[kind].minimap; g.fillRect(x / TILE, y / TILE, w / TILE, h / TILE); }
+  for (const [kind, x, y, w, h] of z.obstacles) { g.fillStyle = WORLD.terrain[kind].minimap; g.fillRect(x / TILE, y / TILE, w / TILE, h / TILE); }
+  return (worldMapImage = cv);
+}
 function drawWorldMap() {
-  const M = WORLD.worldMap, C = THEME.map, zones = Object.entries(WORLD.zones).filter(([, z]) => !z.parent);
-  const hereId = zone.parent || zone.id;
-  const door = zone.parent && WORLD.zones[hereId].gates.find((g) => g.to === zone.id);
-  const here = door ? { x: door.x + door.w / 2, y: door.y + door.h / 2 } : player;
-  const cols = Math.max(...zones.map(([, z]) => z.mapPos[0])) + 1, rows = Math.max(...zones.map(([, z]) => z.mapPos[1])) + 1;
-  const pad = 8, labelH = 26, margin = 13;
-  // 枠の大きさ: スキル欄の右と、上中央の行動順 (HUD_TOP) の下に収まるように縮める (文字は縮めない)
+  const M = WORLD.worldMap, C = THEME.map, z = WORLD.zones[WORLD.overworld];
+  const pad = 8, margin = 13;
+  // 大きさ: スキル欄の右と、上中央の行動順 (HUD_TOP) の下に収まるように縮める (文字は縮めない)
   const sb = hudButtons.find((b) => b.id === 'items');
-  const availW = VIEW_W - margin - (sb ? sb.x + sb.w + 12 : 0), availH = VIEW_H - margin - HUD_TOP - 12;
-  const k = clamp(Math.min(1, (availW - (cols - 1) * M.gap - pad * 2) / (cols * M.cellW),
-    (availH - rows * labelH - (rows - 1) * M.gap - pad * 2) / (rows * M.cellH)), M.minScale, 1);
-  const cellW = M.cellW * k, cellH = M.cellH * k;
-  const ww = cols * cellW + (cols - 1) * M.gap + pad * 2, wh = rows * (cellH + labelH) + (rows - 1) * M.gap + pad * 2;
-  const ox = VIEW_W - ww - margin, oy = VIEW_H - wh - margin;
+  const availW = VIEW_W - margin - (sb ? sb.x + sb.w + 12 : 0) - pad * 2, availH = VIEW_H - margin - HUD_TOP - 12 - pad * 2;
+  const fit = Math.min(M.maxW / z.w, M.maxH / z.h);
+  const s = fit * clamp(Math.min(1, availW / (z.w * fit), availH / (z.h * fit)), M.minScale, 1);
+  const mw = z.w * s, mh = z.h * s, ww = mw + pad * 2, wh = mh + pad * 2;
+  const ox = VIEW_W - ww - margin, oy = VIEW_H - wh - margin, mx = ox + pad, my = oy + pad;
   hudButtons.push({ id: 'map', x: ox, y: oy, w: ww, h: wh });
   mapHint(ox, oy, ww, txt('hud.mapHintZone'));
   ctx.fillStyle = C.worldBg; roundRect(ox, oy, ww, wh, 8); ctx.fill();
-  // 縮尺: fullW の幅が枠いっぱい。高さが枠をはみ出すゾーンがあればそれに合わせて小さくする
-  const zs = Math.min(cellW / M.fullW, ...zones.map(([, z]) => cellH / z.h));
-  // ゾーンを描く左上 (x, y。枠の中央) と枠の左上 (cx, cy。枠の下に名前を書く)
-  const pos = {};
-  for (const [id, z] of zones) {
-    const [c, r] = z.mapPos;
-    const cx = ox + pad + c * (cellW + M.gap), cy = oy + pad + r * (cellH + labelH + M.gap);
-    pos[id] = { x: cx + (cellW - z.w * zs) / 2, y: cy + (cellH - z.h * zs) / 2, cx, cy };
+  const smooth = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(worldMapCanvas(), mx, my, mw, mh);
+  ctx.imageSmoothingEnabled = smooth;
+  // 地方の名前 (地方の四角のまん中に薄く)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(11); ctx.fillStyle = C.region;
+  for (const g of z.regions || []) ctx.fillText(g.name, mx + (g.x + g.w / 2) * s, my + (g.y + g.h / 2) * s);
+  // 入口の印と名前 (倒れたときに戻る町はかがり火の色)
+  for (const g of z.gates) {
+    if (!g.place) continue;
+    const cx = mx + (g.x + g.w / 2) * s, cy = my + (g.y + g.h / 2) * s, dest = WORLD.zones[g.to];
+    ctx.fillStyle = g.to === player.home ? C.bonfire : g.place === 'dungeon' ? C.dungeon : C.town;
+    if (g.place === 'dungeon') { ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx + 5, cy + 4); ctx.lineTo(cx - 5, cy + 4); ctx.closePath(); ctx.fill(); }
+    else ctx.fillRect(cx - 4, cy - 4, 8, 8);
+    ctx.font = fontOf(10); ctx.textBaseline = 'alphabetic';
+    outlineText(dest.name, cx, cy - 7, C.name, 3);
   }
-  const gatePoint = (id, g) => ({ x: pos[id].x + (g.x + g.w / 2) * zs, y: pos[id].y + (g.y + g.h / 2) * zs });
-  // 門どうしのつながり (同じ組を 2 回描かないよう、id の小さいほうからだけ)
-  ctx.strokeStyle = C.link; ctx.lineWidth = 2;
-  for (const [id, z] of zones) for (const g of z.gates) {
-    if (id > g.to || !pos[g.to]) continue;
-    const dest = WORLD.zones[g.to].gates.find((t) => t.id === g.toGate);
-    if (!dest) continue;
-    const a = gatePoint(id, g), b = gatePoint(g.to, dest);
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-  }
-  for (const [id, z] of zones) {
-    const p = pos[id], isHere = id === hereId;
-    ctx.fillStyle = z.theme.ground; ctx.fillRect(p.x, p.y, z.w * zs, z.h * zs);
-    for (const [kind, x, y, w, h] of z.obstacles) {
-      ctx.fillStyle = WORLD.terrain[kind].minimap;
-      ctx.fillRect(p.x + x * zs, p.y + y * zs, Math.max(1, w * zs), Math.max(1, h * zs));
-    }
-    ctx.fillStyle = C.gate;
-    for (const g of z.gates) ctx.fillRect(p.x + g.x * zs, p.y + g.y * zs, Math.max(2, g.w * zs), Math.max(2, g.h * zs));
-    if (z.respawn) { ctx.fillStyle = C.bonfire; pathCircle(p.x + z.respawn.x * zs, p.y + z.respawn.y * zs, 2.5); ctx.fill(); }
-    ctx.fillStyle = C.npc;
-    for (const n of z.npcs || []) { pathCircle(p.x + n.x * zs, p.y + n.y * zs, 2); ctx.fill(); }
-    ctx.strokeStyle = isHere ? C.here : C.zoneEdge; ctx.lineWidth = isHere ? 2 : 1;
-    ctx.strokeRect(p.x, p.y, z.w * zs, z.h * zs);
-    if (isHere) { ctx.fillStyle = C.here; pathCircle(p.x + here.x * zs, p.y + here.y * zs, 3.5); ctx.fill(); }
-    // 名前と敵レベル (町は「安全」)
-    const lx = p.cx + cellW / 2, ly = p.cy + cellH + 11;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    ctx.font = fontOf(11); ctx.fillStyle = isHere ? C.here : C.name; ctx.fillText(z.name, lx, ly);
-    ctx.font = fontOf(10, false); ctx.fillStyle = z.safe ? C.safeLevel : C.level; ctx.fillText(zoneLevelText(z), lx, ly + 12);
+  // 主人公
+  const spot = zone.id === WORLD.overworld ? player : worldPlaceOf(zone.id);
+  if (spot) {
+    const px = spot === player ? player.x : spot.x + spot.w / 2, py = spot === player ? player.y : spot.y + spot.h / 2;
+    ctx.fillStyle = C.here; pathCircle(mx + px * s, my + py * s, 3.5 + Math.sin(game.rt * 6)); ctx.fill();
   }
 }
 

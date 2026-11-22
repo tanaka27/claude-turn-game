@@ -100,6 +100,7 @@ const TEXT = {
     level: 'Lv{lo}',
     levelRange: 'Lv{lo}〜{hi}',
     entered: '{zone}に入った。',
+    regionLevel: '{region}　{level}',              // ワールドマップに出たとき: 今いる地方と敵レベル
   },
 
   // ----- クエスト (src/quests.js) -----
@@ -275,6 +276,8 @@ const TEXT = {
     reportMark: '?',                                 // 報告できるクエストがある NPC
     talkHint: 'F: 話しかける',
     gateLabel: '→ {zone}（{level}）',
+    gateOutLabel: '→ {zone}へ出る',                  // 町・ダンジョンからワールドマップへ出る門
+    placeLevel: '{name}（{level}）',                 // ワールドマップのダンジョンの入口の名前
   },
 
   // ----- タイトル・はじめから・クリックで歩く (src/main.js) -----

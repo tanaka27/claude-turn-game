@@ -20,9 +20,9 @@ function playedSave() {
   p.materials.wolfPelt = 5; p.materials.honey = 2;
   p.quests.c_wolf = { state: 'claimed', count: 8 };
   p.quests.c_bee = { state: 'active', count: 3 };
-  g.enterZone('plains', 30, 30);
+  g.enterZone('world', 21, 52);
   g.enterZone('waystation', 20, 16); // 町に入ると戻る先 (home) になる
-  g.enterZone('plains', 31, 32);
+  g.enterZone('world', 20, 50);
   g.game.kills = 12;
   recompute(g, p);
   return { g, save: JSON.parse(JSON.stringify(g.buildSave())), base };
@@ -44,8 +44,8 @@ test('セーブを読み直すと、レベル・ステータス・お金・持�
   assert.deepStrictEqual(plain(p.equip), plain(q.equip));
   assert.deepStrictEqual(plain(p.materials), { wolfPelt: 5, honey: 2 });
   assert.deepStrictEqual(plain(p.quests), { c_wolf: { state: 'claimed', count: 8 }, c_bee: { state: 'active', count: 3 } });
-  assert.strictEqual(g2.zone.id, 'plains');
-  assert.deepStrictEqual([p.tx, p.ty], [31, 32]);
+  assert.strictEqual(g2.zone.id, 'world');
+  assert.deepStrictEqual([p.tx, p.ty], [20, 50]);
   assert.strictEqual(p.home, 'waystation');
   assert.strictEqual(g2.game.kills, 12);
   assert.strictEqual(g2.game.time, g.game.time);
@@ -98,7 +98,7 @@ test('今はないゾーンにいたセーブは、戻る町のかがり火か�
   assert.deepStrictEqual([g2.player.tx, g2.player.ty], [Math.floor(r.x / g2.TILE), Math.floor(r.y / g2.TILE)]);
   // 戻る町もおかしければ最初の町
   save.location = { zone: 'noSuchZone', tx: 3, ty: 3 };
-  save.home = 'plains';
+  save.home = 'world'; // 町でない (かがり火のない) ゾーン
   const g3 = loadGame();
   g3.startGame(g3.migrateSave(save));
   assert.strictEqual(g3.zone.id, 'town');

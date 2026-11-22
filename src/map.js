@@ -184,6 +184,67 @@ function findPath(tx, ty) {
 }
 
 // ===================================================================
+//  grid で描くゾーン (ワールドマップ)。起動時に一度だけ、grid・places を
+//  ふつうのゾーンと同じ w, h・obstacles・gates (px) と、地面の塗り分け grounds に直す
+// ===================================================================
+// 同じ文字が並ぶ四角に分ける (横に伸ばしてから、下の行も同じなら下へ伸ばす)。each(文字, 列, 行, 幅, 高さ)
+//   perTile(文字) が true の文字は 1 マスずつ
+function gridRects(grid, perTile, each) {
+  const done = grid.map((row) => new Uint8Array(row.length));
+  for (let r = 0; r < grid.length; r++) for (let c = 0; c < grid[r].length; c++) {
+    if (done[r][c]) continue;
+    const ch = grid[r][c];
+    let w = 1, h = 1;
+    if (!perTile(ch)) {
+      while (c + w < grid[r].length && grid[r][c + w] === ch && !done[r][c + w]) w++;
+      const rowSame = (rr) => { for (let i = 0; i < w; i++) if (grid[rr][c + i] !== ch || done[rr][c + i]) return false; return true; };
+      while (r + h < grid.length && rowSame(r + h)) h++;
+    }
+    for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) done[y][x] = 1;
+    each(ch, c, r, w, h);
+  }
+}
+
+function expandGridZones() {
+  for (const z of Object.values(WORLD.zones)) {
+    if (!z.grid || z.gridExpanded) continue;
+    const grid = z.grid, rows = grid.length, cols = grid[0].length;
+    const isPlace = (ch) => !!(z.places && z.places[ch]);
+    const kindOf = (ch) => (isPlace(ch) ? z.ground : WORLD.legend[ch]);
+    Object.assign(z, { w: cols * TILE, h: rows * TILE, obstacles: [], grounds: [], gates: [], edgeWalls: false, gridExpanded: true });
+    gridRects(grid, (ch) => isPlace(ch) || !!(WORLD.terrain[kindOf(ch)] && WORLD.terrain[kindOf(ch)].perTile), (ch, c, r, w, h) => {
+      const kind = kindOf(ch), px = [c * TILE, r * TILE, w * TILE, h * TILE];
+      if (WORLD.terrain[kind]) z.obstacles.push([kind, ...px]);
+      else if (WORLD.grounds[kind]) z.grounds.push([kind, ...px]);
+    });
+    // 入口: 出てきたときは下 (通れなければ上・右・左) のマスに立つ
+    const open = (c, r) => r >= 0 && r < rows && c >= 0 && c < cols && !isPlace(grid[r][c]) && !!WORLD.grounds[WORLD.legend[grid[r][c]]];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (!isPlace(grid[r][c])) continue;
+      const p = z.places[grid[r][c]];
+      const [sc, sr] = [[c, r + 1], [c, r - 1], [c + 1, r], [c - 1, r]].find(([x, y]) => open(x, y)) || [c, r + 1];
+      z.gates.push({ id: p.id, x: c * TILE, y: r * TILE, w: TILE, h: TILE, to: p.to, toGate: p.toGate, place: p.icon,
+        spawn: { x: sc * TILE + TILE / 2, y: sr * TILE + TILE / 2 } });
+    }
+  }
+}
+expandGridZones();
+
+// 地方 (grid で描くゾーンの regions) のうち、マス (tx, ty) を含むもの。なければ null
+function regionAt(z, tx, ty) {
+  const x = tileCenter(tx), y = tileCenter(ty);
+  return (z.regions || []).find((g) => x >= g.x && x < g.x + g.w && y >= g.y && y < g.y + g.h) || null;
+}
+
+// ゾーン id がワールドマップのどこにあるか (入口の門)。ワールドマップそのものなら null。
+// 建物の中は外のゾーンの入口、つながっていなければ null
+function worldPlaceOf(id) {
+  const top = WORLD.zones[id] && WORLD.zones[id].parent ? WORLD.zones[id].parent : id;
+  if (top === WORLD.overworld) return null;
+  return WORLD.zones[WORLD.overworld].gates.find((g) => g.to === top) || null;
+}
+
+// ===================================================================
 //  ゾーン
 // ===================================================================
 function loadZone(id) {
@@ -196,19 +257,21 @@ function loadZone(id) {
   gateAt = new Int16Array(COLS * ROWS).fill(-1);
   playerFlow = new Float64Array(COLS * ROWS);
   obstacles = [];
-  const add = (kind, tx, ty, tw, th) => {
+  const add = (kind, tx, ty, tw, th, fromGrid) => {
     const shots = !!WORLD.terrain[kind].blocksShots;
-    obstacles.push({ x: tx * TILE, y: ty * TILE, w: tw * TILE, h: th * TILE, kind, blocksShots: shots });
+    obstacles.push({ x: tx * TILE, y: ty * TILE, w: tw * TILE, h: th * TILE, kind, blocksShots: shots, fromGrid: !!fromGrid });
     for (let y = Math.max(0, ty); y < Math.min(ROWS, ty + th); y++) for (let x = Math.max(0, tx); x < Math.min(COLS, tx + tw); x++) {
       blocked[tileIndex(x, y)] = 1;
       if (shots) shotBlocked[tileIndex(x, y)] = 1;
     }
   };
-  add('wall', 0, 0, COLS, 1); add('wall', 0, ROWS - 1, COLS, 1);
-  add('wall', 0, 0, 1, ROWS); add('wall', COLS - 1, 0, 1, ROWS);
+  if (z.edgeWalls !== false) {
+    add('wall', 0, 0, COLS, 1); add('wall', 0, ROWS - 1, COLS, 1);
+    add('wall', 0, 0, 1, ROWS); add('wall', COLS - 1, 0, 1, ROWS);
+  }
   for (const [kind, x, y, w, h] of z.obstacles) {
     const r = snapRect(x, y, w, h);
-    add(kind, r.tx, r.ty, r.tw, r.th);
+    add(kind, r.tx, r.ty, r.tw, r.th, z.grid);
   }
   // 門はマスにそろえ、通れるようにする (外周の壁に重なっていても入れるように)
   zone.gates = z.gates.map((g, i) => {
@@ -230,16 +293,32 @@ function loadZone(id) {
   const n = Math.round(MAP_W * MAP_H / 9000);
   for (let i = 0; i < n; i++) decor.push({ x: r() * MAP_W, y: r() * MAP_H, s: 1 + r() * 2.5, c: z.theme.decor[r() < 0.5 ? 0 : 1] });
   camps = (z.camps || []).map((c) => ({ ...c, tx: tileOf(c.x), ty: tileOf(c.y), spreadT: c.spread / TILE,
-    field: new Float64Array(COLS * ROWS), slots: c.members.map((type) => ({ type, enemy: null, pending: false, timer: 0 })) }));
-  for (const c of camps) computeFlow(c.tx, c.ty, c.field);
+    field: null, slots: c.members.map((type) => ({ type, enemy: null, pending: false, timer: 0 })) }));
 }
 
-// 敵レベルの範囲 (表示用)
-function zoneLevelText(z) {
-  if (z.safe || !z.camps || !z.camps.length) return txt('zone.safe');
-  const lv = z.camps.map((c) => c.level);
+// 湧き場所 c までの歩数の場 (敵が湧き場所へ戻るときに使う)。最初に使うときに作る (広いマップで、ゾーンに入るたびに全部作らないため)
+function campField(c) {
+  if (!c.field) { c.field = new Float64Array(COLS * ROWS); computeFlow(c.tx, c.ty, c.field); }
+  return c.field;
+}
+
+// 敵レベルの範囲 (表示用)。region を渡すと、その地方の中の湧き場所だけを見る
+function zoneLevelText(z, region) {
+  const inside = (c) => !region || (c.x >= region.x && c.x < region.x + region.w && c.y >= region.y && c.y < region.y + region.h);
+  const cs = (z.camps || []).filter(inside);
+  if (z.safe || !cs.length) return txt('zone.safe');
+  const lv = cs.map((c) => c.level);
   const lo = Math.min(...lv), hi = Math.max(...lv);
   return lo === hi ? txt('zone.level', { lo }) : txt('zone.levelRange', { lo, hi });
+}
+
+// 主人公が別の地方に入ったら、名前と敵レベルを出す (地方のないゾーンでは何もしない)
+let lastRegion = null;
+function checkRegion(announce) {
+  const g = regionAt(zone, player.tx, player.ty);
+  if (g === lastRegion) return;
+  lastRegion = g;
+  if (g && announce) showMsg(g.name, zoneLevelText(zone, g));
 }
 
 // 今のゾーンの湧き場所の状態を覚えておく (戻ってきたとき、倒した敵がすぐ復活しないように)
@@ -272,14 +351,16 @@ function enterZone(id, tx, ty) {
     }
   }));
   computeFlow(player.tx, player.ty, playerFlow);
-  showMsg(zone.name, zoneLevelText(zone));
+  // ワールドマップでは、ゾーンの名前の下に今いる地方の名前と敵レベルを出す
+  lastRegion = null; checkRegion(false);
+  showMsg(zone.name, lastRegion ? txt('zone.regionLevel', { region: lastRegion.name, level: zoneLevelText(zone, lastRegion) }) : zoneLevelText(zone));
   logMsg(txt('zone.entered', { zone: zone.name }), THEME.msg.zone);
 }
 
 // 主人公が門のマスに立ったら行き先のゾーンへ移る
 function checkGate() {
   const gi = gateAt[tileIndex(player.tx, player.ty)];
-  if (gi < 0) return false;
+  if (gi < 0) { checkRegion(true); return false; }
   const g = zone.gates[gi];
   const dest = WORLD.zones[g.to].gates.find((t) => t.id === g.toGate);
   enterZone(g.to, tileOf(dest.spawn.x), tileOf(dest.spawn.y));

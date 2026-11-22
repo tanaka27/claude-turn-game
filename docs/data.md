@@ -18,7 +18,7 @@
 | `data/buffs.js` | `BUFFS` | 強化・弱体（バフ・デバフ）の種類（表示名・変えるステータスと倍率・アイコンの字と色）。倍率が 1 より小さいものが弱体。どのキャラにもかけられる。今かける手段は `data/skills.js` の `type: 'buff'` の技（自分を強化）だけ（[combat.md](combat.md)） |
 | `data/theme.js` | `THEME` / `UNIT_SPRITE` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、仲間の HP バー、MP のゲージと消費 MP の色）と、canvas に描く色と大きさのまとまり（`font` / `background` / `text` / `bars` / `hud` / `map` / `tooltip` / `buffIcon` / `field` / `unit` / `npc` / `fx`、メッセージ欄の文の色 `msg`、浮かぶ文字の色と大きさ `float`。中身は [render.md](render.md)）、キャラの種類ごとの描き方（`UNIT_LOOK`。[drawing.md](drawing.md)）、キャラの絵の大きさ。HTML の画面の見た目は `style.css` |
 | `data/text.js` | `TEXT` | 画面に出す文章のひな形（メッセージ欄・大きい文字・浮かぶ文字・HUD・ワールドの文字・HTML の画面・タイトルとセーブの説明）。`{名前}` に値が入る。`src/` は `txt('まとまり.名前', { … })` で引く。言い回しの変え方・色の置き場所（`THEME.msg` / `THEME.float`）は [text.md](text.md) |
-| `world.js` | `WORLD` | 世界地図（`worldMap`、ゾーンの `mapPos`）、地形の種類（`terrain`）、ゾーン、門、湧き場所、NPC（位置は px で書き、読み込むときにマスに直す。ステータスの種類は `kind`） |
+| `world.js` | `WORLD` | ワールドマップ（`overworld`、文字の地図 `grid`・入口 `places`・地方 `regions`、地面の種類 `grounds`・文字の意味 `legend`、世界地図の大きさ `worldMap`。[overworld.md](overworld.md)）、地形の種類（`terrain`）、町・ダンジョンのゾーン、門、湧き場所、NPC（位置は px で書き、読み込むときにマスに直す。ステータスの種類は `kind`） |
 
 読み込み順は `params.js` → `data/*.js` → `world.js` → `src/*.js`（`index.html`）。どれも `const` なので `window` のプロパティにはならず、名前で直接参照する。
 
@@ -40,7 +40,7 @@
 
 起動時に `validateData` が、データどうしの食い違いを調べてコンソールに `[データの確認]` として出す（ゲームは止めない）。
 
-- 全ゾーンに世界地図の位置 `mapPos` があり、重なっていないか（`world.js`）
+- ワールドマップの文字の地図（行の長さ・文字・入口が 1 つずつ・外周）と、はじめの町から全部の入口・湧き場所に歩いて行けるか（`world.js`。[overworld.md](overworld.md)）
 - 敵の落とす素材が `data/items.js` の `materials` にあるか（`data/enemies.js`）。同じ敵の素材どうしで、レア度が高いほうが確率が低く（同じまで）売値が高いか
 - 道具・素材のレア度が `rarities` にあるか
 - 強化の `stat` が `data/stats.js` にあり `mult` が 0 より大きいか、強化の技の `buff` が `data/buffs.js` にあり `duration` が 1 以上か（`data/buffs.js`・`data/skills.js`）

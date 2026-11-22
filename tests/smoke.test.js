@@ -1,4 +1,4 @@
-// 自動で戦わせる通し試験: はじめから始めて草原へ出て、簡単な方針で数百回行動する。
+// 自動で戦わせる通し試験: はじめから始めてワールドマップ (風の草原) へ出て、簡単な方針で数百回行動する。
 // 途中で例外が出ないことと、いつも成り立つはずのこと (不変条件) を毎行動確かめる
 'use strict';
 const assert = require('assert');
@@ -31,8 +31,8 @@ function decide(g) {
   const p = g.player;
   if (p.hp < p.stats.maxHp * 0.4 && bagOf(p).potion > 0) return () => press(g, 'r');
   if (g.zone.safe) {
-    // 町: 草原への門へ歩く (建物の中にいたら外へ)
-    const to = gateTile(g, 'plains') || gateTile(g, 'town');
+    // 町: ワールドマップへの門へ歩く (建物の中にいたら外へ)
+    const to = gateTile(g, 'world') || gateTile(g, 'town');
     const s = to && firstStep(g, to[0], to[1]);
     return s ? () => step(g, s[0], s[1]) : () => wait(g);
   }
@@ -69,7 +69,7 @@ function autoBattle(seed, actions) {
     const t0 = g.game.time;
     decide(g)();
     if (g.game.time === t0 && g.game.state === 'play') wait(g); // 行動にならなかったら待つ
-    if (g.zone.id === 'plains') stats.inPlains++;
+    if (g.zone.id === 'world') stats.inPlains++;
     checkInvariants(g, state, where);
     stats.maxLevel = Math.max(stats.maxLevel, g.player.level);
   }
@@ -80,7 +80,7 @@ function autoBattle(seed, actions) {
 for (const seed of [1, 2, 3]) {
   test(`自動で 400 行動戦っても壊れない (seed ${seed})`, () => {
     const { g, stats } = autoBattle(seed, 400);
-    assert.ok(stats.inPlains > 100, `草原で戦っている (${stats.inPlains})`);
+    assert.ok(stats.inPlains > 100, `ワールドマップで戦っている (${stats.inPlains})`);
     assert.ok(stats.kills >= 3, `敵を倒している (${stats.kills})`);
     const errors = g.consoleLog.filter((m) => m.level === 'error');
     assert.deepStrictEqual(errors.map((m) => m.text), []);

@@ -11,21 +11,34 @@ function validateData() {
   const rarityIds = ITEMS.rarities.map((r) => r.id);
   const npcIds = [];
 
-  const mapCells = {};
+  check(WORLD.zones[WORLD.overworld] && WORLD.zones[WORLD.overworld].grid, `world.js: overworld のゾーン '${WORLD.overworld}' がないか、grid で描いていない`);
+  for (const k in WORLD.legend) {
+    const v = WORLD.legend[k];
+    check(!!WORLD.terrain[v] !== !!WORLD.grounds[v], `world.js legend '${k}': '${v}' は terrain か grounds のどちらか一方にだけ書く`);
+    check(!/[A-Z]/.test(k), `world.js legend '${k}': 英大文字は入口 (places) に使うので legend に書かない`);
+  }
   for (const [zid, z] of Object.entries(WORLD.zones)) {
     if (z.parent) {
       // 建物の中: 世界地図には出さない。外のゾーンから入口 (door) の門でつながっている
       check(WORLD.zones[z.parent] && !WORLD.zones[z.parent].parent, `world.js ${zid}: parent '${z.parent}' が外のゾーンにない`);
-      check(!z.mapPos, `world.js ${zid}: 建物の中 (parent あり) には mapPos を書かない`);
       check(!WORLD.zones[z.parent] || WORLD.zones[z.parent].gates.some((g) => g.to === zid && g.door),
         `world.js ${zid}: parent '${z.parent}' にこの建物への入口 (door: true の門) がない`);
     }
-    const okPos = z.parent || (Array.isArray(z.mapPos) && z.mapPos.length === 2 && z.mapPos.every((v) => Number.isInteger(v) && v >= 0));
-    check(okPos, `world.js ${zid}: 世界地図の位置 mapPos [列, 行] がない`);
-    if (okPos && !z.parent) {
-      const key = z.mapPos.join(',');
-      check(!mapCells[key], `world.js ${zid}: 世界地図の位置 mapPos が '${mapCells[key]}' と重なっている`);
-      mapCells[key] = zid;
+    if (z.grid) {
+      // grid で描くゾーン: 行の長さがそろっているか、文字が legend か places にあるか、入口が 1 つずつあるか、外周が通れないか
+      const cols = z.grid[0].length, seen = {};
+      check(WORLD.grounds[z.ground], `world.js ${zid}: ground '${z.ground}' が WORLD.grounds にない`);
+      z.grid.forEach((row, r) => {
+        check(row.length === cols, `world.js ${zid}: grid の ${r} 行目の長さ ${row.length} が 1 行目 (${cols}) と違う`);
+        [...row].forEach((ch, c) => {
+          if (z.places && z.places[ch]) { seen[ch] = (seen[ch] || 0) + 1; return; }
+          const kind = WORLD.legend[ch];
+          check(kind, `world.js ${zid}: grid の文字 '${ch}' (${c}, ${r}) が legend にも places にもない`);
+          const edge = r === 0 || c === 0 || r === z.grid.length - 1 || c === cols - 1;
+          if (edge && kind) check(WORLD.terrain[kind], `world.js ${zid}: grid の外周 (${c}, ${r}) が通れる ('${ch}')`);
+        });
+      });
+      for (const ch in z.places || {}) check(seen[ch] === 1, `world.js ${zid}: 入口 '${ch}' が grid に ${seen[ch] || 0} 個ある (1 個にする)`);
     }
     for (const o of z.obstacles) check(WORLD.terrain[o[0]], `world.js ${zid}: 地形の種類 '${o[0]}' が terrain にない`);
     for (const c of z.camps || []) {
@@ -55,6 +68,17 @@ function validateData() {
   const reach = new Set([WORLD.start]);
   for (const zid of reach) for (const g of WORLD.zones[zid] ? WORLD.zones[zid].gates : []) if (WORLD.zones[g.to]) reach.add(g.to);
   for (const zid of Object.keys(WORLD.zones)) check(reach.has(zid), `world.js: ゾーン '${zid}' へは門をたどって行けない`);
+  // ワールドマップの上を歩いて、はじめの町の入口から全部の入口と湧き場所に行けるか
+  const ow = WORLD.zones[WORLD.overworld], startGate = ow && worldPlaceOf(WORLD.start);
+  if (ow && startGate) {
+    loadZone(WORLD.overworld);
+    const field = new Float64Array(COLS * ROWS);
+    computeFlow(tileOf(startGate.spawn.x), tileOf(startGate.spawn.y), field);
+    const far = (px, py) => field[tileIndex(tileOf(px), tileOf(py))] >= 1e9;
+    for (const g of ow.gates) check(!far(g.spawn.x, g.spawn.y), `world.js ${WORLD.overworld}: 入口 '${g.id}' へははじめの町から歩いて行けない`);
+    for (const c of ow.camps || []) check(!far(c.x, c.y), `world.js ${WORLD.overworld}: 湧き場所「${c.name}」へははじめの町から歩いて行けない`);
+    zone = null;
+  }
 
   for (const [slot, e] of Object.entries(PLAYER.startEquip)) {
     check(ITEMS.slots[slot], `data/player.js startEquip: 部位 '${slot}' が data/items.js にない`);

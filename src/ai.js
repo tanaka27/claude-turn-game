@@ -90,7 +90,7 @@ function enemyAct(e) {
       Object.assign(e, { state: 'idle', invuln: false, hp: e.stats.maxHp, mp: e.stats.maxMp, intent: null });
       return;
     }
-    const s = stepDownhill(e, e.camp.field);
+    const s = stepDownhill(e, campField(e.camp));
     if (s) moveUnitTo(e, e.tx + s[0], e.ty + s[1]);
     return;
   }
