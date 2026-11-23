@@ -1,4 +1,4 @@
-// 行動によるステータスの伸び: 行動 → 熟練度 (潜在で増減) → ステータス、上がると潜在が下がる、レベルアップで潜在が上がる、時間で潜在が下がる
+// 行動によるステータスの伸び: 行動 → 能力値が小数点以下まで伸びる (潜在で増減)、一の位が上がるとステータスが上がって潜在が下がる、レベルアップで潜在が上がる、時間で潜在が下がる
 'use strict';
 const assert = require('assert');
 const { newGame, arena, step, moveTo, passTime, levelUp, skillById, useSkillBy, enemyAttack } = require('./helpers');
@@ -6,85 +6,90 @@ const { newGame, arena, step, moveTo, passTime, levelUp, skillById, useSkillBy, 
 const growthOf = (g) => g.PARAMS.progression.growth;
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, `${msg || ''} ${a} ≠ ${b}`);
 
+// Lv1 からの伸び (小数)
+const grown = (g, k) => g.player.base[k] - g.PLAYER.stats[k];
+
 function withWolf(seed = 1) {
   const g = newGame(seed);
   const [e] = arena(g, { cols: 12, rows: 12, player: [5, 5], enemies: [{ type: 'wolf', at: [6, 5], level: 3 }] });
   return { g, p: g.player, e };
 }
 
-test('はじめの潜在は data/player.js の potential、熟練度は空', () => {
+test('はじめの潜在は data/player.js の potential、伸びた値は Lv1 の値', () => {
   const g = newGame();
   const G = growthOf(g);
   assert.deepStrictEqual(Object.keys(g.player.potential).sort(), Object.keys(G.stats).sort());
   for (const k in G.stats) assert.strictEqual(g.player.potential[k], g.PLAYER.potential[k] || G.potential.base);
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(g.player.train)), {});
+  for (const k in G.stats) assert.strictEqual(g.player.base[k], g.PLAYER.stats[k]);
+  assert.ok(!('train' in g.player), '熟練度はない');
 });
 
-test('物理で殴ると、与えたダメージ / 相手の最大HP × 倍率 の熟練度が ちから に入る (敵レベルの補正なし)', () => {
+test('物理で殴ると、ちから が 与えたダメージ / 相手の最大HP × 倍率 だけ小数で伸びる (敵レベルの補正なし)', () => {
   const { g, p, e } = withWolf();
   g.rng.force(0.99, 0.5); // 会心なし
   const hp0 = e.hp;
   step(g, 1, 0);
   assert.ok(!e.dead && e.hp < hp0, '当たって生きている');
-  near(p.train.str, (hp0 - e.hp) / e.stats.maxHp * growthOf(g).events.dealPhysical.str);
+  assert.strictEqual(p.stats.str, g.PLAYER.stats.str, '一の位に届くまで戦いの値は変わらない');
+  near(grown(g, 'str'), (hp0 - e.hp) / e.stats.maxHp * growthOf(g).events.dealPhysical.str);
 });
 
-test('潜在が高いほど熟練度が多く入る (潜在 / 100 倍)', () => {
+test('潜在が高いほど多く伸びる (潜在 / 100 倍)', () => {
   const { g, p } = withWolf();
   p.potential.int = 200;
   g.growthEvent(p, 'spendMp', 5);
   const ev = growthOf(g).events.spendMp;
-  near(p.train.int, 5 * ev.int * 2);
-  near(p.train.maxMp, 5 * ev.maxMp);
+  near(grown(g, 'int'), 5 * ev.int * 2);
+  near(grown(g, 'maxMp'), 5 * ev.maxMp);
 });
 
-test('熟練度が cost に届くと step 上がり、潜在が × (1 − drop) に下がる。余りは持ち越す', () => {
+test('一の位が上がるとステータスが 1 上がり、潜在が × (1 − drop) に下がる。残りは下がった潜在で伸びる', () => {
   const { g, p } = withWolf();
   const S = growthOf(g).stats.str, base0 = p.base.str, atk0 = p.stats.atk;
-  g.trainStat(p, 'str', S.cost * 2.5);
-  assert.strictEqual(p.base.str, base0 + S.step * 2);
-  assert.strictEqual(p.stats.atk, atk0 + S.step * 2, 'ステータスもすぐ計算し直す');
-  near(p.potential.str, 100 * (1 - S.drop) * (1 - S.drop));
-  near(p.train.str, S.cost * 0.5);
+  const d1 = 1 - S.drop;
+  // 潜在 100 で 1 → 潜在 100×d1 で 1 → 残り 0.5 を潜在 100×d1² で
+  const up = g.trainStat(p, 'str', 1 + 1 / d1 + 0.5);
+  assert.strictEqual(up, 2);
+  near(p.base.str, base0 + 2 + 0.5 * d1 * d1);
+  assert.strictEqual(p.stats.atk, atk0 + 2, 'ステータスはすぐ計算し直し、小数は切り捨て');
+  near(p.potential.str, 100 * d1 * d1);
 });
 
-test('さいだいHP が上がると今の HP も同じだけ増える。上限 max で止まり、熟練度は 0 になる', () => {
+test('さいだいHP が上がると今の HP も同じだけ増える。上限 max でちょうど止まる', () => {
   const { g, p } = withWolf();
   const S = growthOf(g).stats.maxHp;
   p.hp = 10;
-  g.trainStat(p, 'maxHp', S.cost);
-  assert.strictEqual(p.hp, 10 + S.step);
-  p.base.maxHp = S.max - 1;
+  g.trainStat(p, 'maxHp', 1);
+  assert.strictEqual(p.hp, 11);
+  p.base.maxHp = S.max - 0.5;
   g.refreshStats(p);
-  g.trainStat(p, 'maxHp', S.cost * 5);
+  g.trainStat(p, 'maxHp', 50);
   assert.strictEqual(p.base.maxHp, S.max);
-  assert.strictEqual(p.train.maxHp, 0);
-  assert.strictEqual(g.trainStat(p, 'maxHp', S.cost * 5), 0, '上限ではもう上がらない');
+  assert.strictEqual(g.trainStat(p, 'maxHp', 50), 0, '上限ではもう上がらない');
 });
 
-test('物理のダメージを受けると みのまもり と さいだいHP に熟練度が入る', () => {
+test('物理のダメージを受けると みのまもり と さいだいHP が伸びる', () => {
   const { g, p, e } = withWolf();
   g.rng.force(0.99, 0.5);
   const hp0 = p.hp, max = p.stats.maxHp;
   g.dealDamage(e, p, enemyAttack(e, '噛みつき'), '噛みつき');
   assert.ok(p.hp < hp0, '当たる');
   const ev = growthOf(g).events.takePhysical, f = (hp0 - p.hp) / max;
-  near(p.train.vit, f * ev.vit);
-  // さいだいHP は cost を超えると上がるので、上がった分も足して比べる
-  const S = growthOf(g).stats.maxHp;
-  near(p.train.maxHp + (p.base.maxHp - g.PLAYER.stats.maxHp) / S.step * S.cost, f * ev.maxHp, 'さいだいHP');
+  near(grown(g, 'vit'), f * ev.vit);
+  assert.ok(f * ev.maxHp < 1, '一の位をまたがない量 (またぐと潜在が下がって比べられない)');
+  near(grown(g, 'maxHp'), f * ev.maxHp, 'さいだいHP');
 });
 
-test('スキルで MP を使うと さいだいMP と かしこさ に熟練度が入る', () => {
+test('スキルで MP を使うと さいだいMP と かしこさ が伸びる', () => {
   const { g, p } = withWolf();
   const sk = skillById(g, 'shockwave');
   assert.ok(useSkillBy(g, p, sk, 5, 1), '使える');
   const ev = growthOf(g).events.spendMp;
-  near(p.train.maxMp, sk.mp * ev.maxMp);
-  near(p.train.int, sk.mp * ev.int);
+  near(grown(g, 'maxMp'), sk.mp * ev.maxMp);
+  near(grown(g, 'int'), sk.mp * ev.int);
 });
 
-test('予告された技の範囲から、出るまでに逃げきると すばやさ に熟練度が入る。逃げなければ入らない', () => {
+test('予告された技の範囲から、出るまでに逃げきると すばやさ が伸びる。逃げなければ伸びない', () => {
   const run = (escape) => {
     const g = newGame(3);
     const [b] = arena(g, { cols: 12, rows: 12, player: [5, 5], enemies: [{ type: 'boar', at: [6, 5], level: 1 }] });
@@ -95,10 +100,10 @@ test('予告された技の範囲から、出るまでに逃げきると すば�
     if (escape) moveTo(g, p, 5, 8);
     g.rng.force(0.99, 0.5);
     g.releaseCharge(b);
-    return p;
+    return g;
   };
-  near(run(true).train.agi, growthOf(newGame()).events.dodge.agi);
-  assert.ok(!run(false).train.agi, '当たったらよけたことにならない');
+  near(grown(run(true), 'agi'), growthOf(newGame()).events.dodge.agi);
+  assert.strictEqual(grown(run(false), 'agi'), 0, '当たったらよけたことにならない');
 });
 
 test('敵は潜在を持たないので育たない', () => {
@@ -106,7 +111,7 @@ test('敵は潜在を持たないので育たない', () => {
   const st = { ...e.baseStats };
   g.dealDamage(p, e, { name: 'x', power: 1 }, 'x');
   g.growthEvent(e, 'spendMp', 50);
-  assert.ok(!e.potential && !e.train);
+  assert.ok(!e.potential && !e.base);
   assert.deepStrictEqual({ ...e.baseStats }, st);
 });
 

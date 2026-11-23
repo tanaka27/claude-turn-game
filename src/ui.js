@@ -303,12 +303,12 @@ function questsHtml() {
   return `<div class="profile"><div class="pquest">${txt('menu.quests')}</div>${qs || `<div class="row none"><span>${txt('menu.noQuests')}</span></div>`}</div>`;
 }
 
-// 行動で伸びるステータスにマウスを重ねると出す吹き出し: 潜在 (100 が基準) と、次に上がるまでの熟練度
+// 行動で伸びるステータスにマウスを重ねると出す吹き出し: 潜在 (100 が基準) と、小数点以下まで入れた今の値
 function growthTipHtml(k) {
   const p = player, S = GROWTH.stats[k];
   if (!S || !p.potential) return '';
   const maxed = p.base[k] >= S.max;
-  return `<div class="stat-tip"><span>${txt('menu.potential', { n: Math.round(p.potential[k]) })}</span><span class="sub">${maxed ? txt('menu.trainMax') : txt('menu.train', { n: (p.train[k] || 0).toFixed(1), cost: S.cost })}</span></div>`;
+  return `<div class="stat-tip"><span>${txt('menu.potential', { n: Math.round(p.potential[k]) })}</span><span class="sub">${maxed ? txt('menu.trainMax') : txt('menu.exact', { n: (Math.floor(p.base[k] * 100) / 100).toFixed(2) })}</span></div>`;
 }
 // つよさ: 全ステータスの最終的な値 (強化と装備を入れたもの) と、( ) に装備で上がっている分。強化がかかっている値は色を変える
 function strengthHtml() {

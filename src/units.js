@@ -21,7 +21,7 @@ function createPlayer() {
   }
   const p = {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
-    stats: null, base: startBase(), potential: startPotential(), train: {}, hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
+    stats: null, base: startBase(), potential: startPotential(), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: ECON.startGold, consumables: startConsumables(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null, control: 'input',
     // 覚えられる技 (data/skills.js 全部)・覚えている技の id (はじめは下の learnSkillsByLevel で Lv1 のもの)・スキル欄 (キー → スキルの id)
@@ -181,7 +181,7 @@ function learnSkillsByLevel(u) {
   return learned;
 }
 
-// ----- ステータスの伸び (行動 → 熟練度 → ステータス。伸びやすさは潜在。params.js の progression.growth) -----
+// ----- ステータスの伸び (行動で能力値が小数点以下まで伸びる。伸びやすさは潜在。params.js の progression.growth) -----
 // はじめの成長する値 (Lv1 の値) と潜在
 function startBase() {
   const base = {};
@@ -194,21 +194,22 @@ function startPotential() {
   return pot;
 }
 const clampPotential = (v) => clamp(v, GROWTH.potential.min, GROWTH.potential.max);
-// 熟練度 pts (潜在を掛ける前) をステータス k に入れる。cost までたまるたびに step 上がり、潜在が下がる。上がった量を返す
+// 能力値 k を、潜在 100 のときの量 pts だけ伸ばす (実際は × 潜在 / 100)。u.base[k] は小数で持ち、戦いで使うのは一の位まで
+//   一の位が 1 上がるたびに潜在が × (1 − drop) に下がり、残りはその下がった潜在で伸びる。一の位が上がった数を返す
 //   潜在 (u.potential) を持つキャラだけ育つ (今は主人公だけ)
 function trainStat(u, k, pts) {
-  const S = GROWTH.stats[k];
+  const S = GROWTH.stats[k], P = GROWTH.potential;
   if (!u.potential || !S || !(pts > 0) || u.base[k] >= S.max) return 0;
-  u.train[k] = (u.train[k] || 0) + pts * u.potential[k] / GROWTH.potential.base;
-  let up = 0;
-  while (u.train[k] >= S.cost && u.base[k] < S.max) {
-    u.train[k] -= S.cost;
-    const n = Math.min(S.step, S.max - u.base[k]);
-    u.base[k] += n;
-    up += n;
+  let rest = pts, up = 0;
+  while (rest > 0 && u.base[k] < S.max) {
+    const next = Math.min(S.max, Math.floor(u.base[k]) + 1);
+    const need = (next - u.base[k]) * P.base / u.potential[k]; // 次の一の位まで伸ばすのに要る pts
+    if (rest < need) { u.base[k] += rest * u.potential[k] / P.base; break; }
+    rest -= need;
+    u.base[k] = next;
+    up++;
     u.potential[k] = clampPotential(u.potential[k] * (1 - S.drop));
   }
-  if (u.base[k] >= S.max) u.train[k] = 0;
   if (up) {
     refreshStats(u, 'shift');
     floatText(u.x, u.y - u.r - 18, txt('units.statUp', { stat: STATS[k].label, n: up }), THEME.float.statUp.color, THEME.float.statUp.size);
@@ -242,9 +243,10 @@ function deriveStats(base, gears) {
   return st;
 }
 // ステータスのもと (どのキャラも同じ形): 強化・装備なしのもとのステータス base と、装備の並び gears (各 stats)
-//   主人公: Lv1 の値 + 成長した分 (u.base) / 装備 (u.equip)。敵・仲間: 作ったときの u.baseStats (敵はレベルの補正つき) / u.gear
+//   主人公: 行動で伸びた値 (u.base。小数なので一の位まで) / 装備 (u.equip)。敵・仲間: 作ったときの u.baseStats (敵はレベルの補正つき) / u.gear
 function statSource(u) {
-  const base = u.isPlayer ? { ...PLAYER.stats, ...u.base } : { ...u.baseStats };
+  const base = u.isPlayer ? { ...PLAYER.stats } : { ...u.baseStats };
+  if (u.isPlayer) for (const k in u.base) base[k] = Math.floor(u.base[k]);
   const gears = u.equip ? Object.values(u.equip).map((it) => it && it.stats) : [u.gear];
   return { base, gears };
 }

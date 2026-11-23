@@ -10,10 +10,9 @@ function playedSave() {
   const p = g.player;
   p.level = 4;
   const base = plain(g.startBase());
-  base.maxHp += 9; base.str += 4;
+  base.maxHp += 9; base.str += 4.325; // 小数のまま残る
   Object.assign(p.base, base);
   p.potential.str = 87.5; p.potential.int = 140;
-  p.train.str = 3.25;
   p.exp = 77;
   p.gold = 321;
   bagOf(p).potion = 7; bagOf(p).hiPotion = 2;
@@ -42,7 +41,7 @@ test('セーブを読み直すと、レベル・ステータス・お金・持�
   assert.deepStrictEqual(plain(p.base), base);
   assert.strictEqual(p.potential.str, 87.5);
   assert.strictEqual(p.potential.int, 140);
-  assert.strictEqual(p.train.str, 3.25);
+  assert.strictEqual(p.stats.str, Math.floor(base.str), '戦いで使うのは一の位まで');
   assert.strictEqual(p.gold, 321);
   assert.deepStrictEqual(plain(bagOf(p)), { potion: 7, hiPotion: 2 });
   assert.deepStrictEqual(plain(p.inventory), plain(q.inventory));
@@ -124,7 +123,6 @@ test('おかしな値は直して読む (上限を超えたステータス・範
   save.player.base.vit = 'x';
   save.player.potential.agi = 9999;
   save.player.potential.maxHp = -5;
-  save.player.train.int = 9999;
   save.player.materials.unknownThing = 3;
   save.player.inventory.push({ slot: 'hat', stats: { atk: 1 } });
   const g2 = loadGame();
@@ -134,7 +132,6 @@ test('おかしな値は直して読む (上限を超えたステータス・範
   assert.strictEqual(g2.player.base.vit, g2.PLAYER.stats.vit, '数でなければ Lv1 の値');
   assert.strictEqual(g2.player.potential.agi, G.potential.max);
   assert.strictEqual(g2.player.potential.maxHp, G.potential.min);
-  assert.ok(!('int' in g2.player.train), 'cost 以上の熟練度は捨てる');
   assert.ok(!('unknownThing' in g2.player.materials));
   assert.strictEqual(g2.player.inventory.length, 2);
 });

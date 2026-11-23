@@ -1,7 +1,7 @@
 // ターンの進み方 (速度による行動順) と、時間で進むもの
 'use strict';
 const assert = require('assert');
-const { newGame, arena, traceTurns, passTime, setNextAction, setPlayerBase, wait, press, castAt, livingEnemies, lootsOnGround, messages, skill, storedCooldown } = require('./helpers');
+const { newGame, arena, traceTurns, passTime, setNextAction, setPlayerBase, defineEffect, applyBuff, wait, press, castAt, livingEnemies, lootsOnGround, messages, skill, storedCooldown } = require('./helpers');
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg || ''} ${a} != ${b}`);
 
@@ -103,11 +103,12 @@ test('湧き場所: 倒した敵は respawn ターン後に出現予告を挟ん
 });
 
 // 倒してから湧き直すまで: 主人公の行動を何回したか (倒した行動を含む) と、何ターンたったか
-//   others: ほかに置く敵 (遠くで待機させる)。agi: 主人公のすばやさ (速度を変える)
-function respawnCount({ others = [], agi } = {}) {
+//   others: ほかに置く敵 (遠くで待機させる)。agi: 主人公のすばやさ (速度を変える)。slow: 主人公の速度に掛ける倍率 (テスト用の弱体)
+function respawnCount({ others = [], agi, slow } = {}) {
   const g = newGame();
   const [wolf] = arena(g, { cols: 40, rows: 15, player: [2, 7], enemies: [{ type: 'wolf', at: [10, 7], respawn: 10 }, ...others] });
   if (agi !== undefined) setPlayerBase(g, { agi });
+  if (slow !== undefined) { defineEffect(g, 'testSlow', { name: '鈍足', stat: 'speed', mult: slow }); applyBuff(g, g.player, 'testSlow', 999); }
   g.rng.constant(0.99); // 会心なし・待機中の敵はうろつかない
   wolf.hp = 1;
   const t0 = g.game.time;
@@ -133,8 +134,8 @@ test('湧き場所: 湧き直すまでのターン数は、時間の区切られ
   assert.strictEqual(quick.speed, 150);
   assert.strictEqual(quick.n, want * 3 / 2);
   near(quick.turns, want, '速度 150');
-  // 主人公が遅い (速度 75: 1 行動 4/3 ターン)
-  const slow = respawnCount({ others: fast, agi: 7.5 });
+  // 主人公が遅い (速度 75: 1 行動 4/3 ターン。すばやさは整数なので、速度 100 に弱体 × 0.75 をかける)
+  const slow = respawnCount({ others: fast, slow: 0.75 });
   assert.strictEqual(slow.speed, 75);
   assert.strictEqual(slow.n, want * 3 / 4);
   near(slow.turns, want, '速度 75');

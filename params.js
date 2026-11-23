@@ -54,37 +54,37 @@ const PARAMS = {
     maxLevel: 30,
     expBase: 60,
     expExponent: 1.5,
-    // ステータスの伸び (行動で熟練度がたまり、潜在で伸びやすさが変わる。docs/progression.md)
-    //   熟練度 = 行動ごとの点 (下の events) × 潜在 / potential.base。stats の cost までたまるとそのステータスが step 上がる
-    //   上がるたびに潜在 × (1 − drop)。レベルアップで全部の潜在 + potential.levelUp
+    // ステータスの伸び (行動で能力値が小数点以下まで伸び、潜在で伸びやすさが変わる。docs/growth.md)
+    //   能力値 (小数) += 行動の量 × 倍率 (下の events) × 潜在 / potential.base。戦いで使うのは一の位まで (切り捨て)
+    //   一の位が 1 上がるたびに潜在 × (1 − drop)。レベルアップで全部の潜在 + potential.levelUp
     //   Lv1 の値は data/player.js の PLAYER.stats、最初の潜在は PLAYER.potential。ここにないステータスは行動では上がらない
     growth: {
       potential: {
-        base: 100,         // 潜在の基準 (この値のとき、行動の点がそのまま熟練度になる)
+        base: 100,         // 潜在の基準 (この値のとき、行動の倍率どおりに能力値が伸びる)
         min: 10,           // 潜在の下限
         max: 400,          // 潜在の上限
         levelUp: 10,       // レベルアップで全部のステータスの潜在が上がる量
         decayFloor: 100,   // 潜在がこれを超えている分は時間で下がる (これ以下は下がらない)
         decayRate: 0.002,  // 1 ターンごとに、decayFloor を超えている分のこの割合が下がる
       },
-      //   cost: 1 段上がるのに要る熟練度 / step: 1 段で上がる量 / drop: 1 段上がると潜在 × (1 − drop) / max: 上限
+      //   drop: 一の位が 1 上がると潜在 × (1 − drop) / max: 上限
       stats: {
-        maxHp: { cost: 10, step: 1, drop: 0.03, max: 300 },
-        maxMp: { cost: 10, step: 1, drop: 0.04, max: 200 },
-        str: { cost: 10, step: 1, drop: 0.08, max: 80 },
-        vit: { cost: 10, step: 1, drop: 0.15, max: 50 },
-        agi: { cost: 10, step: 1, drop: 0.06, max: 100 },
-        int: { cost: 10, step: 1, drop: 0.04, max: 120 },
+        maxHp: { drop: 0.03, max: 300 },
+        maxMp: { drop: 0.04, max: 200 },
+        str: { drop: 0.08, max: 80 },
+        vit: { drop: 0.15, max: 50 },
+        agi: { drop: 0.06, max: 100 },
+        int: { drop: 0.04, max: 120 },
       },
-      // 行動 → 熟練度の点 { ステータス: 倍率 }。点 = 量 × 倍率 (敵レベルによる補正はない)
+      // 行動 → 能力値の伸び { ステータス: 倍率 }。潜在 100 のとき 量 × 倍率 だけ伸びる (敵レベルによる補正はない)
       events: {
-        dealPhysical: { str: 0.6 },           // 物理で与えたダメージ / 相手の最大HP (倒しきるまでの分)
-        dealMagic: { int: 3 },                // 術で与えたダメージ / 相手の最大HP
-        takePhysical: { vit: 3, maxHp: 14 },   // 物理で受けたダメージ / 自分の最大HP
-        takeMagic: { int: 2, maxHp: 14 },       // 術で受けたダメージ / 自分の最大HP
-        spendMp: { maxMp: 0.25, int: 0.1 },    // 使った MP
-        dodge: { agi: 6 },                    // 予告された技の範囲から逃げきった 1 回
-        evade: { agi: 2.5 },                  // 敵の攻撃がミスになった 1 回
+        dealPhysical: { str: 0.06 },           // 物理で与えたダメージ / 相手の最大HP (倒しきるまでの分)
+        dealMagic: { int: 0.3 },                // 術で与えたダメージ / 相手の最大HP
+        takePhysical: { vit: 0.3, maxHp: 1.4 },   // 物理で受けたダメージ / 自分の最大HP
+        takeMagic: { int: 0.2, maxHp: 1.4 },       // 術で受けたダメージ / 自分の最大HP
+        spendMp: { maxMp: 0.025, int: 0.01 },    // 使った MP
+        dodge: { agi: 0.6 },                    // 予告された技の範囲から逃げきった 1 回
+        evade: { agi: 0.25 },                  // 敵の攻撃がミスになった 1 回
       },
     },
     deathExpLoss: 0,      // 倒れたとき、今持っている経験値から失う割合 (レベルは下がらない)

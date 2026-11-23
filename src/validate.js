@@ -92,7 +92,7 @@ function validateData() {
   for (const [k, g] of Object.entries(G.stats)) {
     const w = `params.js progression.growth.stats.${k}`;
     check(k in PLAYER.stats, `${w}: Lv1 の値が data/player.js の stats にない`);
-    check(g.cost > 0 && g.step > 0 && g.drop >= 0 && g.drop < 1, `${w}: cost・step は 0 より大きく、drop は 0 以上 1 未満にする`);
+    check(g.drop >= 0 && g.drop < 1, `${w}: drop は 0 以上 1 未満にする`);
     check(!(k in PLAYER.stats) || g.max >= PLAYER.stats[k], `${w}: 上限 max が Lv1 の値より小さい`);
   }
   for (const [ev, gains] of Object.entries(G.events)) {

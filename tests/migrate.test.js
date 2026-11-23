@@ -5,7 +5,7 @@ const { loadGame } = require('./harness');
 const { plain, bagOf } = require('./helpers');
 
 // 今のセーブの形の版 (src/save.js の SAVE_VERSION。版を上げたらここも上げる)
-const CURRENT = 5;
+const CURRENT = 6;
 // 形 v1 のセーブ (クエストの id が古い名前のころ)。そのまま書いておく
 const V1_SAVE = {
   v: 1, savedAt: 1794000000000,
@@ -92,6 +92,11 @@ const V4_SAVE = {
   progress: { kills: 150, time: 3000 },
   location: { zone: 'world', tx: 21, ty: 52 },
   home: 'town',
+};
+// 形 v5 のセーブ (熟練度 train があり、10 たまると +1 だったころ)
+const V5_SAVE = {
+  ...V4_SAVE, v: 5,
+  player: { ...V4_SAVE.player, potential: { str: 120 }, train: { str: 2.5, vit: 9, int: 'x' } },
 };
 const copy = (x) => JSON.parse(JSON.stringify(x));
 // 起動時の initSave → refreshTitle が終わるまで待つ
@@ -356,19 +361,31 @@ test('ブラウザが v1・サーバーが今の形でも、直してから save
   assert.strictEqual(b.server.puts[0].savedAt, V1_SAVE.savedAt);
 });
 
-test('v4 のセーブは、成長した値 (base) をそのまま残し、潜在・熟練度ははじめの値で始まる', () => {
+test('v4 のセーブは、成長した値 (base) をそのまま残し、潜在ははじめの値で始まる', () => {
   const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V4_SAVE) } });
   const d = g.readLocalSave();
   assert.strictEqual(d.v, CURRENT);
   assert.deepStrictEqual(plain(d.player.potential), {});
-  assert.deepStrictEqual(plain(d.player.train), {});
+  assert.ok(!('train' in d.player));
   g.startGame(d);
   const p = g.player;
   assert.deepStrictEqual(plain(p.base), V4_SAVE.player.base);
   assert.deepStrictEqual(plain(p.potential), plain(g.startPotential()));
-  assert.deepStrictEqual(plain(p.train), {});
   assert.strictEqual(p.level, 7);
   const saved = JSON.parse(g.storage.get('zankai-turn-save'));
   assert.strictEqual(saved.v, CURRENT);
   assert.deepStrictEqual(saved.player.potential, plain(g.startPotential()));
+});
+
+test('v5 のセーブは、熟練度 / 10 を伸びた値 (base) に小数で足して、熟練度を消す', () => {
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V5_SAVE) } });
+  const d = g.readLocalSave();
+  assert.strictEqual(d.v, CURRENT);
+  assert.ok(!('train' in d.player));
+  const b = V4_SAVE.player.base;
+  assert.deepStrictEqual(plain(d.player.base), { ...b, str: b.str + 0.25, vit: b.vit + 0.9 }, '数でない熟練度は捨てる');
+  g.startGame(d);
+  assert.strictEqual(g.player.base.str, b.str + 0.25);
+  assert.strictEqual(g.player.stats.str, b.str);
+  assert.strictEqual(g.player.potential.str, 120);
 });

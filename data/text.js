@@ -227,7 +227,7 @@ const TEXT = {
     strength: 'つよさ',
     strengthNote: 'Lv{level}　（ ）は装備で上がっている分。{buffed}は強化（バフ）中。行動で伸びる能力はマウスを重ねると潜在が出る',
     potential: '潜在 {n}',                            // 能力にマウスを重ねたときの吹き出し (100 が基準)
-    train: '熟練度 {n} / {cost}',                     // 次に上がるまで
+    exact: 'いまの値 {n}',                            // 小数点以下まで入れた値 (一の位が上がるとステータスが上がる)
     trainMax: '上限に達している',
     buffedSample: 'この色',
     equipBonus: '（{v}）',

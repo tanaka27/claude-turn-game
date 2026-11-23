@@ -24,17 +24,17 @@
 
 ```
 { v: 5, savedAt,
-  player:   { level, exp, base, potential, train, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
+  player:   { level, exp, base, potential, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
   progress: { kills, time },
   location: { zone, tx, ty },
   home }
 ```
 
-- `base` は行動で伸びたステータス `{ maxHp, maxMp, str, vit, agi, int }`、`potential` は潜在、`train` は熟練度（どれも `{ ステータス: 数 }`。v5 から潜在・熟練度。[growth.md](growth.md)）。`inventory` / `equip` は装備（`{ id, slot, name, rarity, level, stats }`）そのもの、`materials` は素材の数 `{ 素材のid: 数 }`、`quests` は `{ クエストのid: { state, count } }`（id は `data/quests.js`。v2 から衛兵隊長のクエストは `c_wolf` など）、`consumables` は道具の数 `{ 道具のキー: 数 }`（`data/items.js` の `consumables`。v4 から。v3 までは `potions`）、`knownSkills` は覚えているスキルの id の並び（`data/skills.js`。v3 から）
+- `base` は行動で伸びたステータス `{ maxHp, maxMp, str, vit, agi, int }`（小数点以下まで。v6 から）、`potential` は潜在（どちらも `{ ステータス: 数 }`。v5 から潜在。[growth.md](growth.md)）。`inventory` / `equip` は装備（`{ id, slot, name, rarity, level, stats }`）そのもの、`materials` は素材の数 `{ 素材のid: 数 }`、`quests` は `{ クエストのid: { state, count } }`（id は `data/quests.js`。v2 から衛兵隊長のクエストは `c_wolf` など）、`consumables` は道具の数 `{ 道具のキー: 数 }`（`data/items.js` の `consumables`。v4 から。v3 までは `potions`）、`knownSkills` は覚えているスキルの id の並び（`data/skills.js`。v3 から）
 - `progress.time` はゲーム内の時刻（ターン）。`location` の `tx`, `ty` はマス
 - ステータスそのもの（こうげき力など）は保存せず、読み込むときに「`base` + 装備」から計算し直す（`computeStats`）。式や装備の数値を変えても、続きから遊ぶと新しい数値が反映される
 - `mp` は今の MP。ない（MP を入れる前の）セーブは満タンから始まる。`base.maxMp` がないセーブは Lv1 の値になる（下の決まり）
-- `base` がない・数でない値は Lv1 の値にし、Lv1 の値〜上限（`growth.stats` の `max`）に収める。`potential` がない・数でない値ははじめの潜在にし、下限〜上限に収める。`train` は 0 以上 `cost` 未満でなければ捨てる（0 から）
+- `base` がない・数でない値は Lv1 の値にし、Lv1 の値〜上限（`growth.stats` の `max`）に収める（小数はそのまま）。`potential` がない・数でない値ははじめの潜在にし、下限〜上限に収める
 - `home` は倒れたときに戻る町のゾーン（[world.md](world.md)）。ない・町でないときは `WORLD.respawnZone`
 - 倒れている間に保存するときは、`home` の町のかがり火にいるものとして保存する（`hp: null`・`mp: null` で満タンから始まる）
 - 読み込むとき、存在しないクエスト・部位・ステータスの装備・素材・道具は捨てる（`STATS` にないステータスを持つ装備も捨てる）。道具の数は 0〜持てる数（`max`）に収める

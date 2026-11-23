@@ -61,7 +61,7 @@ test('経験値がたまるとレベルが上がり、全部の潜在が上が�
   assert.strictEqual(p.level, 2);
   assert.strictEqual(p.exp, g.expToNext(1) - 1 + 12 - g.expToNext(1));
   const P = g.PARAMS.progression.growth.potential;
-  // 倒した一撃の熟練度で潜在が少し下がることがあるので、上がったことと上がりすぎていないことを見る
+  // 倒した一撃で ちから の一の位が上がると潜在が少し下がることがあるので、上がったことと上がりすぎていないことを見る
   for (const k in before.potential) {
     assert.ok(p.potential[k] > before.potential[k] + P.levelUp * 0.5, `${k} の潜在が上がる`);
     assert.ok(p.potential[k] <= before.potential[k] + P.levelUp + 1e-9, k);
