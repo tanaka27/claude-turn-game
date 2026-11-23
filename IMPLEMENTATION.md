@@ -28,6 +28,7 @@
 | [docs/items.md](docs/items.md) | 素材とお金、落とし物、装備とレア度、商人と鍛冶屋の品ぞろえ | 装備・経済・店を変える |
 | [docs/consumables.md](docs/consumables.md) | 道具（回復薬など使うとなくなるもの）の定義（`ITEMS.consumables`）、効果の種類（`ITEM_EFFECTS`）、どのキャラも同じ使う道（`useConsumable`）、道具・効果の種類の足し方 | 道具を足す・変える。新しい効果（MP 回復・強化・弱体を消すなど）を足す。仲間に道具を使わせる |
 | [docs/menu.md](docs/menu.md) | 道具一覧・店（商人・鍛冶屋）・キャラクターの画面（開き方、道具を使う、装備の付け替え、素材を売る） | 画面の中身を変える |
+| [docs/character.md](docs/character.md) | キャラクターの画面（タブ: ステータス・装備・持ち物・クエスト、タブの切り替えと足し方） | キャラクターの画面の中身・タブを変える |
 | [docs/screens.md](docs/screens.md) | 画面の登録表（`SCREENS`。開く・閉じる・キー・ボタンの振り分け）、NPC の役目（`NPC_ROLES`）、施設（宿屋・倉庫・新しい店など）の足し方 | 画面や NPC の役目を足す・キーや閉じ方を変える |
 | [docs/save.md](docs/save.md) | セーブの中身と保存先（ブラウザ・サーバー）、`server.py` の API | 保存する項目を増やす・変える、サーバーを直す |
 | [docs/save-versions.md](docs/save-versions.md) | セーブの形の版と移し替え（`SAVE_MIGRATIONS`）、版の足し方、使えないセーブ（新しい版・壊れたもの）の扱い | 保存する項目を増やす・形を変える。セーブが読めないときの動きを変える |

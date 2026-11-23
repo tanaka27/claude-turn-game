@@ -391,3 +391,32 @@ test('話しかけた NPC の画面を開いている間のキーはフィール
     press(g, 'Escape');
   }
 });
+
+test('キャラクターの画面はタブに分かれ、クリック・← →・数字で切り替わる (閉じても覚えている。ほかの画面にはタブがない)', () => {
+  const g = newGame();
+  const tabOf = () => el(g, 'menuBody').dataset.tab;
+  press(g, 'Tab');
+  assert.strictEqual(tabOf(), 'status');
+  assert.ok(el(g, 'menuTabs').innerHTML.includes('data-tab="quest"'));
+  assert.ok(el(g, 'profile').innerHTML.includes('class="profile"'));
+  assert.ok(el(g, 'charQuests').innerHTML.includes('class="pquest"'));
+  clickButton(g, 'menu', 'tab', { tab: 'equip' });
+  assert.strictEqual(tabOf(), 'equip');
+  press(g, 'ArrowRight');
+  assert.strictEqual(tabOf(), 'items');
+  press(g, 'ArrowRight'); press(g, 'ArrowRight');
+  assert.strictEqual(tabOf(), 'status', '最後の次は最初に戻る');
+  press(g, 'ArrowLeft');
+  assert.strictEqual(tabOf(), 'quest');
+  press(g, '2');
+  assert.strictEqual(tabOf(), 'equip');
+  assert.strictEqual(g.game.time, 0, 'タブの切り替えは行動にならない');
+  press(g, 'Escape');
+  press(g, 'Tab');
+  assert.strictEqual(tabOf(), 'equip', '閉じて開き直しても同じタブ');
+  press(g, 'Escape');
+  press(g, 'i');
+  assert.strictEqual(tabOf(), undefined);
+  assert.strictEqual(el(g, 'menuTabs').innerHTML, '');
+  assert.strictEqual(el(g, 'charQuests').innerHTML, '');
+});

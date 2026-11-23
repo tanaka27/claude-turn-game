@@ -10,10 +10,11 @@ const {
 function openNpc(g, id) { nextToNpc(g, id); press(g, 'f'); }
 // クエストの画面を開いて id を選ぶ
 function openQuest(g, giver, id) { openNpc(g, giver); clickQuestRow(g, id); }
-// キャラクターの画面の左上 (受けているクエスト) の中身
+// キャラクターの画面の「クエスト」タブ (受けているクエスト) の中身
 function profile(g) {
   press(g, 'Tab');
-  const html = htmlOf(g, 'profile');
+  clickButton(g, 'menu', 'tab', { tab: 'quest' });
+  const html = htmlOf(g, 'charQuests');
   press(g, 'Tab');
   return html;
 }

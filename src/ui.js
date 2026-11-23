@@ -65,7 +65,11 @@ function closeMenu() {
 //   sel: 選んでいる装備 ({ from: 'inv' | 'equip' | 'shop', id })
 // pop: 開いているアイテムの詳細 (ポップアップ。画面の pop が true のときだけ) null / { kind: 'gear' } (装備。どれかは sel) /
 //   { kind: 'tool', id: 道具のキー (data/items.js の consumables) } / { kind: 'mat', id: 素材のキー }
-const menuState = { mode: 'inv', shop: null, sel: null, pop: null };
+// tab: キャラクターの画面で開いているタブ (CHAR_TABS の id。閉じても覚えておく。セーブしない)
+const menuState = { mode: 'inv', shop: null, sel: null, pop: null, tab: 'status' };
+// キャラクターの画面のタブ。名前は data/text.js の menu.tabs、どのまとまりを出すかは index.html の data-sec (と style.css)
+//   ← → で隣のタブ、1〜4 でそのタブ
+const CHAR_TABS = ['status', 'equip', 'items', 'quest'];
 // アイテムをクリックしたときにポップアップで詳細を出す画面か (店では今までどおり右の欄に出す)
 const usesPop = () => !!screenNow().pop;
 // 鍛冶屋ごとの品ぞろえ { 鍛冶屋のキー: { level: 作ったときの自分のレベル, items } } (セーブしない)
@@ -84,7 +88,7 @@ function refreshSmith(id) {
 }
 
 // #menu を使う画面を作る。def に書いたもので共通のものを上書き・追加する
-//   title(): 見出し / profile: 左上に profileHtml を出す / pop: アイテムの詳細をポップアップで出す /
+//   title(): 見出し / profile: 左上に profileHtml を出す / tabs: タブの id の並び (あればタブに分ける。CHAR_TABS) / pop: アイテムの詳細をポップアップで出す /
 //   toolUse: 道具の「使う」を出す / sellMaterials: 素材を売るボタンを出す /
 //   defs(): 店の定義の表 (data/items.js) / stock(): 商品の装備 / shopList(): 「商品」の欄の中身 (あれば「商品」の欄を出す) /
 //   invGearButton(it): 持ち物の装備を選んだときの「装備する」の横のボタン (なければ「捨てる」) /
@@ -110,6 +114,24 @@ function menuScreen(def) {
 function menuKeys(k, e) {
   if (menuState.pop && !e.repeat && k === 'escape') { closePop(); return true; }
   return false;
+}
+// タブのある画面: ← → で隣のタブ、1〜(タブの数) でそのタブ (ポップアップを開いていても切り替えると閉じる)
+function tabKeys(k) {
+  const tabs = screenNow().tabs;
+  if (!tabs) return false;
+  const i = tabs.indexOf(menuState.tab);
+  let next = null;
+  if (k === 'arrowleft' || k === 'arrowright') next = tabs[(i + (k === 'arrowright' ? 1 : tabs.length - 1)) % tabs.length];
+  else if (/^[1-9]$/.test(k) && Number(k) <= tabs.length) next = tabs[Number(k) - 1];
+  if (!next) return false;
+  switchTab(next);
+  return true;
+}
+function switchTab(id) {
+  menuState.tab = id;
+  menuState.pop = null;
+  menuState.sel = null;
+  renderMenu();
 }
 
 function findSel() {
@@ -167,6 +189,8 @@ function renderMenu() {
   const p = player, s = screenNow();
   $('menuTitle').textContent = s.title();
   $('profile').innerHTML = s.profile ? profileHtml() : '';
+  $('charQuests').innerHTML = s.profile ? questsHtml() : '';
+  renderTabs(s);
   $('menuGold').textContent = txt('menu.gold', { n: p.gold });
   renderTools();
   $('equipList').innerHTML = Object.keys(ITEMS.slots).map((slot) => {
@@ -181,11 +205,26 @@ function renderMenu() {
   const it = findSel();
   if (usesPop()) {
     // 道具一覧・キャラクターの画面: 右の欄はいつもつよさ。アイテムの詳細はポップアップ (付け替えるとつよさも変わる)
-    $('detail').innerHTML = strengthHtml() + `<p class="hint">${txt('menu.hintPop')}</p>`;
+    const hint = s.tabs && menuState.tab === 'status' ? '' : `<p class="hint">${txt('menu.hintPop')}</p>`;
+    $('detail').innerHTML = strengthHtml() + hint;
     renderPop();
     return;
   }
   $('detail').innerHTML = !it ? strengthHtml() + `<p class="hint">${txt('menu.hintSelect')}</p>` : detailHtml(it, menuState.sel.from);
+}
+
+// タブ (画面の tabs があるときだけ)。#menuBody の data-tab で、どのまとまりを出すかを style.css が決める
+function renderTabs(s) {
+  if (!s.tabs) {
+    $('menuTabs').innerHTML = '';
+    delete $('menuBody').dataset.tab;
+    return;
+  }
+  if (!s.tabs.includes(menuState.tab)) menuState.tab = s.tabs[0];
+  $('menuTabs').innerHTML = s.tabs.map((id, i) =>
+    `<button data-act="tab" data-tab="${id}"${id === menuState.tab ? ' class="on"' : ''}>${txt(`menu.tabs.${id}`)}<small>${i + 1}</small></button>`).join('') +
+    `<span class="tabhint">${txt('menu.hintTabs')}</span>`;
+  $('menuBody').dataset.tab = menuState.tab;
 }
 
 // ----- アイテムの詳細 (ポップアップ) -----
@@ -237,18 +276,13 @@ function matPopHtml(id) {
     <p class="hint">${txt('menu.matHint')}</p>`;
 }
 
-// キャラクターの画面の左上: 顔の絵・名前・レベル・HP・MP・経験値・撃破数・状態・ターン・今いるゾーン・受けているクエスト
+// キャラクターの画面の「ステータス」タブ: 顔の絵・名前・レベル・HP・MP・経験値・撃破数・状態・ターン・今いるゾーン
 // (フィールドの HUD には顔・名前・レベル・HP・MP しか出さないので、ほかはここで見る)
 function profileHtml() {
   const p = player, maxed = p.level >= PROGRESSION.maxLevel, need = expToNext(p.level);
   const meter = (v, max, color) => `<div class="bar" style="--bc:${color}"><i style="width:${clamp(v / max, 0, 1) * 100}%"></i></div>`;
   const status = inSafeZone() ? txt('menu.statusSafe') : game.time - p.lastHurt >= PROGRESSION.restDelay ? txt('menu.statusRest') : txt('menu.statusFight');
   const face = PLAYER.face ? `<img class="pface" src="${PLAYER.face}" alt="" style="--fc:${PLAYER.color}">` : '';
-  const qs = QUESTS.filter((q) => p.quests[q.id] && p.quests[q.id].state !== 'claimed').map((q) => {
-    const st = p.quests[q.id];
-    return st.state === 'ready' ? `<div class="row"><span>${q.name}</span><span class="up">${txt('menu.questReport', { npc: npcById(q.giver).name })}</span></div>`
-      : `<div class="row"><span>${q.name}</span><span>${txt('menu.questCount', { name: goalKind(q).short(q.goal), n: questProgress(q), need: questNeed(q) })}</span></div>`;
-  }).join('');
   return `<div class="profile"><div class="phead">${face}<div class="pname">${txt('menu.nameLevel', { name: p.name, level: p.level })}</div></div>
     <div class="row"><span>${txt('menu.hp')}</span><span>${txt('menu.ofMax', { n: Math.ceil(p.hp), max: p.stats.maxHp })}</span></div>${meter(p.hp, p.stats.maxHp, '#ef5350')}
     <div class="row"><span>${txt('menu.mp')}</span><span>${txt('menu.ofMax', { n: Math.floor(p.mp), max: p.stats.maxMp })}</span></div>${meter(p.mp, p.stats.maxMp, THEME.mp)}
@@ -256,8 +290,17 @@ function profileHtml() {
     <div class="row"><span>${txt('menu.kills')}</span><span>${game.kills}</span></div>
     <div class="row"><span>${txt('menu.status')}</span><span>${status}</span></div>
     <div class="row"><span>${txt('menu.turn')}</span><span>${Math.floor(game.time)}</span></div>
-    <div class="row"><span>${txt('menu.where')}</span><span>${txt('menu.whereValue', { zone: zone.name, level: zoneLevelText(zone) })}</span></div>
-    <div class="pquest">${txt('menu.quests')}</div>${qs || `<div class="row none"><span>${txt('menu.noQuests')}</span></div>`}</div>`;
+    <div class="row"><span>${txt('menu.where')}</span><span>${txt('menu.whereValue', { zone: zone.name, level: zoneLevelText(zone) })}</span></div></div>`;
+}
+// キャラクターの画面の「クエスト」タブ: 受けているクエストの進み具合 (目標の種類の short と数。報告できるものは緑)
+function questsHtml() {
+  const p = player;
+  const qs = QUESTS.filter((q) => p.quests[q.id] && p.quests[q.id].state !== 'claimed').map((q) => {
+    const st = p.quests[q.id];
+    return st.state === 'ready' ? `<div class="row"><span>${q.name}</span><span class="up">${txt('menu.questReport', { npc: npcById(q.giver).name })}</span></div>`
+      : `<div class="row"><span>${q.name}</span><span>${txt('menu.questCount', { name: goalKind(q).short(q.goal), n: questProgress(q), need: questNeed(q) })}</span></div>`;
+  }).join('');
+  return `<div class="profile"><div class="pquest">${txt('menu.quests')}</div>${qs || `<div class="row none"><span>${txt('menu.noQuests')}</span></div>`}</div>`;
 }
 
 // つよさ: 全ステータスの最終的な値 (強化と装備を入れたもの) と、( ) に装備で上がっている分。強化がかかっている値は色を変える
@@ -350,6 +393,7 @@ function unequipItem(it) {
 const selFrom = (from) => { const it = findSel(); return it && menuState.sel.from === from ? it : null; };
 const MENU_ACTIONS = {
   close: () => { closeMenu(); return true; },
+  tab: (btn) => { if (screenNow().tabs && screenNow().tabs.includes(btn.dataset.tab)) switchTab(btn.dataset.tab); return true; },
   popClose: () => { closePop(); return true; },
   equip: () => { const it = selFrom('inv'); if (it) equipItem(it); },
   unequip: () => { const it = selFrom('equip'); if (it && player.inventory.length < ECON.inventorySize) unequipItem(it); },
@@ -409,7 +453,8 @@ registerScreen('inv', menuScreen({
 }));
 // キャラクター (Tab・HUD の仲間の欄・一時停止の画面から)。一時停止の画面は隠し、閉じると一時停止の画面に戻す
 registerScreen('char', menuScreen({
-  title: () => txt('menu.titleChar'), profile: true, pop: true, closeKeys: ['c', 'tab'],
+  title: () => txt('menu.titleChar'), profile: true, pop: true, tabs: CHAR_TABS, closeKeys: ['c', 'tab'],
+  keys: (k, e) => menuKeys(k, e) || tabKeys(k),
   open: () => $('pause').classList.remove('show'),
   onClose: () => { if (game.paused) showPause(); },
 }));

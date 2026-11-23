@@ -33,6 +33,29 @@ button.secondary:hover { background: #484f58; }
 .menu-body { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 18px; margin-top: 14px; }
 .menu-body h3 { margin: 0 0 8px; font-size: 14px; color: #9da7b3; }
 .menu-body h3 + div { margin-bottom: 14px; }
+/* キャラクターの画面のタブ (#menuTabs)。#menuBody の data-tab が今のタブで、data-sec にそのタブがないまとまりは隠す */
+.tabs { display: flex; gap: 4px; margin-top: 12px; border-bottom: 1px solid #30363d; }
+.tabs:empty { display: none; }
+.tabs button { margin: 0; padding: 7px 18px; font-size: 14px; background: transparent; color: #9da7b3; border: 1px solid transparent;
+  border-bottom: none; border-radius: 6px 6px 0 0; position: relative; top: 1px; }
+.tabs button:hover { color: #e6edf3; background: #161b22; }
+.tabs button.on { color: #4fc3f7; background: #0d1117; border-color: #30363d; font-weight: bold; }
+.tabs button small { color: #6e7681; font-weight: normal; margin-left: 4px; }
+.tabs .tabhint { margin-left: auto; align-self: center; color: #6e7681; font-size: 12px; }
+.menu-body[data-tab] > div:not([data-sec]) { display: contents; }
+.menu-body[data-tab] #shopCol { display: none; }
+.menu-body[data-tab] [data-sec] { min-width: 0; }
+.menu-body[data-tab="status"] [data-sec]:not([data-sec~="status"]),
+.menu-body[data-tab="equip"] [data-sec]:not([data-sec~="equip"]),
+.menu-body[data-tab="items"] [data-sec]:not([data-sec~="items"]),
+.menu-body[data-tab="quest"] [data-sec]:not([data-sec~="quest"]) { display: none; }
+.menu-body[data-tab="status"] { grid-template-columns: 1fr 1fr; }
+.menu-body[data-tab="equip"] { grid-template-columns: 1fr 1.3fr 1fr; }
+.menu-body[data-tab="items"] { grid-template-columns: 1.3fr 1fr; }
+.menu-body[data-tab="quest"] { grid-template-columns: 1fr; }
+.menu-body[data-tab] { min-height: min(470px, 62vh); align-content: start; }
+.menu-body[data-tab] .list { max-height: 60vh; }
+.menu-body[data-tab="status"] .profile { margin-bottom: 0; font-size: 14px; }
 .list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
 .item { background: #0d1117; border: 1px solid #30363d; border-left: 4px solid var(--rc, #30363d); border-radius: 6px;
   padding: 6px 10px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; font-size: 13px; }
@@ -72,6 +95,7 @@ button.secondary:hover { background: #484f58; }
 .profile .pface { width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--fc); background: #1b2633; }
 .profile .pname { font-size: 17px; font-weight: bold; color: #4fc3f7; }
 .profile .pquest { margin-top: 8px; color: #ffd54f; font-weight: bold; border-top: 1px solid #30363d; padding-top: 6px; }
+.profile .pquest:first-child { margin-top: 0; border-top: none; padding-top: 0; }
 .profile .row.none { color: #6e7681; }
 .profile .up { color: #69f0ae; }
 .profile .row { display: flex; justify-content: space-between; margin-top: 4px; }
@@ -120,4 +144,4 @@ button.secondary:hover { background: #484f58; }
 .talk-head .x { margin: 0 0 0 auto; padding: 4px 12px; font-size: 13px; }
 #talkText { margin: 10px 0 8px; font-size: 16px; line-height: 1.6; color: #e6edf3; min-height: 3.2em; }
 #talkNext { text-align: right; font-size: 13px; color: #8b949e; }
-@media (max-width: 760px) { .menu-body, .qbody { grid-template-columns: 1fr; } .list, #invList, #matList { max-height: 30vh; } }
+@media (max-width: 760px) { .menu-body, .menu-body[data-tab], .qbody { grid-template-columns: 1fr; } .list, #invList, #matList { max-height: 30vh; } }

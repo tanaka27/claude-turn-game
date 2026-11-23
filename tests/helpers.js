@@ -226,12 +226,12 @@ const textOf = (g, id) => el(g, id).textContent;
 const htmlOf = (g, id) => el(g, id).innerHTML;
 // 入れ物の要素 → 親の要素 (index.html の入れ子)
 const PARENT_OF = {
-  itemPop: 'menu', itemPopBody: 'itemPop', profile: 'menu', equipList: 'menu', shopList: 'menu', toolList: 'menu', invList: 'menu',
+  itemPop: 'menu', itemPopBody: 'itemPop', profile: 'menu', charQuests: 'menu', menuTabs: 'menu', equipList: 'menu', shopList: 'menu', toolList: 'menu', invList: 'menu',
   matSellAll: 'menu', matList: 'menu', detail: 'menu', questList: 'quest', questDetail: 'quest', talkName: 'talk', talkText: 'talk', talkNext: 'talk',
 };
 // 画面ごとの、中身を作り直す入れ物 / index.html に直接書いてあるボタン
 const CONTAINERS = {
-  menu: ['profile', 'equipList', 'shopList', 'toolList', 'invList', 'matSellAll', 'matList', 'detail', 'itemPopBody'],
+  menu: ['menuTabs', 'profile', 'charQuests', 'equipList', 'shopList', 'toolList', 'invList', 'matSellAll', 'matList', 'detail', 'itemPopBody'],
   quest: ['questList', 'questDetail'], talk: [], pause: [],
 };
 const STATIC_BUTTONS = {

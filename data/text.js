@@ -199,6 +199,9 @@ const TEXT = {
     shopBuy: '買う（{n} G）',
     shopEmpty: '売り物はない',
     smithEmpty: '装備は売り切れ（レベルが上がると入れ替わる）',
+    // キャラクターの画面のタブ (src/ui.js の CHAR_TABS の id)
+    tabs: { status: 'ステータス', equip: '装備', items: '持ち物', quest: 'クエスト' },
+    hintTabs: '← → / 1〜4 でタブを切り替え',
     // キャラクターの画面の左上
     nameLevel: '{name}　Lv{level}',
     hp: 'HP',

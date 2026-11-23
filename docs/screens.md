@@ -9,7 +9,7 @@ HTML の画面（道具一覧・キャラクター・商人・鍛冶屋・クエ
 | 名前 | 出す要素（overlay） | 開き方 | Esc のほかに閉じるキー | 画面のキー |
 |---|---|---|---|---|
 | `inv` | `#menu` | I・HUD の「道具」 | I | ポップアップがあれば Esc はそれだけ閉じる |
-| `char` | `#menu` | Tab・HUD の仲間の欄・一時停止から C / ボタン | C / Tab | 同上 |
+| `char` | `#menu` | Tab・HUD の仲間の欄・一時停止から C / ボタン | C / Tab | 同上。← → / 1〜4 でタブを切り替え |
 | `shop` | `#menu` | `role: 'shop'` の NPC（店のキー） | F | 同上 |
 | `smith` | `#menu` | `role: 'smith'` の NPC（鍛冶屋のキー） | F | 同上 |
 | `quest` | `#quest` | `role: 'quest'` の NPC（その NPC） | F | ↑↓ で選ぶ、Enter で受ける・報告する |
@@ -17,7 +17,7 @@ HTML の画面（道具一覧・キャラクター・商人・鍛冶屋・クエ
 
 定義に書くもの（どれも省略できるものは省略してよい）:
 
-- `overlay`: 出す要素の id。`#menu` を使う 4 つの画面は `menuScreen(def)` で作る（中身は `renderMenu`。見出し `title()`、`profile`、ポップアップを使う `pop`、道具の「使う」を出す `toolUse`、素材を売る `sellMaterials`、店の定義の表 `defs()`、商品の装備 `stock()`、「商品」の欄 `shopList()`、持ち物の装備の「装備する」の横のボタン `invGearButton(it)`（なければ「捨てる」）を画面ごとに書く。`if (menuState.mode === …)` で分けない）
+- `overlay`: 出す要素の id。`#menu` を使う 4 つの画面は `menuScreen(def)` で作る（中身は `renderMenu`。見出し `title()`、`profile`、タブ `tabs`（キャラクターだけ。[character.md](character.md)）、ポップアップを使う `pop`、道具の「使う」を出す `toolUse`、素材を売る `sellMaterials`、店の定義の表 `defs()`、商品の装備 `stock()`、「商品」の欄 `shopList()`、持ち物の装備の「装備する」の横のボタン `invGearButton(it)`（なければ「捨てる」）を画面ごとに書く。`if (menuState.mode === …)` で分けない）
 - `open(arg)`: その画面だけの準備。共通の準備（`game.state = 'menu'`、構え `aiming` と歩く道 `player.travel` を消す、`menuState.mode`）は `openScreen(名前, arg)` が先にして、`open` → `render` → overlay を出す、の順
 - `render()`: 中身を作る
 - `keys(k, e)`: その画面のキー（`k` は小文字）。処理したら `true`。処理しなかったキーは、押しっぱなしでなければ Esc と `closeKeys` で閉じる（`screenKey`）。`src/player.js` の keydown は、画面を開いている間は `screenKey` を呼ぶだけで、フィールドには渡さない（動かない・時間が進まない）
