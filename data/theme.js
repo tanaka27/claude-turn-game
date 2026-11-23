@@ -152,6 +152,7 @@ const THEME = {
     allyDown: '#ff8a80',  // 主人公の陣営のほかのキャラが倒れた
     defeated: '#b39ddb',  // 敵を倒した
     levelUp: '#ffd54f',
+    statUp: '#a5d6a7',    // 行動でステータスが上がった
     zone: '#80deea',      // ゾーンに入った
     bagFull: '#ff8a80',   // 持ち物がいっぱいで拾えない
     alert: '#ffab40',     // 敵に気づかれて歩くのをやめた
@@ -163,6 +164,7 @@ const THEME = {
     invuln: { color: '#80deea', size: 15 },  // 帰還中の敵に当たった「無効」
     buff: { size: 17 },                      // 強化・弱体 (色はその強化の色 data/buffs.js)
     exp: { color: '#b39ddb', size: 14 },
+    statUp: { color: '#a5d6a7', size: 15 },  // 行動でステータスが上がった (ちから +1)
     material: { size: 14 },                  // 拾った素材 (色はレア度)
     item: { size: 16 },                      // 拾った装備 (色はレア度)
     healHp: { color: '#69f0ae', size: 18 },  // 道具で HP 回復

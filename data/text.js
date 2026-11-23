@@ -42,8 +42,9 @@ const TEXT = {
     buffEndOther: '{who}の{buff}の効果が切れた。',
     expFloat: '+{n} EXP',
     levelUp: 'LEVEL UP!  Lv {level}',               // 画面中央の大きい文字
-    statGain: '{stat} +{n}',                         // その下の小さい文字 (上がったステータス)
-    statGainSep: '　',
+    potentialUp: 'すべての潜在 +{n}',                // その下の小さい文字 (レベルアップで潜在が上がる)
+    statUp: '{stat} +{n}',                           // 行動でステータスが上がったときに浮かぶ文字
+    statUpLog: '{stat}が {n} 上がった！',
     learnedKey: '{skill}（{key}）',                  // 新しく覚えたスキル (スキル欄に置いてあればキーも)
     learned: '新しいスキル: {skills}',
     learnedSep: '、',
@@ -224,7 +225,10 @@ const TEXT = {
     noQuests: '受けているクエストはない',
     // つよさ ({buffed} は buffedSample を強化の色で書いたもの)
     strength: 'つよさ',
-    strengthNote: 'Lv{level}　（ ）は装備で上がっている分。{buffed}は強化（バフ）中',
+    strengthNote: 'Lv{level}　（ ）は装備で上がっている分。{buffed}は強化（バフ）中。行動で伸びる能力はマウスを重ねると潜在が出る',
+    potential: '潜在 {n}',                            // 能力にマウスを重ねたときの吹き出し (100 が基準)
+    train: '熟練度 {n} / {cost}',                     // 次に上がるまで
+    trainMax: '上限に達している',
     buffedSample: 'この色',
     equipBonus: '（{v}）',
   },

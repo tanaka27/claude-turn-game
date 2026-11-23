@@ -79,7 +79,7 @@ resize();
 // ===================================================================
 const game = { state: 'title', paused: false, kills: 0, time: 0, rt: 0, saveT: 0, deathLoss: null,
   msg: '', sub: '', msgT: 0, shake: 0, dyingT: 0, inputT: 0 };
-const TURN = PARAMS.turn, FIELD = PARAMS.field, FIELD_AI = PARAMS.field.ai, PROGRESSION = PARAMS.progression, ECON = PARAMS.economy;
+const TURN = PARAMS.turn, FIELD = PARAMS.field, FIELD_AI = PARAMS.field.ai, PROGRESSION = PARAMS.progression, GROWTH = PARAMS.progression.growth, ECON = PARAMS.economy;
 // 今いるゾーンの湧き場所。slots は群れの一員ごとの枠 (enemy: 生きている敵 / pending: 出現予告中 / timer: 再出現までの残りターン)
 let camps = [];
 // 離れたゾーンの湧き場所の状態 (ゾーン id → 離れた時刻と、枠ごとの再出現までの残りターン)

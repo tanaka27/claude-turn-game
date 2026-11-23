@@ -49,19 +49,23 @@ test('受けているクエストの数が進み、数に届くと報告でき�
   assert.strictEqual(b.g.player.quests.c_wolf.state, 'ready');
 });
 
-test('経験値がたまるとレベルが上がり、ステータスが伸びて HP・MP が満タンになる', () => {
+test('経験値がたまるとレベルが上がり、全部の潜在が上がって HP・MP が満タンになる (ステータスはレベルでは上がらない)', () => {
   let before;
   const { g } = killNext('wolf', 1, (g) => {
     const p = g.player;
     p.exp = g.expToNext(1) - 1;
     p.hp = 3;
-    before = { ...p.base, atk: p.stats.atk, maxHp: p.stats.maxHp };
+    before = { potential: { ...p.potential } };
   });
   const p = g.player;
   assert.strictEqual(p.level, 2);
   assert.strictEqual(p.exp, g.expToNext(1) - 1 + 12 - g.expToNext(1));
-  for (const k of Object.keys(g.PARAMS.progression.growth)) assert.ok(p.base[k] >= before[k], k);
-  assert.ok(p.stats.maxHp > before.maxHp || p.stats.atk > before.atk, '何か伸びる');
+  const P = g.PARAMS.progression.growth.potential;
+  // 倒した一撃の熟練度で潜在が少し下がることがあるので、上がったことと上がりすぎていないことを見る
+  for (const k in before.potential) {
+    assert.ok(p.potential[k] > before.potential[k] + P.levelUp * 0.5, `${k} の潜在が上がる`);
+    assert.ok(p.potential[k] <= before.potential[k] + P.levelUp + 1e-9, k);
+  }
   assert.strictEqual(p.hp, p.stats.maxHp);
   assert.strictEqual(p.mp, p.stats.maxMp);
   // レベルアップでセーブされる

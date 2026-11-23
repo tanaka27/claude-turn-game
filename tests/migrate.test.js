@@ -5,7 +5,7 @@ const { loadGame } = require('./harness');
 const { plain, bagOf } = require('./helpers');
 
 // 今のセーブの形の版 (src/save.js の SAVE_VERSION。版を上げたらここも上げる)
-const CURRENT = 4;
+const CURRENT = 5;
 // 形 v1 のセーブ (クエストの id が古い名前のころ)。そのまま書いておく
 const V1_SAVE = {
   v: 1, savedAt: 1794000000000,
@@ -74,6 +74,24 @@ const V3_SAVE = {
   progress: { kills: 120, time: 2400 },
   location: { zone: 'world', tx: 21, ty: 52 },
   home: 'hamlet',
+};
+// 形 v4 のセーブ (ステータスがレベルアップで伸びていたころ。潜在 potential・熟練度 train がない)。そのまま書いておく
+const V4_SAVE = {
+  v: 4, savedAt: 1796000000000,
+  player: {
+    level: 7, exp: 100,
+    base: { maxHp: 36, maxMp: 22, str: 16, vit: 6, agi: 29, int: 23 },
+    hp: 30, mp: 20, gold: 600,
+    consumables: { potion: 3 },
+    inventory: [],
+    materials: {},
+    equip: { weapon: null, armor: null, accessory: null },
+    quests: {},
+    knownSkills: ['shockwave', 'whirlwind', 'meteor', 'dash', 'battleAura'],
+  },
+  progress: { kills: 150, time: 3000 },
+  location: { zone: 'world', tx: 21, ty: 52 },
+  home: 'town',
 };
 const copy = (x) => JSON.parse(JSON.stringify(x));
 // 起動時の initSave → refreshTitle が終わるまで待つ
@@ -336,4 +354,21 @@ test('ブラウザが v1・サーバーが今の形でも、直してから save
   assert.strictEqual(b.server.puts[0].v, CURRENT);
   assert.deepStrictEqual(b.server.puts[0].player.quests, V2_QUESTS);
   assert.strictEqual(b.server.puts[0].savedAt, V1_SAVE.savedAt);
+});
+
+test('v4 のセーブは、成長した値 (base) をそのまま残し、潜在・熟練度ははじめの値で始まる', () => {
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V4_SAVE) } });
+  const d = g.readLocalSave();
+  assert.strictEqual(d.v, CURRENT);
+  assert.deepStrictEqual(plain(d.player.potential), {});
+  assert.deepStrictEqual(plain(d.player.train), {});
+  g.startGame(d);
+  const p = g.player;
+  assert.deepStrictEqual(plain(p.base), V4_SAVE.player.base);
+  assert.deepStrictEqual(plain(p.potential), plain(g.startPotential()));
+  assert.deepStrictEqual(plain(p.train), {});
+  assert.strictEqual(p.level, 7);
+  const saved = JSON.parse(g.storage.get('zankai-turn-save'));
+  assert.strictEqual(saved.v, CURRENT);
+  assert.deepStrictEqual(saved.player.potential, plain(g.startPotential()));
 });

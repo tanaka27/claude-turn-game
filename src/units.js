@@ -21,7 +21,7 @@ function createPlayer() {
   }
   const p = {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
-    stats: null, base: growthBase(1), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
+    stats: null, base: startBase(), potential: startPotential(), train: {}, hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: ECON.startGold, consumables: startConsumables(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null, control: 'input',
     // 覚えられる技 (data/skills.js 全部)・覚えている技の id (はじめは下の learnSkillsByLevel で Lv1 のもの)・スキル欄 (キー → スキルの id)
@@ -142,6 +142,7 @@ const canUseSkill = (u, sk) => cooldownLeft(u, sk) <= 0 && enoughMp(u, sk);
 // 再使用待ちを始める・MP を払う (useSkill)
 function payForSkill(u, sk) {
   u.skillCd[skillKey(u, sk)] = skillCooldown(u, sk);
+  growthEvent(u, 'spendMp', skillMp(sk));
   u.mp = skillRule(u).mpClamp ? Math.max(0, u.mp - skillMp(sk)) : u.mp - skillMp(sk);
 }
 // ----- 覚えているスキルとスキル欄 (主人公と、data/skills.js の技を持つ仲間) -----
@@ -180,20 +181,52 @@ function learnSkillsByLevel(u) {
   return learned;
 }
 
-// 成長曲線の目安: Lv1 の値 + gain を直線でつないだ増加量
-function growthTarget(k, lv) {
-  let prev = [1, 0];
-  for (const pt of PROGRESSION.growth[k].gain) {
-    if (lv <= pt[0]) return PLAYER.stats[k] + prev[1] + (pt[1] - prev[1]) * (lv - prev[0]) / (pt[0] - prev[0]);
-    prev = pt;
-  }
-  return PLAYER.stats[k] + prev[1];
-}
-// そのレベルの目安どおりの成長した値 (はじめから・前のセーブで使う)
-function growthBase(lv) {
+// ----- ステータスの伸び (行動 → 熟練度 → ステータス。伸びやすさは潜在。params.js の progression.growth) -----
+// はじめの成長する値 (Lv1 の値) と潜在
+function startBase() {
   const base = {};
-  for (const k in PROGRESSION.growth) base[k] = Math.round(growthTarget(k, lv));
+  for (const k in GROWTH.stats) base[k] = PLAYER.stats[k];
   return base;
+}
+function startPotential() {
+  const pot = {};
+  for (const k in GROWTH.stats) pot[k] = (PLAYER.potential && PLAYER.potential[k]) || GROWTH.potential.base;
+  return pot;
+}
+const clampPotential = (v) => clamp(v, GROWTH.potential.min, GROWTH.potential.max);
+// 熟練度 pts (潜在を掛ける前) をステータス k に入れる。cost までたまるたびに step 上がり、潜在が下がる。上がった量を返す
+//   潜在 (u.potential) を持つキャラだけ育つ (今は主人公だけ)
+function trainStat(u, k, pts) {
+  const S = GROWTH.stats[k];
+  if (!u.potential || !S || !(pts > 0) || u.base[k] >= S.max) return 0;
+  u.train[k] = (u.train[k] || 0) + pts * u.potential[k] / GROWTH.potential.base;
+  let up = 0;
+  while (u.train[k] >= S.cost && u.base[k] < S.max) {
+    u.train[k] -= S.cost;
+    const n = Math.min(S.step, S.max - u.base[k]);
+    u.base[k] += n;
+    up += n;
+    u.potential[k] = clampPotential(u.potential[k] * (1 - S.drop));
+  }
+  if (u.base[k] >= S.max) u.train[k] = 0;
+  if (up) {
+    refreshStats(u, 'shift');
+    floatText(u.x, u.y - u.r - 18, txt('units.statUp', { stat: STATS[k].label, n: up }), THEME.float.statUp.color, THEME.float.statUp.size);
+    logMsg(txt('units.statUpLog', { stat: STATS[k].label, n: up }), THEME.msg.statUp);
+  }
+  return up;
+}
+// 行動の出来事 type (params.js の growth.events) を伝える。amount: その出来事の量 (ダメージの割合・使った MP・回数)
+function growthEvent(u, type, amount = 1) {
+  const ev = GROWTH.events[type];
+  if (!u || !u.potential || !ev || !(amount > 0)) return;
+  for (const k in ev) trainStat(u, k, amount * ev[k]);
+}
+// 時間で潜在が下がる: decayFloor を超えている分が 1 ターンごとに decayRate の割合で減る
+function decayPotential(u, dt) {
+  if (!u.potential) return;
+  const P = GROWTH.potential, keep = Math.pow(1 - P.decayRate, dt);
+  for (const k in u.potential) if (u.potential[k] > P.decayFloor) u.potential[k] = P.decayFloor + (u.potential[k] - P.decayFloor) * keep;
 }
 
 // ステータスを計算する (主人公も敵も同じ): もとのステータス + 装備 (gears の各 stats) → 計算で決まるものを計算
@@ -311,17 +344,12 @@ function gainExp(n, x, y) {
 function levelUp() {
   const p = player;
   p.level++;
-  // 成長曲線の目安に近づくように、ばらつきながら上がる
-  const gains = [];
-  for (const k in PROGRESSION.growth) {
-    const n = Math.max(0, Math.round(growthTarget(k, p.level) - p.base[k] + rand(-1, 1) * PROGRESSION.growth[k].spread));
-    p.base[k] += n;
-    if (n > 0) gains.push(txt('units.statGain', { stat: STATS[k].label, n }));
-  }
+  // ステータスは上がらず、全部の潜在が上がる (ステータスは行動で伸びる)
+  for (const k in p.potential) p.potential[k] = clampPotential(p.potential[k] + GROWTH.potential.levelUp);
   refreshStats(p, 'full');
   // 新しく覚えたスキル (はじめの覚え方)。スキル欄に置いてあればキーも出す
   const learned = learnSkillsByLevel(p).map((s) => (slotKeyOf(p, s) ? txt('units.learnedKey', { skill: s.name, key: slotKeyOf(p, s).toUpperCase() }) : s.name));
-  showMsg(txt('units.levelUp', { level: p.level }), [gains.join(txt('units.statGainSep')),
+  showMsg(txt('units.levelUp', { level: p.level }), [txt('units.potentialUp', { n: GROWTH.potential.levelUp }),
     learned.length ? txt('units.learned', { skills: learned.join(txt('units.learnedSep')) }) : ''].filter(Boolean).join('\n'));
   logMsg(txt('units.levelUpLog', { level: p.level }), THEME.msg.levelUp);
   fxLevelUp(p);

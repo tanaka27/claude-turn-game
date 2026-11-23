@@ -4,14 +4,14 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v4。くわしくは docs/save.md)
-//   { v: 4, savedAt,
-//     player:   { level, exp, base, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
+// セーブの形 (v5。くわしくは docs/save.md)
+//   { v: 5, savedAt,
+//     player:   { level, exp, base, potential, train, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
@@ -52,6 +52,15 @@ const SAVE_MIGRATIONS = {
     }
     return d;
   },
+  // v4 → v5: ステータスが行動で伸びるようになり、潜在 player.potential と熟練度 player.train を足した
+  //   成長した値 base はそのまま。潜在・熟練度は空にしておき、読むとき (applySave) にはじめの値で埋める
+  4: (d) => {
+    if (d.player && typeof d.player === 'object') {
+      if (!d.player.potential || typeof d.player.potential !== 'object') d.player.potential = {};
+      if (!d.player.train || typeof d.player.train !== 'object') d.player.train = {};
+    }
+    return d;
+  },
 };
 
 // server: null (まだ確かめていない) / true (サーバーに保存できる) / false (ブラウザだけ)
@@ -66,7 +75,7 @@ function buildSave() {
   const home = homeZone(), r = WORLD.zones[home].respawn;
   return {
     v: SAVE_VERSION, savedAt: Date.now(),
-    player: { level: p.level, exp: p.exp, base: p.base, hp: p.dead ? null : p.hp, mp: p.dead ? null : p.mp, gold: p.gold, consumables: p.consumables,
+    player: { level: p.level, exp: p.exp, base: p.base, potential: p.potential, train: p.train, hp: p.dead ? null : p.hp, mp: p.dead ? null : p.mp, gold: p.gold, consumables: p.consumables,
       inventory: p.inventory, materials: p.materials, equip: p.equip, quests: p.quests, knownSkills: p.knownSkills },
     progress: { kills: game.kills, time: game.time },
     location: p.dead ? { zone: home, tx: tileOf(r.x), ty: tileOf(r.y) } : { zone: zone.id, tx: p.tx, ty: p.ty },
@@ -110,11 +119,17 @@ function applySave(save) {
   const s = save.player, p = player;
   p.level = clamp(Math.floor(s.level) || 1, 1, PROGRESSION.maxLevel);
   p.exp = Math.max(0, s.exp || 0);
-  // 成長した値: ない・おかしい・目安から離れすぎているものは、そのレベルの目安にする
-  p.base = growthBase(p.level);
-  for (const k in p.base) {
-    const v = s.base && s.base[k];
-    if (Number.isFinite(v) && Math.abs(v - p.base[k]) < PROGRESSION.growth[k].spread * PROGRESSION.growthResetMult) p.base[k] = Math.round(v);
+  // 成長した値: ない・数でないものは Lv1 の値、Lv1 の値〜上限 (max) に収める
+  // 潜在: ない・数でないものははじめの値、下限〜上限に収める。熟練度: 0〜cost 未満 (おかしければ 0)
+  p.base = startBase();
+  p.potential = startPotential();
+  p.train = {};
+  const num = (o, k) => (o && typeof o === 'object' && Number.isFinite(o[k]) ? o[k] : undefined);
+  for (const k in GROWTH.stats) {
+    const S = GROWTH.stats[k], b = num(s.base, k), pot = num(s.potential, k), tr = num(s.train, k);
+    if (b !== undefined) p.base[k] = clamp(Math.round(b), PLAYER.stats[k], S.max);
+    if (pot !== undefined) p.potential[k] = clampPotential(pot);
+    if (tr !== undefined && tr >= 0 && tr < S.cost) p.train[k] = tr;
   }
   game.kills = save.progress.kills || 0;
   game.time = Math.max(0, save.progress.time || 0);

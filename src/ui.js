@@ -303,6 +303,13 @@ function questsHtml() {
   return `<div class="profile"><div class="pquest">${txt('menu.quests')}</div>${qs || `<div class="row none"><span>${txt('menu.noQuests')}</span></div>`}</div>`;
 }
 
+// 行動で伸びるステータスにマウスを重ねると出す吹き出し: 潜在 (100 が基準) と、次に上がるまでの熟練度
+function growthTipHtml(k) {
+  const p = player, S = GROWTH.stats[k];
+  if (!S || !p.potential) return '';
+  const maxed = p.base[k] >= S.max;
+  return `<div class="stat-tip"><span>${txt('menu.potential', { n: Math.round(p.potential[k]) })}</span><span class="sub">${maxed ? txt('menu.trainMax') : txt('menu.train', { n: (p.train[k] || 0).toFixed(1), cost: S.cost })}</span></div>`;
+}
 // つよさ: 全ステータスの最終的な値 (強化と装備を入れたもの) と、( ) に装備で上がっている分。強化がかかっている値は色を変える
 function strengthHtml() {
   const p = player, st = p.stats, { equip } = statParts(p);
@@ -311,7 +318,7 @@ function strengthHtml() {
     const e = equip[k] || 0;
     const d = e ? `<span class="${e > 0 ? 'up' : 'down'}">${txt('menu.equipBonus', { v: fmtStat(k, e, true) })}</span>` : '';
     const v = buffed.has(k) ? `<span class="buffed">${fmtStat(k, st[k])}</span>` : fmtStat(k, st[k]);
-    return `<div class="row"><span>${STATS[k].label}</span><span>${v} ${d}</span></div>`;
+    return `<div class="row${GROWTH.stats[k] ? ' has-tip' : ''}"><span>${STATS[k].label}</span><span>${v} ${d}</span>${growthTipHtml(k)}</div>`;
   }).join('');
   const note = txt('menu.strengthNote', { level: p.level, buffed: `<span class="buffed">${txt('menu.buffedSample')}</span>` });
   return `<div class="dname">${txt('menu.strength')}</div><div class="dsub">${note}</div><div class="stats">${rows}</div>`;

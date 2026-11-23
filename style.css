@@ -81,6 +81,13 @@ button.secondary:hover { background: #484f58; }
 .detail .dsub { color: #8b949e; font-size: 12px; margin-top: 2px; }
 .detail .stats { margin: 12px 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .detail .row { display: flex; justify-content: space-between; }
+/* 行動で伸びるステータスにマウスを重ねると出す吹き出し (潜在・熟練度。src/ui.js の growthTipHtml) */
+.detail .row.has-tip { position: relative; cursor: help; }
+.detail .row.has-tip:hover { background: rgba(255, 255, 255, 0.06); }
+.detail .stat-tip { display: none; position: absolute; left: 96px; top: 50%; transform: translateY(-50%); z-index: 5; padding: 1px 8px; white-space: nowrap;
+  background: #161b22; border: 1px solid #484f58; border-radius: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); font-size: 12px; color: #e6edf3; }
+.detail .stat-tip .sub { color: #9da7b3; margin-left: 8px; }
+.detail .row.has-tip:hover .stat-tip { display: block; }
 .detail .shead { margin-top: 12px; color: #8b949e; font-size: 12px; border-bottom: 1px solid #30363d; padding-bottom: 2px; }
 .detail .shead + .stats { margin-top: 6px; }
 .detail .row.lost > span:first-child { color: #6e7681; }

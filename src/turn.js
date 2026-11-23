@@ -68,6 +68,7 @@ function advanceTime(t) {
     const resting = u.faction === 'player' && game.time - u.lastHurt >= PROGRESSION.restDelay;
     u.hp = Math.min(u.stats.maxHp, u.hp + (u.stats.hpRegen + (resting ? u.stats.maxHp * PROGRESSION.restRegenRate : 0)) * dt);
     u.mp = Math.min(u.stats.maxMp, u.mp + (u.stats.mpRegen + (resting ? u.stats.maxMp * PROGRESSION.restMpRegenRate : 0)) * dt);
+    decayPotential(u, dt); // 潜在のうち基準を超えた分は時間で下がる (潜在を持つキャラだけ)
   }
   updateCamps(dt);
   updateLoots(dt);

@@ -86,11 +86,21 @@ function validateData() {
   }
   // 主人公のステータス: 成長するものは Lv1 の値があり、計算で決まるものは PLAYER.stats に書かない
   for (const k in PLAYER.stats) check(STATS[k], `data/player.js stats: '${k}' が data/stats.js にない`);
-  for (const [k, g] of Object.entries(PARAMS.progression.growth)) {
-    check(k in PLAYER.stats, `params.js progression.growth: '${k}' の Lv1 の値が data/player.js の stats にない`);
-    const lv = g.gain.map((pt) => pt[0]);
-    check(lv.every((v, i) => v > (i ? lv[i - 1] : 1)), `params.js progression.growth.${k}: gain のレベルが 2 以上で小さい順になっていない`);
-    check(lv[lv.length - 1] >= PARAMS.progression.maxLevel, `params.js progression.growth.${k}: gain が最大レベル (${PARAMS.progression.maxLevel}) まで届いていない`);
+  // 行動で伸びるステータス (params.js の progression.growth): Lv1 の値があり、上限は Lv1 の値以上、潜在の範囲がおかしくない
+  const G = PARAMS.progression.growth, GP = G.potential;
+  check(GP.min > 0 && GP.min <= GP.base && GP.base <= GP.max, 'params.js progression.growth.potential: min ≦ base ≦ max (min > 0) になっていない');
+  for (const [k, g] of Object.entries(G.stats)) {
+    const w = `params.js progression.growth.stats.${k}`;
+    check(k in PLAYER.stats, `${w}: Lv1 の値が data/player.js の stats にない`);
+    check(g.cost > 0 && g.step > 0 && g.drop >= 0 && g.drop < 1, `${w}: cost・step は 0 より大きく、drop は 0 以上 1 未満にする`);
+    check(!(k in PLAYER.stats) || g.max >= PLAYER.stats[k], `${w}: 上限 max が Lv1 の値より小さい`);
+  }
+  for (const [ev, gains] of Object.entries(G.events)) {
+    for (const k in gains) check(G.stats[k], `params.js progression.growth.events.${ev}: '${k}' は行動で伸びるステータス (growth.stats) にない`);
+  }
+  for (const k in PLAYER.potential || {}) {
+    check(G.stats[k], `data/player.js potential: '${k}' は行動で伸びるステータス (params.js の growth.stats) にない`);
+    check(PLAYER.potential[k] >= GP.min && PLAYER.potential[k] <= GP.max, `data/player.js potential.${k}: 潜在の下限〜上限の外`);
   }
   for (const [k, d] of Object.entries(PARAMS.derivedStats)) {
     check(STATS[k], `params.js derivedStats: '${k}' が data/stats.js にない`);

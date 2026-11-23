@@ -90,10 +90,14 @@ function resolveAttack(h) {
     } else if (a.shape === 'circle' && a.range >= 2) addShake(5);
   }
   fxTiles(h.tiles, h.faction, FX_THEME.slash.life);
+  return hit;
 }
 
 // 予告を出す (使った者の次の行動で判定)
 function startCharge(u, h) {
+  // 予告した時点で範囲にいた相手 (出すまでに逃げきったら、行動による成長の「よけた」になる)
+  const keys = new Set(h.tiles.map(([x, y]) => tileKey(x, y)));
+  h.threatened = opponents(h.faction).filter((o) => !o.dead && keys.has(tileKey(o.tx, o.ty)));
   u.charging = h;
   hazards.push(h);
 }
@@ -108,7 +112,8 @@ function releaseCharge(u) {
   const h = u.charging;
   cancelCharge(u);
   u.facing = h.dir;
-  resolveAttack(h);
+  const hit = resolveAttack(h);
+  for (const t of h.threatened || []) if (!t.dead && !hit.has(t)) growthEvent(t, 'dodge');
 }
 
 // ----- 技を使う (どのキャラも、どの種類の技も同じ道) -----
@@ -210,11 +215,18 @@ function dealDamage(src, tgt, a, what) {
   const { dmg, crit } = rollDamage(src, tgt, a);
   const ours = tgt.faction === 'player';
   if (dmg === 0) {
+    if (src.faction !== tgt.faction) growthEvent(tgt, 'evade');
     if (tgt === player) tgt.travel = null;
     if (tgt.state === 'idle') aggro(tgt);
     logMsg(damageLine(src, tgt, what, 0, false), THEME.msg.miss);
     floatText(tgt.x + rand(-8, 8), tgt.y - tgt.r - 6, txt('combat.missFloat'), THEME.float.miss.color, THEME.float.miss.size);
     return true;
+  }
+  // 行動による成長: 与えた側・受けた側とも、倒しきるまでの分を最大HPに対する割合で数える (敵レベルの補正はない)
+  if (src.faction !== tgt.faction) {
+    const dealt = Math.min(dmg, Math.max(0, tgt.hp)), magic = a.kind === 'magic';
+    growthEvent(src, magic ? 'dealMagic' : 'dealPhysical', dealt / tgt.stats.maxHp);
+    growthEvent(tgt, magic ? 'takeMagic' : 'takePhysical', dealt / tgt.stats.maxHp);
   }
   tgt.hp -= dmg;
   tgt.hitFlash = 0.15;
