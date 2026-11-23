@@ -12,9 +12,11 @@ const ITEMS = {
   //   以下は装備だけに使う: weight: 敵が落とすときの出やすさ / bossWeight: ボスが落とすときの出やすさ /
   //   mult: 基本性能の倍率 / affixes: 追加性能の数 / value: 価値の倍率
   rarities: [
-    { id: 'common', name: 'ノーマル', color: '#e6edf3', weight: 70, bossWeight: 0, mult: 1.0, affixes: 0, value: 1 },
-    { id: 'rare', name: 'レア', color: '#64b5f6', weight: 25, bossWeight: 60, mult: 1.2, affixes: 1, value: 2.5 },
-    { id: 'epic', name: 'エピック', color: '#ce93d8', weight: 5, bossWeight: 40, mult: 1.45, affixes: 2, value: 6 },
+    { id: 'common', name: 'コモン', color: '#e6edf3', weight: 60, bossWeight: 0, mult: 1.0, affixes: 0, value: 1 },
+    { id: 'uncommon', name: 'アンコモン', color: '#81c784', weight: 25, bossWeight: 0, mult: 1.1, affixes: 1, value: 1.8 },
+    { id: 'rare', name: 'レア', color: '#64b5f6', weight: 11, bossWeight: 45, mult: 1.2, affixes: 2, value: 3 },
+    { id: 'epic', name: 'エピック', color: '#ce93d8', weight: 3, bossWeight: 40, mult: 1.35, affixes: 3, value: 6 },
+    { id: 'legendary', name: 'レジェンダリー', color: '#ffb74d', weight: 1, bossWeight: 15, mult: 1.5, affixes: 4, value: 12 },
   ],
   // 部位。base: 基本性能 / extraAffixes: レア度とは別に付く追加性能の数
   slots: {
@@ -58,7 +60,7 @@ const ITEMS = {
     townSmith: { name: '始まりの町の鍛冶屋', levelOffset: 0, maxLevel: 4,
       gear: [['weapon', 'common'], ['armor', 'common'], ['accessory', 'common']] },
     waySmith: { name: '宿場の鍛冶屋', levelOffset: 0, maxLevel: 8,
-      gear: [['weapon', 'common'], ['weapon', 'rare'], ['armor', 'common'], ['armor', 'rare'], ['accessory', 'common'], ['accessory', 'rare']] },
+      gear: [['weapon', 'uncommon'], ['weapon', 'rare'], ['armor', 'uncommon'], ['armor', 'rare'], ['accessory', 'uncommon'], ['accessory', 'rare']] },
     hamletSmith: { name: '隠れ里の鍛冶屋', levelOffset: 1,
       gear: [['weapon', 'rare'], ['weapon', 'epic'], ['armor', 'rare'], ['armor', 'epic'], ['accessory', 'rare'], ['accessory', 'epic']] },
   },

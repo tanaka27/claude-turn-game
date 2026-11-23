@@ -485,7 +485,7 @@ function drawLoot(l) {
   const x = tileCenter(l.tx) + l.ox, y = tileCenter(l.ty) + l.oy + Math.sin(game.rt * 4 + l.ox) * 1.5;
   ctx.globalAlpha = fade;
   if (l.kind === 'material') {
-    // 素材: 色付きのひし形。ノーマルより上はレア度の色で光る
+    // 素材: 色付きのひし形。コモンより上はレア度の色で光る
     const m = ITEMS.materials[l.id];
     if (m.rarity !== 'common') {
       ctx.fillStyle = rarityOf(m.rarity).color; ctx.globalAlpha = fade * (0.25 + 0.15 * Math.sin(game.rt * 5));
@@ -495,7 +495,7 @@ function drawLoot(l) {
     ctx.beginPath(); ctx.moveTo(x, y - 7); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 7); ctx.lineTo(x - 6, y); ctx.closePath();
     ctx.fillStyle = m.color; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = THEME.field.lootEdge; ctx.stroke();
   } else {
-    // 装備: 宝箱。ノーマルより上は光る
+    // 装備: 宝箱。コモンより上は光る
     const r = rarityOf(l.item.rarity);
     if (l.item.rarity !== 'common') {
       ctx.fillStyle = r.color; ctx.globalAlpha = fade * (0.25 + 0.15 * Math.sin(game.rt * 5));
