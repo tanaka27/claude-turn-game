@@ -27,7 +27,8 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-SAVE_DIR = os.path.join(ROOT, 'saves')
+# セーブの置き場所。環境変数 ZANKAI_SAVE_DIR で変えられる (ブラウザの通しテスト tests/e2e が、本物のセーブを汚さないように使う)
+SAVE_DIR = os.environ.get('ZANKAI_SAVE_DIR') or os.path.join(ROOT, 'saves')
 SAVE_FILE = os.path.join(SAVE_DIR, 'save.json')
 BACKUP_FILE = SAVE_FILE + '.bak'   # 1 つ前のセーブ
 MAX_BODY = 512 * 1024              # セーブ 1 回分の大きさの上限 (バイト)

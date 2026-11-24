@@ -66,6 +66,7 @@
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |
 | `tests/run.js` / `tests/harness.js` / `tests/helpers.js` / `tests/scope-scan.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）/ トップレベルの名前とそれを隠すローカルの名前を拾うスキャナ。詳しくは [docs/testing.md](docs/testing.md) |
+| `tests/e2e/*.e2e.js` | ブラウザの通しテスト（本物の `server.py` と Chromium（Playwright）。`node tests/e2e/savesync.e2e.js`。Playwright がなければ何もしない）。詳しくは [docs/testing.md](docs/testing.md) |
 | `tests/*.test.js` | テスト本体（ステータス・行動によるステータスの伸びと潜在・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・クエストの目標の種類・セーブ・手動のセーブと保存できないときの知らせ・古いタブで上書きしない・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・画面に出す文章・トップレベルの名前の重なりと隠し・自動で戦わせる通し試験） |
 | `start.bat` | ダブルクリックで `server.py` を起動し、ブラウザでゲームを開く（Windows 用。ポートは中の `PORT`。8766 が使われていると止まって知らせる） |
 | `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする。ほかのタブのセーブを上書きしそうなら 409）。詳しくは [docs/server.md](docs/server.md) |
