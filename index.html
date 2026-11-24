@@ -94,8 +94,15 @@
 
 <div id="pause" class="overlay">
   <div class="panel"><h2>一時停止</h2><p>Esc / P で再開</p>
-    <button data-act="resume">再開</button><button class="secondary" data-act="char">キャラクター（C）</button>
+    <button data-act="resume">再開</button><button class="secondary" data-act="save">セーブ（S）</button><button class="secondary" data-act="char">キャラクター（C）</button>
+    <p id="saveResult"></p>
     <p id="saveWhere"></p></div>
+</div>
+
+<!-- このタブで保存をやめたとき (ほかのタブで遊び始めた・サーバーにほかのタブの新しいセーブがあった)。src/ui.js の showSaveBlocked -->
+<div id="saveBlocked" class="overlay">
+  <div class="panel"><h2 id="saveBlockedTitle"></h2><p id="saveBlockedText"></p>
+    <button data-act="reload" id="saveBlockedReload"></button></div>
 </div>
 
 <!-- 調整用の数値 → データ → マップ → ゲーム本体 (src/main.js が最後) の順に読み込む -->

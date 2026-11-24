@@ -31,7 +31,9 @@
 | [docs/menu.md](docs/menu.md) | 道具一覧・店（商人・鍛冶屋）・キャラクターの画面（開き方、道具を使う、装備の付け替え、素材を売る） | 画面の中身を変える |
 | [docs/character.md](docs/character.md) | キャラクターの画面（タブ: ステータス・装備・持ち物・クエスト、タブの切り替えと足し方） | キャラクターの画面の中身・タブを変える |
 | [docs/screens.md](docs/screens.md) | 画面の登録表（`SCREENS`。開く・閉じる・キー・ボタンの振り分け）、NPC の役目（`NPC_ROLES`）、施設（宿屋・倉庫・新しい店など）の足し方 | 画面や NPC の役目を足す・キーや閉じ方を変える |
-| [docs/save.md](docs/save.md) | セーブの中身と保存先（ブラウザ・サーバー）、`server.py` の API | 保存する項目を増やす・変える、サーバーを直す |
+| [docs/save.md](docs/save.md) | いつ保存するか（自動・一時停止画面の手動のセーブ）、保存先（ブラウザ・サーバー）、保存できないときの知らせ、読み込みと開始 | 保存のタイミング・保存先・セーブの説明の文を変える |
+| [docs/save-format.md](docs/save-format.md) | セーブの項目（今の形）と、読むときのない・おかしな値の扱い | 保存する項目を増やす・変える |
+| [docs/server.md](docs/server.md) | `server.py`（起動・配信・セーブの API）、古いタブで新しい進行を上書きしないしくみ（タブへの知らせとサーバーの競合の見分け） | サーバーを直す。タブ・競合の扱いを変える |
 | [docs/save-versions.md](docs/save-versions.md) | セーブの形の版と移し替え（`SAVE_MIGRATIONS`）、版の足し方、使えないセーブ（新しい版・壊れたもの）の扱い | 保存する項目を増やす・形を変える。セーブが読めないときの動きを変える |
 | [docs/ui.md](docs/ui.md) | HUD（仲間の欄・行動順・スキル欄・メッセージ欄・地図・ツールチップ）とワールド（予告・キャラ・落とし物・門・NPC など）に何を出すか | 画面に出すものを変える |
 | [docs/drawing.md](docs/drawing.md) | キャラ（主人公・敵・ボス・仲間・NPC）の描く手順と種類ごとの描き方 `UNIT_LOOK`、絵のありか（NPC の絵）・アニメーションの入り口、地形 `TERRAIN_DRAW`・演出 `EFFECT_TYPES` の登録表と演出を作る関数 `fx〇〇`、それぞれの足し方 | キャラ・NPC・地形・演出の見た目を変える・足す |
@@ -45,7 +47,7 @@
 
 | ファイル | 役割 |
 |---|---|
-| `index.html` | 画面の土台。canvas、タイトル（続きから／はじめから）／道具一覧・店・キャラクター／クエスト／会話／一時停止の各画面（HTML だけ。見た目は `style.css`）。`params.js` → `data/*.js` → `world.js` → `src/*.js`（`main.js` が最後）の順に読み込む |
+| `index.html` | 画面の土台。canvas、タイトル（続きから／はじめから）／道具一覧・店・キャラクター／クエスト／会話／一時停止（セーブのボタン）／保存を止めたときの知らせの各画面（HTML だけ。見た目は `style.css`）。`params.js` → `data/*.js` → `world.js` → `src/*.js`（`main.js` が最後）の順に読み込む |
 | `style.css` | HTML の画面（タイトル・道具一覧・店・キャラクター・クエスト・会話・一時停止）の見た目。`index.html` が `<link>` で読み込む（`index.html` を直接開いても読める）。canvas の中の色と大きさは `data/theme.js` |
 | `params.js` | **ゲーム全体のしくみの数値**（ターンと速度、ダメージ計算、主人公のステータスの計算式、行動によるステータスの伸びと潜在、敵のレベル補正、お金・持ち物、敵の動き、セーブ） |
 | `data/*.js` | **中身の定義**（主人公（スキルの覚え方・スキル欄の並びを含む）・スキル（`data/skills.js`）・敵・NPC の種類・装備・クエスト・ステータスの表示・強化・弱体（バフ・デバフ）・色・画面に出す文章（`data/text.js`））。詳しくは [docs/data.md](docs/data.md) |
@@ -55,7 +57,7 @@
 | `src/units.js` | 主人公と敵（とテスト用の仲間 `createAlly` / `addUnit`）の生成、マスの上の位置、そのマスのキャラ（`unitAt`）・敵の陣営（`opponents`）、行動 1 回にかかる時間、ステータスの計算（どのキャラも同じ `computeStats` / `refreshStats`）、強化・弱体（`addBuff` / `tickBuffs` / `clearBuffs`）、技の再使用待ちと MP の決まり（`SKILL_RULES` / `cooldownLeft` / `enoughMp` / `canUseSkill`）、覚えているスキルとスキル欄（`knowsSkill` / `teachSkill` / `skillSlotsOf`）、スキルの覚え方（`learnSkillsByLevel`）、行動によるステータスの伸びと潜在（`growthEvent` / `trainStat` / `decayPotential`）、経験値・レベル・復活 |
 | `src/combat.js` | 技の範囲（マス）・判定・ダメージ（物理・術）、予告（出す・消す・判定する）、どのキャラも同じ技を使う道（`useSkill`、強化 `castBuff`、ダッシュ `dash`）、倒れたとき（主人公・敵・仲間で分ける） |
 | `src/items.js` | 装備の生成、素材と落とし物（拾う・消える）、道具（効果の種類 `ITEM_EFFECTS`、使えるかの判定 `consumableBlock`、どのキャラも同じ使う道 `useConsumable`） |
-| `src/save.js` | セーブ（ブラウザとサーバー）、古い形のセーブを今の形に直す（`readSave` / `SAVE_MIGRATIONS`）、使えないセーブの扱い |
+| `src/save.js` | セーブ（ブラウザとサーバー）、古い形のセーブを今の形に直す（`readSave` / `SAVE_MIGRATIONS`）、使えないセーブの扱い、ほかのタブとの競合（`claimSave` / `blockSaving`） |
 | `src/player.js` | 入力と主人公の行動（移動・通常攻撃・スキル欄のキーからスキルを引く `skillByKey`・スキルを狙って使う `castSkill`・道具のキー `consumableByKey`） |
 | `src/ai.js` | 敵の AI（狙う相手の選び方、1 回の行動、狙う技の選び方）、湧き場所 |
 | `src/turn.js` | ターンの進め方（速度による行動順、キャラごとの行動の決め方 `CONTROLLERS`、予告した技を出す・再使用待ちを減らすとき、行動の後始末 `endTurn`、時間を進める、行動順の表示用） |
@@ -64,9 +66,9 @@
 | `src/validate.js` | 起動時のデータの確認 |
 | `src/main.js` | ゲームの開始、クリックで歩く、毎フレームの演出、メインループ、起動処理 |
 | `tests/run.js` / `tests/harness.js` / `tests/helpers.js` / `tests/scope-scan.js` | 自動テストの実行役（`node tests/run.js`）/ ゲームの本物のファイルを `index.html` の順に vm で読み込む土台（ブラウザの代わり・乱数の固定）/ テストの道具（内部の名前に触るのはここだけ）/ トップレベルの名前とそれを隠すローカルの名前を拾うスキャナ。詳しくは [docs/testing.md](docs/testing.md) |
-| `tests/*.test.js` | テスト本体（ステータス・行動によるステータスの伸びと潜在・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・クエストの目標の種類・セーブ・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・画面に出す文章・トップレベルの名前の重なりと隠し・自動で戦わせる通し試験） |
+| `tests/*.test.js` | テスト本体（ステータス・行動によるステータスの伸びと潜在・強化・どのキャラにも効く強化と弱体・ダメージ・技の範囲・行動順・敵の動き・倒したとき・主人公の行動・どのキャラも同じ技を使う道・スキルを覚える・スキル欄・道具・クエストの目標の種類・セーブ・手動のセーブと保存できないときの知らせ・古いタブで上書きしない・セーブの版の移し替え・主人公の陣営のほかのキャラ（仲間）・画面に出す文章・トップレベルの名前の重なりと隠し・自動で戦わせる通し試験） |
 | `start.bat` | ダブルクリックで `server.py` を起動し、ブラウザでゲームを開く（Windows 用。ポートは中の `PORT`。8766 が使われていると止まって知らせる） |
-| `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする）。詳しくは [docs/save.md](docs/save.md) |
+| `server.py` | ローカルサーバー（ゲームのファイルを配り、セーブを `saves/save.json` に読み書きする。ほかのタブのセーブを上書きしそうなら 409）。詳しくは [docs/server.md](docs/server.md) |
 | `.claude/launch.json` | 確認用ローカルサーバーの設定（`python server.py`） |
 | `tools/codex_image.py` | Codex CLI で画像素材を作り、大きさと透明背景を整えて `assets/` に保存する（ゲームの実行には使わない）。詳しくは [docs/image-assets.md](docs/image-assets.md) |
 | `.claude/skills/game-image/` | Claude Code 用のスキル（画像素材の作り方の手順） |

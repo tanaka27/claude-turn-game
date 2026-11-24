@@ -4,8 +4,8 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v5。くわしくは docs/save.md)
-//   { v: 5, savedAt,
+// セーブの形 (v6。くわしくは docs/save-format.md)
+//   { v: 6, savedAt,
 //     player:   { level, exp, base, potential, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
@@ -16,6 +16,7 @@ const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
 const SAVE_API = 'api/save';
+const SAVE_CHANNEL = 'zankai-turn-save'; // 同じブラウザのほかのタブに「このタブで遊び始めた」と知らせる BroadcastChannel の名前
 
 // 形を変えたら SAVE_VERSION を上げ、ここに「1 つ前の形 → 今の形」を 1 つ足す
 // SAVE_MIGRATIONS[n]: 形 n のセーブ (コピー) を直して返す。v は呼ぶ側が n + 1 にする
@@ -75,11 +76,25 @@ const SAVE_MIGRATIONS = {
   },
 };
 
+// タブの名前 (でたらめな 16 進の文字)。ゲームの乱数 (Math.random) は使わない
+function newTabName() {
+  const bytes = new Uint8Array(8);
+  if (typeof crypto === 'object' && crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+  else for (let i = 0; i < bytes.length; i++) bytes[i] = (Date.now() * (i + 7)) & 255;
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
 // server: null (まだ確かめていない) / true (サーバーに保存できる) / false (ブラウザだけ)
 // unreachable: サーバーから時間内に返事がなかった (次に保存するときにもう一度確かめる)。probing: 確かめている最中
 // cached: 一番新しいセーブ。sending / pending: サーバーへ送っている最中と、その次に送るもの
 // problems: 起動時に見つけた、この版で使えないセーブ [{ where: 'local' | 'server', problem: 'newer' | 'broken', v }]
-const saveStore = { server: null, unreachable: false, probing: false, error: '', cached: null, sending: false, pending: null, problems: [] };
+// waiters: pending を送り終わるのを待っている保存 (saveGame の Promise)
+// localOk: 最後のブラウザへの保存ができたか。tab: このタブの名前 (サーバーが、どのタブが書いたセーブかを見分ける)
+// serverBase: このタブが読んだときのサーバーのセーブの savedAt (なければ null)。サーバーは、これが今のセーブと違い、
+//   ほかのタブが書いたセーブなら書き込まない (409。古いタブで新しい進行を上書きしないため)
+// blocked: ほかのタブで遊び始めた ('otherTab') / サーバーにほかのタブの新しいセーブがあった ('conflict') ので、このタブでは保存しない
+const saveStore = { server: null, unreachable: false, probing: false, error: '', cached: null, sending: false, pending: null, waiters: [], problems: [],
+  localOk: true, lastSaved: null, tab: newTabName(), serverBase: null, blocked: '' };
+const savedAtOf = (s) => (s && Number.isFinite(s.savedAt) ? s.savedAt : null);
 
 function buildSave() {
   const p = player;
@@ -141,8 +156,10 @@ function applySave(save) {
     if (b !== undefined) p.base[k] = clamp(b, PLAYER.stats[k], S.max);
     if (pot !== undefined) p.potential[k] = clampPotential(pot);
   }
-  game.kills = save.progress.kills || 0;
-  game.time = Math.max(0, save.progress.time || 0);
+  // 数でない (文字列など) ・負の値は 0 にする (ゲーム内の時刻が NaN になると行動順が壊れる)
+  const count = (x) => (Number.isFinite(x) && x > 0 ? x : 0);
+  game.kills = Math.floor(count(save.progress.kills));
+  game.time = count(save.progress.time);
   for (const id in s.quests || {}) {
     const st = s.quests[id];
     if (questById(id) && st && ['active', 'ready', 'claimed'].includes(st.state)) p.quests[id] = { state: st.state, count: st.count || 0 };
@@ -189,12 +206,16 @@ function readLocal() {
   return r.problem ? { ...r, raw } : r;
 }
 const readLocalSave = () => readLocal().save || null;
+// 書けたら true。書けなかった (容量がいっぱい・ブラウザの設定で使えないなど) ら false で、保存先の説明にも出す
 function writeLocalSave(data) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    saveStore.localOk = true;
   } catch (err) {
     console.warn('ブラウザへのセーブに失敗しました', err);
+    saveStore.localOk = false;
   }
+  return saveStore.localOk;
 }
 
 // ----- 保存先: サーバー (server.py) -----
@@ -204,23 +225,23 @@ async function fetchServerSave() {
   if (location.protocol === 'file:') return { ok: false };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), PARAMS.save.serverTimeout * 1000);
-  let res;
+  // 待ち時間は本文を読み終わるまで (返事の頭だけ来て本文が届かないときも、時間が来たらブラウザだけに切り替える)
+  let res, body;
   try {
     res = await fetch(SAVE_API, { cache: 'no-store', signal: ctrl.signal });
+    body = res.ok ? await res.json() : null;
   } catch (err) {
     clearTimeout(timer);
+    // 時間切れ・つながらない (AbortError / TypeError) はサーバーがあるかもしれない。本文が JSON でないときはサーバーなし
+    if (err && err.name === 'SyntaxError') return { ok: false };
     console.warn('サーバーからセーブを読めませんでした', err);
     return { ok: false, unreachable: true };
   }
   clearTimeout(timer);
-  try {
-    const body = res.ok ? await res.json() : null;
-    if (!body || !('save' in body)) return { ok: false };
-    if (body.unreadable) return { ok: true, problem: 'broken' }; // saves/save.json はあるが JSON として読めない
-    return { ok: true, ...readSave(body.save) };
-  } catch (err) {
-    return { ok: false };
-  }
+  if (!body || typeof body !== 'object' || !('save' in body)) return { ok: false };
+  // saves/save.json はあるが JSON として読めない
+  if (body.unreadable) return { ok: true, problem: 'broken', savedAt: null };
+  return { ok: true, savedAt: savedAtOf(body.save), ...readSave(body.save) };
 }
 // 起動時にサーバーから返事がなかったとき、保存のついでにもう一度確かめ、つながったら今のセーブを送る
 function retryServer() {
@@ -233,29 +254,74 @@ function retryServer() {
     // サーバーに新しい版のゲームのセーブがあったら、知らせないまま上書きしないように送らない
     if (r.problem === 'newer') { saveStore.problems.push({ where: 'server', problem: r.problem, v: r.v }); return; }
     saveStore.server = true;
+    saveStore.serverBase = r.savedAt;
     if (saveStore.cached) sendServerSave(saveStore.cached);
   });
 }
 // 送っている最中なら、終わってから一番新しいものだけを送る。ページを閉じるとき (unloading) は待たずに送る
+// 戻り値: そのセーブ (送るまでにもっと新しいセーブが来たらそちら) を送り終わったときの結果で終わる Promise
+//   'ok' (書けた) / 'error' (書けなかった) / 'conflict' (ほかのタブの新しいセーブがあった) / 'none' (サーバーなし・保存をやめた)
 function sendServerSave(data, unloading) {
-  if (!saveStore.server) return;
-  if (saveStore.sending && !unloading) { saveStore.pending = data; return; }
+  if (!saveStore.server || saveStore.blocked) return Promise.resolve('none');
+  return new Promise((resolve) => {
+    if (saveStore.sending && !unloading) {
+      saveStore.pending = data;
+      saveStore.waiters.push(resolve);
+      return;
+    }
+    putServerSave(data, unloading, [resolve]);
+  });
+}
+function putServerSave(data, unloading, waiters) {
   saveStore.sending = true;
-  fetch(SAVE_API, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), keepalive: !!unloading })
+  // tab と base はサーバーが競合を見分けるためのもの (サーバーは base を捨て、tab は書いたタブとして残す)
+  const body = { ...data, tab: saveStore.tab, base: saveStore.serverBase };
+  fetch(SAVE_API, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: !!unloading })
     .then((res) => {
+      if (res.status === 409) return 'conflict';
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       saveStore.error = '';
+      return 'ok';
     })
     .catch((err) => {
       saveStore.error = String(err.message || err);
       console.warn('サーバーへのセーブに失敗しました', err);
+      return 'error';
     })
-    .finally(() => {
+    .then((result) => {
       saveStore.sending = false;
-      const next = saveStore.pending;
+      if (result === 'conflict') blockSaving('conflict');
+      for (const w of waiters) w(result);
+      const next = saveStore.pending, more = saveStore.waiters;
       saveStore.pending = null;
-      if (next) sendServerSave(next);
+      saveStore.waiters = [];
+      if (next && !saveStore.blocked) putServerSave(next, false, more);
+      else for (const w of more) w(saveStore.blocked ? 'conflict' : 'none');
     });
+}
+
+// このタブでは保存しないようにして、画面で知らせる (reason: 'otherTab' | 'conflict')。読み込み直すまで続く
+function blockSaving(reason) {
+  if (saveStore.blocked) return;
+  saveStore.blocked = reason;
+  console.warn(`このタブでは保存をやめました (${reason})`);
+  showSaveBlocked(reason);
+}
+// ほかのタブで「続きから」「はじめから」を選んだら、このタブ (タイトルでも遊んでいる最中でも) は保存をやめる
+const saveChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(SAVE_CHANNEL) : null;
+if (saveChannel) {
+  saveChannel.onmessage = (e) => {
+    if (e.data && e.data.type === 'claim' && e.data.tab !== saveStore.tab) blockSaving('otherTab');
+  };
+}
+// 遊び始める前に: ほかのタブに知らせて保存をやめさせ、少し待ってから (ほかのタブの最後の保存が終わるように) セーブを読み直す
+// (タイトルを開いたあとにほかのタブで進めた分を、古い読み込みで上書きしないため)
+async function claimSave() {
+  if (saveChannel) {
+    saveChannel.postMessage({ type: 'claim', tab: saveStore.tab });
+    await new Promise((r) => setTimeout(r, PARAMS.save.claimWait * 1000));
+  }
+  if (!saveStore.blocked) await initSave();
 }
 
 // 起動時に 1 回: ブラウザとサーバーのセーブのうち新しいほうを使う
@@ -265,6 +331,7 @@ async function initSave() {
   const remote = await fetchServerSave();
   saveStore.server = remote.ok;
   saveStore.unreachable = !!remote.unreachable;
+  saveStore.serverBase = remote.ok ? remote.savedAt : null;
   saveStore.problems = [];
   if (localRead.problem) {
     saveStore.problems.push({ where: 'local', problem: localRead.problem, v: localRead.v });
@@ -283,14 +350,31 @@ async function initSave() {
   if (remote.ok && !remote.problem && best && best === local && (!server || at(local) > at(server))) sendServerSave(local);
 }
 
+// 保存する (自動のセーブも、一時停止画面の「セーブ」も同じ)
+// 戻り値: 保存が終わったときに { local: ブラウザに書けたか, server: sendServerSave の結果 } で終わる Promise
+//   (保存しなかったとき (タイトル・保存をやめたタブ) は { local: false, server: 'none', skipped: true })
 function saveGame(unloading) {
-  if (!player || !zone || game.state === 'title') return;
+  if (!player || !zone || game.state === 'title' || saveStore.blocked) return Promise.resolve({ local: false, server: 'none', skipped: true });
   const data = buildSave();
   saveStore.cached = data;
-  writeLocalSave(data);
+  const local = writeLocalSave(data);
   if (!saveStore.server && saveStore.unreachable && !unloading) retryServer();
-  sendServerSave(data, unloading);
   game.saveT = PARAMS.save.interval;
+  return sendServerSave(data, unloading).then((server) => {
+    // どこにも保存できなくなったら、ログにも 1 回出す (保存できるようになったらまた出せる)
+    const saved = local || server === 'ok';
+    if (!saved && saveStore.lastSaved !== false && server !== 'conflict') logMsg(txt('save.failedLog'), THEME.msg.refuse);
+    saveStore.lastSaved = saved;
+    return { local, server };
+  });
+}
+// 一時停止画面の「セーブ」で出す、結果の文
+function saveResultText(r) {
+  if (r.skipped || r.server === 'conflict') return saveWhereText();
+  if (r.server === 'ok') return txt(r.local ? 'save.doneBoth' : 'save.doneServerOnly');
+  if (!r.local) return txt('save.doneNowhere');
+  if (r.server === 'error') return txt('save.doneLocalServerError', { error: saveStore.error });
+  return txt('save.doneLocal');
 }
 const loadSave = () => saveStore.cached;
 
@@ -310,6 +394,10 @@ function saveProblemText() {
 
 // 一時停止画面・タイトルに出す、保存先の説明
 function saveWhereText() {
+  if (saveStore.blocked) return txt(saveStore.blocked === 'conflict' ? 'save.blockedConflict' : 'save.blockedOtherTab');
+  const serverOk = saveStore.server && !saveStore.error;
+  // ブラウザに書けないとき: サーバーに書けていればそう出し、どちらにも書けなければ保存されていないと出す
+  if (!saveStore.localOk) return txt(serverOk ? 'save.serverOnly' : 'save.nowhere');
   if (!saveStore.server && saveStore.problems.some((q) => q.where === 'server' && q.problem === 'newer')) {
     return txt('save.serverNewer');
   }

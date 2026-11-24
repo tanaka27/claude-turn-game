@@ -551,12 +551,41 @@ function togglePause() {
   else $('pause').classList.remove('show');
 }
 function showPause() {
+  $('saveResult').textContent = '';
   $('saveWhere').textContent = saveWhereText();
   $('pause').classList.add('show');
+}
+// 一時停止画面の「セーブ」(S キー): 今すぐ保存し、終わったら結果を出す
+let manualSaving = false;
+function manualSave() {
+  if (manualSaving || game.state !== 'play' || !game.paused) return Promise.resolve();
+  manualSaving = true;
+  $('saveResult').textContent = txt('save.saving');
+  return saveGame().then((r) => {
+    manualSaving = false;
+    $('saveResult').textContent = saveResultText(r);
+    $('saveWhere').textContent = saveWhereText();
+  });
 }
 $('pause').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-act]');
   if (!btn || game.state !== 'play' || !game.paused) return;
   if (btn.dataset.act === 'resume') togglePause();
+  else if (btn.dataset.act === 'save') manualSave();
   else if (btn.dataset.act === 'char') openScreen('char');
+});
+
+// このタブで保存をやめたとき (src/save.js の blockSaving): 遊べないように止め、ほかの画面の上に知らせを出す
+function showSaveBlocked(reason) {
+  if (game.state === 'play' || game.state === 'menu' || game.state === 'dying') game.paused = true;
+  aiming = null;
+  if (player) player.travel = null;
+  $('saveBlockedTitle').textContent = txt('save.blockedTitle');
+  $('saveBlockedText').textContent = txt(reason === 'conflict' ? 'save.blockedConflict' : 'save.blockedOtherTab');
+  $('saveBlockedReload').textContent = txt('save.reload');
+  $('saveBlocked').classList.add('show');
+}
+$('saveBlocked').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-act]');
+  if (btn && btn.dataset.act === 'reload') location.reload();
 });

@@ -26,7 +26,7 @@
 
 1. `SAVE_VERSION` を 1 上げる
 2. `SAVE_MIGRATIONS` に `[前の版]: (d) => { …; return d; }` を 1 つ足す。ない項目があっても落ちないように書き（`d.player` がないなど）、新しい項目には初めの値を入れる。今のデータ（`QUESTS` / `ITEMS` など）は見ない（あとでデータが変わっても同じ結果になるように。直し方の中の古い id などはその版の記録として書いておく）
-3. `buildSave` / `applySave` を新しい形に合わせ、上の表と [save.md](save.md) の「セーブの形」、`src/save.js` の先頭のコメントを直す
+3. `buildSave` / `applySave` を新しい形に合わせ、上の表と [save-format.md](save-format.md)、`src/save.js` の先頭のコメントを直す
 4. テスト（`tests/migrate.test.js`）に、前の版のセーブ（中身をそのまま書いたもの）が今の形に直って読めることを足す（v1 のもの `V1_SAVE`・v2 のもの `V2_SAVE`・v3 のもの `V3_SAVE`・v4 のもの `V4_SAVE`・v5 のもの `V5_SAVE` は残しておけば、古い版 → … → 今の形を通して確かめられる）。テストの先頭の `CURRENT`（今の版）も上げる
 
 ## 使えないセーブ

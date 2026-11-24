@@ -306,11 +306,11 @@ test('新しい版のゲームのセーブは読まず、タイトルを開い�
   assert.strictEqual(g.storage.get('zankai-turn-save'), raw);
   // 「はじめから」を確認でやめたら上書きしない。選んだら上書きする
   g.set('confirm', () => false);
-  g.elements.startBtn.onclick();
+  await g.elements.startBtn.onclick();
   assert.strictEqual(g.game.state, 'title');
   assert.strictEqual(g.storage.get('zankai-turn-save'), raw);
   g.set('confirm', () => true);
-  g.elements.startBtn.onclick();
+  await g.elements.startBtn.onclick();
   assert.strictEqual(g.game.state, 'play');
   assert.strictEqual(JSON.parse(g.storage.get('zankai-turn-save')).v, CURRENT);
   assert.strictEqual(g.storage.get('zankai-turn-save-unread'), raw);

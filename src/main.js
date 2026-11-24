@@ -33,12 +33,27 @@ function refreshTitle() {
   if (save) $('continueBtn').textContent = txt('title.continue', { level: save.player.level, zone: WORLD.zones[save.location.zone].name });
   $('saveInfo').textContent = [saveProblemText(), saveWhereText()].filter(Boolean).join(' ');
 }
-$('continueBtn').onclick = () => { const save = loadSave(); if (save) startGame(save); };
-$('startBtn').onclick = () => {
+// どちらも、遊び始める前にほかのタブの保存をやめさせ、セーブを読み直す (claimSave。古いタブの読み込みで新しい進行を上書きしないため)
+// 読み直したセーブでタイトルを出し直し、「続きから」はその一番新しいセーブから始める
+let titleBusy = false;
+async function fromTitle(start) {
+  if (titleBusy) return;
+  titleBusy = true;
+  try {
+    await claimSave();
+    if (saveStore.blocked || game.state !== 'title') return;
+    refreshTitle();
+    start();
+  } finally {
+    titleBusy = false;
+  }
+}
+$('continueBtn').onclick = () => fromTitle(() => { const save = loadSave(); if (save) startGame(save); });
+$('startBtn').onclick = () => fromTitle(() => {
   if (loadSave() && !confirm(txt('title.confirmRestart'))) return;
   if (!loadSave() && saveStore.problems.length && !confirm(txt('title.confirmOverwrite'))) return;
   startGame(null);
-};
+});
 validateData();
 loadZone(WORLD.start);
 // セーブ (ブラウザとサーバー) を確かめてから、タイトルのボタンを使えるようにする

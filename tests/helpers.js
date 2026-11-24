@@ -236,7 +236,8 @@ const CONTAINERS = {
 };
 const STATIC_BUTTONS = {
   menu: [['close', '閉じる（Esc）']], quest: [['close', '閉じる（Esc）']], talk: [['close', '閉じる（Esc）']],
-  pause: [['resume', '再開'], ['char', 'キャラクター（C）']],
+  pause: [['resume', '再開'], ['save', 'セーブ（S）'], ['char', 'キャラクター（C）']],
+  saveBlocked: [['reload', '読み込み直す']],
 };
 function selectorMatches(n, sel) {
   return sel.split(',').some((s) => {

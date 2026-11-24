@@ -103,13 +103,31 @@ function makeElement(id) {
   };
 }
 
-// サーバー (server.py の /api/save) の代わり。GET は save を JSON にして返し、PUT は puts に記録して save を置き換える
+// サーバー (server.py の /api/save) の代わり。GET は save を JSON にして返し、PUT は server.py と同じ決まりで書く
+//   (同じタブ (tab) のセーブなら savedAt が古いものは書かない (stale)。ほかのタブのセーブなら、base が今のセーブの savedAt と
+//   同じときだけ書き、違えば 409)。書いたセーブ (base を除く) を puts に残す。conflicts は 409 にした回数
+//   fail: true にすると PUT は 500 になる
 function makeServer(save) {
-  const server = { save: save ?? null, puts: [] };
-  const reply = (obj) => { const text = JSON.stringify(obj); return Promise.resolve({ ok: true, status: 200, json: async () => JSON.parse(text) }); };
+  const server = { save: save ?? null, puts: [], conflicts: 0, fail: false };
+  const reply = (obj, status = 200) => {
+    const text = JSON.stringify(obj);
+    return Promise.resolve({ ok: status >= 200 && status < 300, status, json: async () => JSON.parse(text) });
+  };
   server.fetch = (url, init = {}) => {
     if (init.method !== 'PUT') return reply({ save: server.save });
+    if (server.fail) return reply({ error: 'テストで書けないことにした' }, 500);
     const data = JSON.parse(init.body);
+    const base = data.base === undefined ? null : data.base;
+    delete data.base;
+    const cur = server.save, curAt = cur && typeof cur.savedAt === 'number' ? cur.savedAt : null;
+    if (curAt !== null) {
+      if (data.tab !== undefined && cur.tab === data.tab) {
+        if (curAt > data.savedAt) return reply({ ok: true, stale: true });
+      } else if (base !== curAt) {
+        server.conflicts++;
+        return reply({ error: 'conflict', conflict: true }, 409);
+      }
+    }
     server.puts.push(data);
     server.save = data;
     return reply({ ok: true, stale: false });
@@ -117,10 +135,31 @@ function makeServer(save) {
   return server;
 }
 
+// 同じブラウザのタブどうしの BroadcastChannel の代わり。loadGame({ bus }) に同じものを渡したゲームどうしで届く (少しあとに届く)
+function makeBus() {
+  const bus = { channels: new Set(), sent: [] };
+  bus.Channel = class {
+    constructor(name) { this.name = name; this.onmessage = null; bus.channels.add(this); }
+    postMessage(data) {
+      const msg = JSON.parse(JSON.stringify(data));
+      bus.sent.push(msg);
+      for (const c of bus.channels) {
+        if (c !== this && c.name === this.name) setTimeout(() => { if (c.onmessage) c.onmessage({ data: msg }); }, 0);
+      }
+    }
+    close() { bus.channels.delete(this); }
+  };
+  return bus;
+}
+
 // 新しいゲームを読み込む。戻り値 g: ゲームの名前を g.名前 で読み書きできる (トップレベルの let / const も)
 //   opts.seed: 乱数の種 (省略時 1)
 //   opts.storage: 読み込む前の localStorage の中身 { キー: 文字列 }
 //   opts.server: サーバーの代わりを置く ({ save: サーバーにあるセーブ | null })。g.server.puts に送られたセーブが残る。省略時はサーバーなし (file: で開いたのと同じ)
+//     makeServer で作ったもの (またはほかのゲームの g.server) を渡すと、そのサーバーを共有する (2 つのタブのテスト)
+//   opts.fetch: fetch をこれに差し替える (返事が届かないサーバーなど)。location は http: になる
+//   opts.bus: makeBus で作ったもの。同じ bus を渡したゲームどうしで BroadcastChannel が届く (省略時はほかのタブなし)
+//   g.local.fail = true にすると、localStorage.setItem が例外を出す (容量がいっぱいなど)
 function loadGame(opts = {}) {
   const rng = makeRng(opts.seed ?? 1);
   const consoleLog = [];
@@ -129,7 +168,9 @@ function loadGame(opts = {}) {
   };
   const elements = {};
   const storage = new Map(Object.entries(opts.storage || {}));
-  const server = opts.server ? makeServer(opts.server.save) : null;
+  const server = opts.server ? (typeof opts.server.fetch === 'function' ? opts.server : makeServer(opts.server.save)) : null;
+  const local = { fail: false };
+  const bus = opts.bus || makeBus();
   const windowListeners = {};
   const sandbox = {
     console: { log: record('log'), info: record('info'), warn: record('warn'), error: record('error'), debug: record('debug') },
@@ -145,14 +186,19 @@ function loadGame(opts = {}) {
     removeEventListener: () => {},
     requestAnimationFrame: () => 0, cancelAnimationFrame: () => {},
     performance: { now: () => 0 },
-    location: server ? { protocol: 'http:', href: 'http://localhost/' } : { protocol: 'file:', href: 'file:///index.html' },
+    location: server || opts.fetch ? { protocol: 'http:', href: 'http://localhost/', reload: () => {} } : { protocol: 'file:', href: 'file:///index.html', reload: () => {} },
     localStorage: {
       getItem: (k) => (storage.has(k) ? storage.get(k) : null),
-      setItem: (k, v) => { storage.set(k, String(v)); },
+      setItem: (k, v) => {
+        if (local.fail) { const e = new Error('QuotaExceededError (テスト)'); e.name = 'QuotaExceededError'; throw e; }
+        storage.set(k, String(v));
+      },
       removeItem: (k) => { storage.delete(k); },
       clear: () => storage.clear(),
     },
-    fetch: server ? server.fetch : () => Promise.resolve({ ok: false, status: 404, json: async () => null }),
+    fetch: opts.fetch || (server ? server.fetch : () => Promise.resolve({ ok: false, status: 404, json: async () => null })),
+    BroadcastChannel: bus.Channel,
+    crypto: { getRandomValues: (a) => require('crypto').webcrypto.getRandomValues(a) },
     Image: class { constructor() { this.onload = null; this.onerror = null; this.src = ''; this.width = 0; this.height = 0; } },
     confirm: () => true, alert: () => {},
     setTimeout, clearTimeout, AbortController,
@@ -171,7 +217,7 @@ function loadGame(opts = {}) {
   const read = (name) => (getters[name] = getters[name] || vm.runInContext(`(() => ${name})`, context))();
   const write = (name, v) => (setters[name] = setters[name] || vm.runInContext(`((__v) => { ${name} = __v; })`, context))(v);
   const special = {
-    rng, consoleLog, storage, elements, windowListeners, context, server, sandboxKeys,
+    rng, consoleLog, storage, elements, windowListeners, context, server, sandboxKeys, local, bus,
     eval: (code) => vm.runInContext(code, context),
     set: write,
   };
@@ -179,10 +225,11 @@ function loadGame(opts = {}) {
     get(t, k) {
       if (typeof k !== 'string') return undefined;
       if (k in special) return special[k];
+      if (k === 'then') return undefined; // async 関数から g を返せるように (Promise と間違えられない)
       return read(k);
     },
     set(t, k, v) { write(k, v); return true; },
   });
 }
 
-module.exports = { loadGame, scriptList, makeRng, ROOT };
+module.exports = { loadGame, scriptList, makeRng, makeServer, makeBus, ROOT };

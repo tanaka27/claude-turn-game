@@ -23,13 +23,19 @@ const canAct = () => game.state === 'play' && !game.paused && player && !player.
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
+  // 保存をやめたタブ (src/save.js の blockSaving) では何もしない (読み込み直すまで遊べない)
+  if (saveStore.blocked) return;
   // 画面を開いている間のキーは、その画面のもの (src/ui.js の SCREENS の keys と closeKeys)。フィールドには渡さない
   if (game.state === 'menu') { screenKey(k, e); return; }
   if (game.state !== 'play') return;
   if (k === 'escape' && aiming) { aiming = null; return; }
   if (!e.repeat && (k === 'escape' || k === 'p')) { togglePause(); return; }
   if (!e.repeat && k === 'm') { toggleWorldMap(); return; }
-  if (game.paused) { if (k === 'c') openScreen('char'); return; }
+  if (game.paused) {
+    if (k === 'c') openScreen('char');
+    else if (k === 's' && !e.repeat) manualSave();
+    return;
+  }
   if (!canAct()) return;
   // 押しっぱなしのときは、少し間をあけて次の行動をする
   if (e.repeat && game.rt - game.inputT < TURN.repeatDelay) return;

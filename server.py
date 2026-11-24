@@ -125,12 +125,22 @@ class Handler(SimpleHTTPRequestHandler):
         if not isinstance(data, dict) or not isinstance(data.get('v'), int) or not isinstance(data.get('savedAt'), (int, float)):
             self.send_json(HTTPStatus.BAD_REQUEST, {'error': 'セーブの形ではありません'})
             return
+        # base: 送ったタブが読んだときのセーブの savedAt (なければ None)。tab: 送ったタブの名前 (セーブに残す)
+        base = data.pop('base', None)
+        tab = data.get('tab')
         with save_lock:
             current = read_save()
-            # 通信の順番が入れ替わって、古いセーブで上書きしないようにする
-            if isinstance(current, dict) and isinstance(current.get('savedAt'), (int, float)) and current['savedAt'] > data['savedAt']:
-                self.send_json(HTTPStatus.OK, {'ok': True, 'stale': True})
-                return
+            current_at = current.get('savedAt') if isinstance(current, dict) else None
+            if isinstance(current_at, (int, float)) and not isinstance(current_at, bool):
+                if tab is not None and current.get('tab') == tab:
+                    # 同じタブのセーブ: 通信の順番が入れ替わって、古いセーブで上書きしないようにする
+                    if current_at > data['savedAt']:
+                        self.send_json(HTTPStatus.OK, {'ok': True, 'stale': True})
+                        return
+                elif base != current_at:
+                    # ほかのタブ (またはこのタブが読んだあと) に書かれたセーブ: 古いタブの進行で上書きしない
+                    self.send_json(HTTPStatus.CONFLICT, {'error': 'ほかのタブで保存された新しいセーブがあります', 'conflict': True})
+                    return
             try:
                 write_save(data, current)
             except OSError as err:
