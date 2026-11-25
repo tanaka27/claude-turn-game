@@ -204,7 +204,7 @@ test('データの確認: 目標の種類と、種類ごとの参照 (敵・素�
   assert.deepStrictEqual(dataProblems(g), []);
   defineQuest(g, { id: 'b_kind', goal: { kind: 'escort', npc: 'captain' } });
   defineQuest(g, { id: 'b_nogoal' });
-  defineQuest(g, { id: 'b_enemy', goal: { kind: 'kill', enemy: 'goblin', count: 3 } });
+  defineQuest(g, { id: 'b_enemy', goal: { kind: 'kill', enemy: 'nosuchmonster', count: 3 } });
   defineQuest(g, { id: 'b_count', goal: { kind: 'kill', enemy: 'wolf', count: 0 } });
   defineQuest(g, { id: 'b_mat', goal: { kind: 'collect', material: 'gold', count: 2 } });
   defineQuest(g, { id: 'b_matcount', goal: { kind: 'collect', material: 'wolfPelt', count: 1.5 } });
@@ -214,7 +214,7 @@ test('データの確認: 目標の種類と、種類ごとの参照 (敵・素�
   assert.deepStrictEqual(dataProblems(g), [
     "data/quests.js 'b_kind': 目標の種類 goal.kind 'escort' が QUEST_GOALS (src/quests.js) にない",
     "data/quests.js 'b_nogoal': 目標の種類 goal.kind 'undefined' が QUEST_GOALS (src/quests.js) にない",
-    "data/quests.js 'b_enemy': 敵 'goblin' が data/enemies.js にない",
+    "data/quests.js 'b_enemy': 敵 'nosuchmonster' が data/enemies.js にない",
     "data/quests.js 'b_count': 目標の count は 1 以上の整数にする",
     "data/quests.js 'b_mat': 素材 'gold' が data/items.js の materials にない",
     "data/quests.js 'b_matcount': 目標の count は 1 以上の整数にする",
