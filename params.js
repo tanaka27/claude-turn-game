@@ -43,7 +43,7 @@ const PARAMS = {
   },
 
   magic: {
-    intRate: 0.8,       // かしこさ 1 につき基礎ダメージ +0.8 (技に intRate があればそちら)
+    intRate: 0.8,       // 知力 1 につき基礎ダメージ +0.8 (技に intRate があればそちら)
     mdefScale: 50,      // 術防御がこの値のとき、ダメージが半分になる
   },
 
@@ -71,8 +71,7 @@ const PARAMS = {
       stats: {
         con: { drop: 0.04, max: 150 },   // 体力 (さいだいHP のもと)
         will: { drop: 0.06, max: 150 },  // 意思 (さいだいHP のもと)
-        wis: { drop: 0.06, max: 200 },   // 知力 (さいだいMP のもと)
-        spi: { drop: 0.04, max: 200 },   // 精神力 (さいだいMP のもと)
+        spi: { drop: 0.04, max: 280 },   // 精神力 (さいだいMP のもと)
         str: { drop: 0.08, max: 80 },
         vit: { drop: 0.15, max: 50 },
         agi: { drop: 0.06, max: 100 },
@@ -81,7 +80,7 @@ const PARAMS = {
       // 行動 → 能力値の伸び { ステータス: 倍率 }。潜在 100 のとき 量 × 倍率 だけ伸びる (敵レベルによる補正はない)
       events: {
         dealPhysical: { str: 0.06 },           // 物理で与えたダメージ / 相手の最大HP (倒しきるまでの分)
-        dealMagic: { int: 0.3, wis: 0.2 },     // 術で与えたダメージ / 相手の最大HP
+        dealMagic: { int: 0.3 },                // 術で与えたダメージ / 相手の最大HP
         takePhysical: { vit: 0.3, con: 1, will: 0.4 },  // 物理で受けたダメージ / 自分の最大HP
         takeMagic: { int: 0.2, will: 1, con: 0.4 },     // 術で受けたダメージ / 自分の最大HP
         spendMp: { spi: 0.04, int: 0.01 },      // 使った MP
@@ -98,16 +97,16 @@ const PARAMS = {
 
   // ほかのステータスから計算するステータス (主人公も敵も同じ式)
   //   from が 1 つ (文字): 値 = start + (from のステータス − base) × per (+ 装備でそのステータスに直接足す分)
-  //   from が表 { ステータス: 倍率 }: 値 = start + Σ ステータス × 倍率 (+ 装備の分)。round なら Σ の部分を四捨五入
+  //   from が表 { ステータス: 倍率 }: 値 = start + Σ ステータス × 倍率 (+ 装備の分)。round なら Σ の部分を四捨五入、floor なら切り捨て
   //   max があればそれ以下
   derivedStats: {
     maxHp: { from: { con: 1, will: 1 }, start: 0, round: true },     // さいだいHP = 体力 + 意思
-    maxMp: { from: { wis: 0.5, spi: 0.5 }, start: 0, round: true },  // さいだいMP = (知力 + 精神力) ÷ 2 (四捨五入)
+    maxMp: { from: { int: 0.5, spi: 0.5 }, start: 0, floor: true },  // さいだいMP = (知力 + 精神力) ÷ 2 (切り捨て)
     atk: { from: 'str', base: 0, per: 1, start: 0 },              // こうげき力 = ちから + 武器
     def: { from: 'vit', base: 0, per: 1, start: 0 },              // しゅび力 = みのまもり + 防具
     speed: { from: 'agi', base: 20, per: 2, start: 100 },         // 速度: すばやさ 20 で 100。すばやさ 1 につき +2
-    skillHaste: { from: 'int', base: 10, per: 0.5, start: 0 },    // かしこさ 10 で 0
-    mdef: { from: 'int', base: 0, per: 0.5, start: 0 },           // 術防御 = かしこさ × 0.5 + 装備
+    skillHaste: { from: 'int', base: 10, per: 0.5, start: 0 },    // 知力 10 で 0
+    mdef: { from: 'int', base: 0, per: 0.5, start: 0 },           // 術防御 = 知力 × 0.5 + 装備
     critRate: { from: 'luk', base: 0, per: 0.005, start: 0, max: 1 }, // うんのよさ 20 で 10%
   },
 
@@ -115,9 +114,9 @@ const PARAMS = {
   //   敵のステータスは主人公と同じもの (data/enemies.js)。補正したあと derivedStats で計算する
   enemyLevel: {
     hpGrowth: 0.15,       // 体力・意思 +15% (さいだいHP +15%)
-    mpGrowth: 0.1,        // 知力・精神力 +10% (さいだいMP +10%)
+    mpGrowth: 0.1,        // 精神力 +10% (さいだいMP は 精神力 と 知力 (下の intGrowth) から計算)
     strGrowth: 0.17,      // ちから +17% (こうげき力 +17%)
-    intGrowth: 0.17,      // かしこさ +17%
+    intGrowth: 0.17,      // 知力 +17%
     vitGrowth: 0.8,       // みのまもり +0.8 (しゅび力 +0.8)
     mdefGrowth: 0.8,      // 術防御 +0.8 (敵の gear の術防御に足す)
     agiGrowth: 1,         // すばやさ +1 (速度 +2)

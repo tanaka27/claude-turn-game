@@ -22,9 +22,9 @@
 //   cooldown: 再使用までの行動回数 (主人公は自分の行動回数、敵はその敵の行動回数で数える)
 //   mp     : 技が使う MP (主人公も敵も)。足りないと使えない (省略時 0)
 //   kind   : 'physical' … 物理 (省略時)。こうげき力としゅび力で計算 (params.js のダメージ計算式)
-//            'magic'    … 術。かしこさと術防御で計算 (params.js の術のダメージ計算式)
+//            'magic'    … 術。知力と術防御で計算 (params.js の術のダメージ計算式)
 //   power  : 物理の威力倍率
-//   base   : 術の固定ダメージ / intRate : 術のかしこさの効き (省略時は params.js の magic.intRate)
+//   base   : 術の固定ダメージ / intRate : 術の知力の効き (省略時は params.js の magic.intRate)
 //   pierce : true なら弾が貫通
 //   count / spread : 同時発射数 / 拡散角度(度)
 //   castRange / radius / scatter : lob の最大射程 / 着弾範囲の半径 / 複数弾の散らばり (どれもマス)

@@ -11,7 +11,7 @@ const {
 const HIDE = { cols: 30, rows: 15, player: [27, 7], walls: [[22, 1, 1, 13]] };
 // 主人公のスキルを持った仲間 (MP は多め)
 const heroSkillAlly = (g, at, extra = {}) =>
-  addAlly(g, at, { stats: { wis: 40, spi: 40 }, skills: ['1', '2', '3', '4', '5'].map((k) => skill(g, k)), ...extra });
+  addAlly(g, at, { stats: { int: 10, spi: 70 }, skills: ['1', '2', '3', '4', '5'].map((k) => skill(g, k)), ...extra });
 const last = (g) => messages(g)[messages(g).length - 1];
 
 test('仲間が弾のスキル (衝撃波) を使う: 当たり、MP を払い、再使用待ちになる', () => {

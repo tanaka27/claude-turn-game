@@ -46,7 +46,7 @@ test('物理: 基礎ダメージが 1 未満なら 0 (ミス) か 1。ミスで�
   assert.strictEqual(b.e.hp, 73);
 });
 
-test('術: (固定値 + かしこさ × 0.8) × 50 / (50 + 術防御)。会心なし', () => {
+test('術: (固定値 + 知力 × 0.8) × 50 / (50 + 術防御)。会心なし', () => {
   const g = newGame();
   const [e] = arena(g, { cols: 12, rows: 12, player: [3, 5], enemies: [{ type: 'golem', at: [6, 5], level: 7 }] });
   setLevel(g, 6); // メテオは Lv6 から

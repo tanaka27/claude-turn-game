@@ -290,7 +290,7 @@ function drawTooltip() {
   ], e.color, 100);
 }
 
-// ツールチップの HP・MP の行と、こうげき・まもり・かしこさ・まほうのまもりの行 (敵・NPC)
+// ツールチップの HP・MP の行と、こうげき・まもり・知力・まほうのまもりの行 (敵・NPC)
 const hpMpLine = (u) => txt('hud.hpMp', { hp: Math.ceil(u.hp), maxHp: u.stats.maxHp, mp: Math.floor(u.mp), maxMp: u.stats.maxMp });
 const stats4Line = (st) => txt('hud.stats4', { atkLabel: STATS.atk.label, atk: st.atk.toFixed(0), defLabel: STATS.def.label, def: st.def.toFixed(0),
   intLabel: STATS.int.label, int: st.int.toFixed(0), mdefLabel: STATS.mdef.label, mdef: st.mdef.toFixed(0) });

@@ -23,7 +23,7 @@
 | mp | 技が使う MP（主人公も敵も。省略時 0）。足りないと使えない |
 | kind | `physical`（物理、省略時）/ `magic`（術） |
 | power | 物理の威力倍率 |
-| base / intRate | 術の固定ダメージ / かしこさの効き（省略時は `params.js` の `magic.intRate`） |
+| base / intRate | 術の固定ダメージ / 知力の効き（省略時は `params.js` の `magic.intRate`） |
 | pierce | 弾が貫通する |
 | count / spread | 同時に撃つ弾の数 / 広がる角度（度） |
 | castRange / radius / scatter | lob の最大射程 / 着弾範囲の半径 / 複数投げるときの散らばり（どれもマス） |

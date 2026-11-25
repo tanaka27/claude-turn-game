@@ -13,7 +13,7 @@
 //   絵の作り方は docs/image-assets.md (tools/codex_image.py --kind sprite --size 128 --ref assets/sprites/enemies/wolf.png)
 // glyph: 行動順の欄に出す 1 文字 (絵がないときは体の上にも出す)
 // stats: 主人公と同じステータス (意味は data/player.js の【ステータスの意味】)。Lv1 の値
-//   con / will / wis / spi / str / vit / agi / int / luk / critMult / hpRegen / mpRegen
+//   con / will / spi / str / vit / agi / int / luk / critMult / hpRegen / mpRegen
 //   さいだいHP (体力 + 意思)・さいだいMP ((知力 + 精神力) ÷ 2) も計算で決まるので書かない
 //   こうげき力・しゅび力・術防御・速度・スキル加速・会心率は、主人公と同じ式 (params.js の derivedStats) で計算する
 //   (すばやさ 20 で速度 100。すばやさ 1 につき速度 +2 / うんのよさ 1 につき会心率 +0.5%)
@@ -34,7 +34,7 @@ const ENEMIES = {
   wolf: {
     name: 'ウルフ', glyph: '狼', sprite: 'assets/sprites/enemies/wolf.png', radius: 14, color: '#90a4ae', exp: 12, itemRate: 0.08,
     drops: [{ id: 'wolfPelt', rate: 1 }, { id: 'wolfFang', rate: 0.15 }],
-    stats: { con: 5, will: 4, wis: 0, spi: 0, str: 4.6, vit: 4, agi: 25, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0 },
+    stats: { con: 5, will: 4, spi: 0, str: 4.6, vit: 4, agi: 25, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0 },
     gear: { mdef: 2 },
     attacks: [
       { name: '噛みつき', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
@@ -43,7 +43,7 @@ const ENEMIES = {
   boar: {
     name: 'ホーンボア', glyph: '猪', sprite: 'assets/sprites/enemies/boar.png', radius: 15, color: '#bc8f6f', exp: 18, itemRate: 0.1,
     drops: [{ id: 'boarHorn', rate: 1 }, { id: 'boarMeat', rate: 0.2 }],
-    stats: { con: 8, will: 8, wis: 6, spi: 6, str: 5.6, vit: 6, agi: 17.5, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
+    stats: { con: 8, will: 8, spi: 11, str: 5.6, vit: 6, agi: 17.5, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
     gear: { mdef: 2 },
     attacks: [
       { name: '角突き', type: 'melee', shape: 'line', range: 3, width: 1, charge: 1, cooldown: 4, mp: 3, power: 1.7 },
@@ -53,7 +53,7 @@ const ENEMIES = {
   bee: {
     name: 'キラービー', glyph: '蜂', sprite: 'assets/sprites/enemies/bee.png', radius: 13, color: '#fff176', exp: 16, itemRate: 0.1, keepDistance: 4,
     drops: [{ id: 'beeStinger', rate: 1 }, { id: 'honey', rate: 0.15 }],
-    stats: { con: 5, will: 4, wis: 8, spi: 8, str: 4.8, vit: 2, agi: 22.5, int: 2, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    stats: { con: 5, will: 4, spi: 14, str: 4.8, vit: 2, agi: 22.5, int: 2, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 3 },
     attacks: [
       { name: '毒針', type: 'projectile', range: 6, width: 1, charge: 0, cooldown: 4, mp: 2, power: 1.0 },
@@ -63,7 +63,7 @@ const ENEMIES = {
   salamander: {
     name: 'サラマンダー', glyph: '蜥', sprite: 'assets/sprites/enemies/salamander.png', radius: 14, color: '#ff8a65', exp: 22, itemRate: 0.12, keepDistance: 4,
     drops: [{ id: 'fireScale', rate: 1 }, { id: 'flameSac', rate: 0.12 }],
-    stats: { con: 5, will: 4, wis: 9, spi: 9, str: 5.6, vit: 4, agi: 12.5, int: 2.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    stats: { con: 5, will: 4, spi: 15.5, str: 5.6, vit: 4, agi: 12.5, int: 2.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 9 },
     attacks: [
       { name: '火炎弾', type: 'lob', kind: 'magic', castRange: 6, radius: 1.5, charge: 1, cooldown: 3, mp: 3, base: 1 },
@@ -73,7 +73,7 @@ const ENEMIES = {
   golem: {
     name: 'ロックゴーレム', glyph: '岩', sprite: 'assets/sprites/enemies/golem.png', radius: 19, color: '#a1887f', exp: 40, itemRate: 0.25,
     drops: [{ id: 'stoneShard', rate: 1 }, { id: 'manaCore', rate: 0.15 }],
-    stats: { con: 20, will: 19, wis: 12, spi: 12, str: 7.1, vit: 14, agi: 5, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    stats: { con: 20, will: 19, spi: 23, str: 7.1, vit: 14, agi: 5, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 3 },
     attacks: [
       { name: '叩きつけ', type: 'melee', shape: 'circle', range: 2.3, charge: 1, cooldown: 3, mp: 4, power: 1.6 },
@@ -84,7 +84,7 @@ const ENEMIES = {
   wolfKing: {
     name: '狼王', glyph: '牙', sprite: 'assets/sprites/enemies/wolfKing.png', radius: 24, color: '#607d8b', exp: 250, itemRate: 1, itemCount: 1, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'kingPelt', rate: 1 }, { id: 'kingFang', rate: 0.5 }],
-    stats: { con: 64, will: 64, wis: 30, spi: 30, str: 6.1, vit: 10, agi: 25, int: 2, luk: 16, critMult: 1.5, hpRegen: 0, mpRegen: 0.8 },
+    stats: { con: 64, will: 64, spi: 58, str: 6.1, vit: 10, agi: 25, int: 2, luk: 16, critMult: 1.5, hpRegen: 0, mpRegen: 0.8 },
     gear: { mdef: 7 },
     attacks: [
       { name: '突進', type: 'melee', shape: 'line', range: 5, width: 1, charge: 1, cooldown: 5, mp: 4, power: 1.6 },
@@ -97,7 +97,7 @@ const ENEMIES = {
   treant: {
     name: '森の主', glyph: '樹', sprite: 'assets/sprites/enemies/treant.png', radius: 26, color: '#558b2f', exp: 350, itemRate: 1, itemCount: 2, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'ancientBranch', rate: 1 }, { id: 'treantFruit', rate: 0.5 }],
-    stats: { con: 78, will: 78, wis: 36, spi: 36, str: 6.5, vit: 14, agi: 10, int: 4, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.9 },
+    stats: { con: 78, will: 78, spi: 68, str: 6.5, vit: 14, agi: 10, int: 4, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.9 },
     gear: { mdef: 14 },
     attacks: [
       { name: '根の衝撃', type: 'melee', shape: 'circle', range: 3.3, charge: 1, cooldown: 4, mp: 4, power: 1.6 },
@@ -110,7 +110,7 @@ const ENEMIES = {
   dragon: {
     name: '魔竜', glyph: '竜', sprite: 'assets/sprites/enemies/dragon.png', radius: 27, color: '#ef5350', exp: 400, itemRate: 1, itemCount: 2, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'dragonScale', rate: 1, count: 2 }, { id: 'dragonHeart', rate: 0.5 }],
-    stats: { con: 84, will: 84, wis: 40, spi: 40, str: 7.3, vit: 18, agi: 20, int: 4.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 1 },
+    stats: { con: 84, will: 84, spi: 75.5, str: 7.3, vit: 18, agi: 20, int: 4.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 1 },
     gear: { mdef: 18 },
     attacks: [
       { name: '尾の薙ぎ払い', type: 'melee', shape: 'fan', range: 2.5, angle: 160, charge: 1, cooldown: 3, mp: 4, power: 1.6 },

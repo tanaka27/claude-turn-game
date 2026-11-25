@@ -72,13 +72,14 @@ test('体力・意思 が上がると さいだいHP と今の HP も同じだ�
   assert.strictEqual(g.trainStat(p, 'con', 50), 0, '上限ではもう上がらない');
 });
 
-test('知力・精神力 が上がると さいだいMP = (知力 + 精神力) ÷ 2 (四捨五入) が増える', () => {
+test('知力・精神力 が上がると さいだいMP = (知力 + 精神力) ÷ 2 (切り捨て) が増える', () => {
   const { g, p } = withWolf();
-  const max0 = p.stats.maxMp; // 知力 12・精神力 12 で 12
-  g.trainStat(p, 'wis', 1);
-  assert.strictEqual(p.stats.maxMp, Math.round((13 + 12) / 2));
+  const max0 = p.stats.maxMp; // 知力 10・精神力 14 で 12
+  assert.strictEqual(max0, 12);
+  g.trainStat(p, 'int', 1);
+  assert.strictEqual(p.stats.maxMp, 12, '(11 + 14) ÷ 2 = 12.5 → 12');
   g.trainStat(p, 'spi', 1);
-  assert.strictEqual(p.stats.maxMp, max0 + 1);
+  assert.strictEqual(p.stats.maxMp, max0 + 1, '(11 + 15) ÷ 2 = 13');
 });
 
 test('物理のダメージを受けると みのまもり・体力・意思 が伸びる', () => {
@@ -94,7 +95,7 @@ test('物理のダメージを受けると みのまもり・体力・意思 が
   near(grown(g, 'will'), f * ev.will, '意思');
 });
 
-test('スキルで MP を使うと 精神力 と かしこさ が伸びる', () => {
+test('スキルで MP を使うと 精神力 と 知力 が伸びる', () => {
   const { g, p } = withWolf();
   const sk = skillById(g, 'shockwave');
   assert.ok(useSkillBy(g, p, sk, 5, 1), '使える');
