@@ -41,4 +41,32 @@ const NPC_KINDS = {
     stats: { con: 35, will: 35, mag: 8, spi: 24, mus: 22, dex: 22, agi: 34, int: 24, luk: 26, critMult: 1.6, hpRegen: 0, mpRegen: 0.3 },
     gear: { vit: 1.2, atk: 8, def: 6, mdef: 4.4 },
   },
+  villager: {
+    label: '町の人',
+    stats: { con: 18, will: 18, mag: 2, spi: 6, mus: 10, dex: 10, agi: 20, int: 14, luk: 24, critMult: 1.5, hpRegen: 0, mpRegen: 0.1 },
+  },
+  child: {
+    label: '子ども',
+    stats: { con: 8, will: 10, mag: 4, spi: 8, mus: 3, dex: 6, agi: 28, int: 8, luk: 50, critMult: 1.5, hpRegen: 0, mpRegen: 0.1 },
+  },
+  elder: {
+    label: '長老',
+    stats: { con: 12, will: 30, mag: 20, spi: 40, mus: 5, dex: 8, agi: 10, int: 48, luk: 30, critMult: 1.5, hpRegen: 0, mpRegen: 0.5 },
+    gear: { mdef: 6 },
+  },
+  priest: {
+    label: '神官',
+    stats: { con: 20, will: 30, mag: 30, spi: 44, mus: 6, dex: 8, agi: 18, int: 40, luk: 28, critMult: 1.5, hpRegen: 0, mpRegen: 0.6 },
+    gear: { mdef: 10 },
+  },
+  fisher: {
+    label: '漁師',
+    stats: { con: 36, will: 26, mag: 2, spi: 6, mus: 26, dex: 20, agi: 22, int: 12, luk: 34, critMult: 1.6, hpRegen: 0, mpRegen: 0.1 },
+    gear: { atk: 4, def: 3 },
+  },
+  traveler: {
+    label: '旅人',
+    stats: { con: 30, will: 28, mag: 10, spi: 16, mus: 18, dex: 24, agi: 36, int: 22, luk: 30, critMult: 1.6, hpRegen: 0, mpRegen: 0.3 },
+    gear: { atk: 6, def: 4, mdef: 3 },
+  },
 };

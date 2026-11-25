@@ -239,6 +239,7 @@ const TEXT = {
     close: '閉じる（F）',
     next: '次へ（F）　{n} / {total}',
     nobody: '話しかけられる人がいない。となりのマスで F を押そう。',
+    stats: '{kind}　{hpMp}　{stats}',                  // 会話の枠の名前の下: NPC の種類とステータス
   },
 
   // ----- HUD (src/hud.js) -----

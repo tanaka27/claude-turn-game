@@ -522,6 +522,7 @@ function renderTalk() {
   const n = talkState.npc, isLast = talkState.line >= n.lines.length - 1;
   $('talkName').textContent = n.name;
   $('talkName').style.color = n.color;
+  $('talkStats').textContent = txt('talk.stats', { kind: n.kindLabel, hpMp: hpMpLine(n), stats: stats4Line(n.stats) });
   $('talkText').textContent = n.lines[talkState.line];
   $('talkNext').textContent = isLast ? txt('talk.close') : txt('talk.next', { n: talkState.line + 1, total: n.lines.length });
 }

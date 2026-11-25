@@ -11,7 +11,7 @@
 | `data/skills.js` | `SKILLS` | スキル（技）の定義（id・名前・種類・範囲・再使用・MP・威力など）。主人公が覚えて使う（仲間にも渡せる）。だれが覚えているか・キー・いつ覚えるかは書かない。技の書き方の説明もここ（敵の技 `data/enemies.js` も同じ書き方） |
 | `data/player.js` | `PLAYER` | 主人公の名前・見た目・初期ステータス、通常攻撃、スキルの覚え方（はじめの決まり `learnAtLevel`: スキルの id → 覚えるレベル）、スキル欄のはじめの並び（`skillSlots`: キー → スキルの id）、最初の装備（`startEquip`）。ステータスの書き方の説明もここ |
 | `data/enemies.js` | `ENEMIES` | 敵（モンスター）の種類ごとの名前・字・色・描く大きさ・経験値・落とす素材（`drops`）・装備を落とす確率・間合い（`keepDistance`）・技を狙う確率（`skillChance`）・ステータス（主人公と同じもの）・装備のかわりの上乗せ（`gear`）・技（消費 MP 付き） |
-| `data/npcs.js` | `NPC_KINDS` | NPC の種類（商人・鍛冶屋・衛兵・ギルドの職員・冒険者）ごとの表示名・ステータス（主人公と同じもの）・装備のかわりの上乗せ（`gear`）。配置は `world.js` の NPC の `kind` で選ぶ。今は NPC に攻撃は当たらない |
+| `data/npcs.js` | `NPC_KINDS` | NPC の種類（商人・鍛冶屋・衛兵・ギルドの職員・冒険者・町の人・子ども・長老・神官・漁師・旅人）ごとの表示名・ステータス（主人公と同じもの）・装備のかわりの上乗せ（`gear`）。配置は `world.js` の NPC の `kind` で選ぶ。今は NPC に攻撃は当たらない |
 | `data/items.js` | `ITEMS` | レア度、部位（基本性能・名前）、追加性能、価値、道具（`consumables`。レア度・使うキー・効果の並び `effects`。[consumables.md](consumables.md)）、商人の品ぞろえ（`shops`）、鍛冶屋の品ぞろえ（`smiths`）、素材（名前・レア度・売値・色） |
 | `data/quests.js` | `QUESTS` | クエスト（依頼する NPC・目標 `goal`（種類 `kill` / `collect` / `talk` と敵・素材・NPC・数。[quests.md](quests.md)）・報酬（道具は `consumables: [{ id, count }]`）・前提） |
 | `data/stats.js` | `STATS` | ステータスの表示名・桁数（並び順がキャラクターの画面のつよさの並び順） |
