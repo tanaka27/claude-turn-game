@@ -18,7 +18,7 @@
 | `data/buffs.js` | `BUFFS` | 強化・弱体（バフ・デバフ）の種類（表示名・変えるステータスと倍率・アイコンの字と色）。倍率が 1 より小さいものが弱体。どのキャラにもかけられる。今かける手段は `data/skills.js` の `type: 'buff'` の技（自分を強化）だけ（[combat.md](combat.md)） |
 | `data/theme.js` | `THEME` / `UNIT_SPRITE` | 意味を持つ色（陣営ごとの予測線・弾の色、出現予告、敵のレベル差の色、仲間の HP バー、MP のゲージと消費 MP の色）と、canvas に描く色と大きさのまとまり（`font` / `background` / `text` / `bars` / `hud` / `map` / `tooltip` / `buffIcon` / `field` / `unit` / `npc` / `fx`、メッセージ欄の文の色 `msg`、浮かぶ文字の色と大きさ `float`。中身は [render.md](render.md)）、キャラの種類ごとの描き方（`UNIT_LOOK`。[drawing.md](drawing.md)）、キャラの絵の大きさ。HTML の画面の見た目は `style.css` |
 | `data/text.js` | `TEXT` | 画面に出す文章のひな形（メッセージ欄・大きい文字・浮かぶ文字・HUD・ワールドの文字・HTML の画面・タイトルとセーブの説明）。`{名前}` に値が入る。`src/` は `txt('まとまり.名前', { … })` で引く。言い回しの変え方・色の置き場所（`THEME.msg` / `THEME.float`）は [text.md](text.md) |
-| `world.js` | `WORLD` | ワールドマップ（`overworld`、文字の地図 `grid`・入口 `places`・地方 `regions`、地面の種類 `grounds`・文字の意味 `legend`、世界地図の大きさ `worldMap`。[overworld.md](overworld.md)）、地形の種類（`terrain`）、町・ダンジョンのゾーン、門、湧き場所、NPC（位置は px で書き、読み込むときにマスに直す。ステータスの種類は `kind`） |
+| `world.js` | `WORLD` | ワールドマップ（`overworld`、文字の地図 `grid`・入口 `places`・地方 `regions`、地面の種類 `grounds`・文字の意味 `legend`、世界地図の大きさと拡大 `worldMap`。[overworld.md](overworld.md)・[worldmap.md](worldmap.md)）、地形の種類（`terrain`）、町・ダンジョンのゾーン、門、湧き場所、NPC（位置は px で書き、読み込むときにマスに直す。ステータスの種類は `kind`） |
 
 読み込み順は `params.js` → `data/*.js` → `world.js` → `src/*.js`（`index.html`）。どれも `const` なので `window` のプロパティにはならず、名前で直接参照する。
 

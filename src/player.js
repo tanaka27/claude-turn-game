@@ -31,6 +31,9 @@ window.addEventListener('keydown', (e) => {
   if (k === 'escape' && aiming) { aiming = null; return; }
   if (!e.repeat && (k === 'escape' || k === 'p')) { togglePause(); return; }
   if (!e.repeat && k === 'm') { toggleWorldMap(); return; }
+  // 世界地図を出している間は + / - で拡大・縮小
+  if (worldMapOn && (k === '+' || k === '=' || k === ';' || e.code === 'NumpadAdd')) { zoomWorldMap(WORLD.worldMap.zoomStep); return; }
+  if (worldMapOn && (k === '-' || e.code === 'NumpadSubtract')) { zoomWorldMap(1 / WORLD.worldMap.zoomStep); return; }
   if (game.paused) {
     if (k === 'c') openScreen('char');
     else if (k === 's' && !e.repeat) manualSave();
@@ -73,12 +76,35 @@ window.addEventListener('keydown', (e) => {
   }
 });
 window.addEventListener('blur', () => { aiming = null; });
+// 世界地図のドラッグ: 押した場所 (x, y) と、動かしたか (moved)。動かさずに離したらクリック (右下と大きくを切り替える)
+let worldMapDrag = null;
 canvas.addEventListener('mousemove', (e) => {
+  if (worldMapDrag) {
+    const dx = e.clientX - worldMapDrag.x, dy = e.clientY - worldMapDrag.y;
+    if (worldMapDrag.moved || Math.abs(dx) + Math.abs(dy) > 4) { worldMapDrag.moved = true; panWorldMap(dx, dy); worldMapDrag.x = e.clientX; worldMapDrag.y = e.clientY; }
+  }
   mouse.x = e.clientX; mouse.y = e.clientY;
-  canvas.style.cursor = hudButtonAt(mouse.x, mouse.y) ? 'pointer' : '';
+  canvas.style.cursor = worldMapDrag && worldMapDrag.moved ? 'grabbing' : hudButtonAt(mouse.x, mouse.y) ? 'pointer' : '';
 });
+window.addEventListener('mouseup', () => {
+  if (worldMapDrag && !worldMapDrag.moved) toggleWorldMapSize();
+  worldMapDrag = null;
+});
+// 世界地図の上でホイール: 拡大・縮小 (カーソルの下の場所を動かさない)
+canvas.addEventListener('wheel', (e) => {
+  if (game.state !== 'play' || !worldMapOn) return;
+  const hb = hudButtonAt(e.clientX, e.clientY);
+  if (!hb || hb.id !== 'map') return;
+  e.preventDefault();
+  zoomWorldMap(e.deltaY < 0 ? WORLD.worldMap.zoomStep : 1 / WORLD.worldMap.zoomStep, e.clientX, e.clientY);
+}, { passive: false });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('mousedown', (e) => {
+  // 世界地図を押したら、ドラッグで動かす (動かさずに離せば大きさを切り替える)。主人公の番でなくてもよい
+  if (game.state === 'play' && !game.paused && worldMapOn && e.button === 0) {
+    const hb = hudButtonAt(e.clientX, e.clientY);
+    if (hb && hb.id === 'map') { worldMapDrag = { x: e.clientX, y: e.clientY, moved: false }; return; }
+  }
   if (!canAct()) return;
   if (e.button === 2) { aiming = null; player.travel = null; return; }
   if (e.button !== 0) return;

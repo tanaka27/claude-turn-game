@@ -51,6 +51,9 @@ const ITEMS = {
     wayTools: { name: '宿場の道具屋', consumables: ['potion'] },
     hamletHerbs: { name: '隠れ里の薬師', consumables: ['potion', 'hiPotion'] },
     rockTools: { name: '岩根の村の道具屋', consumables: ['potion', 'hiPotion'] },
+    harborTools: { name: '潮風の港の道具屋', consumables: ['potion', 'hiPotion'] },
+    frostHerbs: { name: '霜の村の薬師', consumables: ['potion', 'hiPotion'] },
+    desertBazaar: { name: '砂の都の市場', consumables: ['potion', 'hiPotion'] },
   },
   // 鍛冶屋。world.js の NPC (role: 'smith') の smith にキーを書く。装備を買う・売る (町ごとに品ぞろえが違う)
   //   name: 画面の見出し / gear: 売る装備 [部位, レア度] (1 つずつ並ぶ)
@@ -63,6 +66,12 @@ const ITEMS = {
       gear: [['weapon', 'uncommon'], ['weapon', 'rare'], ['armor', 'uncommon'], ['armor', 'rare'], ['accessory', 'uncommon'], ['accessory', 'rare']] },
     hamletSmith: { name: '隠れ里の鍛冶屋', levelOffset: 1,
       gear: [['weapon', 'rare'], ['weapon', 'epic'], ['armor', 'rare'], ['armor', 'epic'], ['accessory', 'rare'], ['accessory', 'epic']] },
+    harborSmith: { name: '港の鍛冶屋', levelOffset: 0, maxLevel: 10,
+      gear: [['weapon', 'uncommon'], ['weapon', 'rare'], ['armor', 'rare'], ['accessory', 'uncommon'], ['accessory', 'rare']] },
+    frostSmith: { name: '霜の村の鍛冶屋', levelOffset: 1,
+      gear: [['weapon', 'epic'], ['armor', 'rare'], ['armor', 'epic'], ['accessory', 'epic']] },
+    desertSmith: { name: '砂の都の鍛冶屋', levelOffset: 2,
+      gear: [['weapon', 'epic'], ['weapon', 'legendary'], ['armor', 'epic'], ['armor', 'legendary'], ['accessory', 'epic'], ['accessory', 'legendary']] },
   },
   // 素材 (敵が落とす。店で売るとお金になる。今後は装備を作る材料にする予定)
   //   rarity: レア度 (素材ごとに 1 つ) / price: 1 つの売値 / color: マップに落ちているときの色
