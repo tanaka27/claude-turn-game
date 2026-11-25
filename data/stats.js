@@ -13,6 +13,7 @@ const STATS = {
   maxMp: { label: 'さいだいMP', dec: 0 },
   con: { label: '体力', dec: 0 },
   will: { label: '意思', dec: 0 },
+  mag: { label: '魔力', dec: 0 },
   spi: { label: '精神力', dec: 0 },
   str: { label: 'ちから', dec: 0 },
   vit: { label: 'みのまもり', dec: 0 },

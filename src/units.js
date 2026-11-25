@@ -37,7 +37,7 @@ function createEnemy(type, tx, ty, camp, slot) {
   // 主人公と同じステータスをレベルで補正し、主人公と同じ式で計算する (gear は装備のかわり)
   const b = { ...d.stats };
   for (const k of ['con', 'will']) b[k] *= 1 + EL.hpGrowth * g;  // さいだいHP のもと (さいだいHP は計算で四捨五入)
-  b.spi *= 1 + EL.mpGrowth * g;                                   // さいだいMP のもと (もう 1 つの 知力 は下で伸ばす)
+  for (const k of ['mag', 'spi']) b[k] *= 1 + EL.mpGrowth * g;   // さいだいMP のもと (知力 は下で伸ばす)
   b.str *= 1 + EL.strGrowth * g;
   b.int *= 1 + EL.intGrowth * g;
   b.vit += EL.vitGrowth * g;
@@ -143,6 +143,7 @@ const canUseSkill = (u, sk) => cooldownLeft(u, sk) <= 0 && enoughMp(u, sk);
 function payForSkill(u, sk) {
   u.skillCd[skillKey(u, sk)] = skillCooldown(u, sk);
   growthEvent(u, 'spendMp', skillMp(sk));
+  if (sk.kind === 'magic') growthEvent(u, 'castMagic', skillMp(sk)); // 術を使うと魔力が伸びる
   u.mp = skillRule(u).mpClamp ? Math.max(0, u.mp - skillMp(sk)) : u.mp - skillMp(sk);
 }
 // ----- 覚えているスキルとスキル欄 (主人公と、data/skills.js の技を持つ仲間) -----

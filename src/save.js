@@ -4,14 +4,14 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v8。くわしくは docs/save-format.md)
-//   { v: 8, savedAt,
+// セーブの形 (v9。くわしくは docs/save-format.md)
+//   { v: 9, savedAt,
 //     player:   { level, exp, base, potential, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 8;
+const SAVE_VERSION = 9;
 const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
@@ -105,6 +105,17 @@ const SAVE_MIGRATIONS = {
     if (b && Number.isFinite(b.wis) && Number.isFinite(b.spi) && Number.isFinite(b.int)) b.spi += b.wis - b.int;
     if (b) delete b.wis;
     if (p.potential && typeof p.potential === 'object') delete p.potential.wis;
+    return d;
+  },
+  // v8 → v9: 魔力 mag を足し、さいだいMP = 魔力 + (知力 + 精神力) ÷ 3 にした (v8 は (知力 + 精神力) ÷ 2)。
+  //   魔力 = (I + S) ÷ 2 の切り捨て − (I + S) ÷ 3 の切り捨て (I・S は一の位までの 知力・精神力) にして、同じ さいだいMP にする
+  //   (Lv1 の 10・14 なら 12 − 8 = 4)。魔力の潜在は入れない (読むとき applySave がはじめの値で埋める)
+  8: (d) => {
+    const b = d.player && typeof d.player === 'object' && d.player.base && typeof d.player.base === 'object' ? d.player.base : null;
+    if (b && Number.isFinite(b.int) && Number.isFinite(b.spi)) {
+      const sum = Math.floor(b.int) + Math.floor(b.spi);
+      b.mag = Math.floor(sum / 2) - Math.floor(sum / 3);
+    }
     return d;
   },
 };

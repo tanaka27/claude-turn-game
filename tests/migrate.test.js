@@ -5,7 +5,7 @@ const { loadGame } = require('./harness');
 const { plain, bagOf } = require('./helpers');
 
 // 今のセーブの形の版 (src/save.js の SAVE_VERSION。版を上げたらここも上げる)
-const CURRENT = 8;
+const CURRENT = 9;
 // 形 v1 のセーブ (クエストの id が古い名前のころ)。そのまま書いておく
 const V1_SAVE = {
   v: 1, savedAt: 1794000000000,
@@ -113,7 +113,12 @@ const V7_SAVE = {
 function v8Base(b) {
   const { maxHp, maxMp, ...rest } = b;
   const will = Math.floor(Math.floor(maxHp) / 2);
-  return { ...rest, con: maxHp - will, will, spi: maxMp + maxMp - b.int };
+  return withMag({ ...rest, con: maxHp - will, will, spi: maxMp + maxMp - b.int });
+}
+// v9 で 魔力 = (知力 + 精神力) ÷ 2 の切り捨て − ÷ 3 の切り捨て を足す (同じ さいだいMP)
+function withMag(b) {
+  const sum = Math.floor(b.int) + Math.floor(b.spi);
+  return { ...b, mag: Math.floor(sum / 2) - Math.floor(sum / 3) };
 }
 const copy = (x) => JSON.parse(JSON.stringify(x));
 // 起動時の initSave → refreshTitle が終わるまで待つ
@@ -429,7 +434,7 @@ test('v7 のセーブは、知力 wis を消して 精神力 に wis − かし�
   const d = g.readLocalSave();
   assert.strictEqual(d.v, CURRENT);
   const { wis, ...rest } = V7_SAVE.player.base;
-  assert.deepStrictEqual(plain(d.player.base), { ...rest, spi: 20 + 25 - 23 });
+  assert.deepStrictEqual(plain(d.player.base), withMag({ ...rest, spi: 20 + 25 - 23 }));
   assert.deepStrictEqual(plain(d.player.potential), { spi: 110 });
   g.startGame(d);
   const p = g.player;
@@ -437,4 +442,15 @@ test('v7 のセーブは、知力 wis を消して 精神力 に wis − かし�
   assert.strictEqual(p.stats.int, 23, 'かしこさ の値がそのまま 知力');
   const saved = JSON.parse(g.storage.get('zankai-turn-save'));
   assert.ok(!('wis' in saved.player.base) && !('wis' in saved.player.potential));
+});
+
+test('v8 のセーブは、魔力 を (知力 + 精神力) ÷ 2 の切り捨て − ÷ 3 の切り捨て で足し、さいだいMP は同じまま', () => {
+  const V8_SAVE = { ...V4_SAVE, v: 8, player: { ...V4_SAVE.player, base: { con: 19, will: 18, spi: 30.6, str: 16, vit: 6, agi: 29, int: 23 }, potential: { spi: 110 } } };
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V8_SAVE) } });
+  const d = g.readLocalSave();
+  assert.strictEqual(d.v, CURRENT);
+  assert.strictEqual(d.player.base.mag, Math.floor(53 / 2) - Math.floor(53 / 3), '23 + 30 = 53 → 26 − 17 = 9');
+  g.startGame(d);
+  assert.strictEqual(g.player.stats.maxMp, Math.floor((23 + 30) / 2), 'v8 の さいだいMP 26 のまま');
+  assert.strictEqual(g.player.potential.mag, g.startPotential().mag, '魔力の潜在ははじめの値');
 });

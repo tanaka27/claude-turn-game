@@ -13,7 +13,7 @@
   home }
 ```
 
-- `base` は行動で伸びたステータス `{ con, will, spi, str, vit, agi, int }`（小数点以下まで。v6 から。v7 から さいだいHP・MP のかわりに 体力・意思・精神力。v8 で 知力 `wis` をやめ、`int` を 知力 と呼ぶ）、`potential` は潜在（どちらも `{ ステータス: 数 }`。v5 から潜在。[growth.md](growth.md)）。`inventory` / `equip` は装備（`{ id, slot, name, rarity, level, stats }`）そのもの、`materials` は素材の数 `{ 素材のid: 数 }`、`quests` は `{ クエストのid: { state, count } }`（id は `data/quests.js`。v2 から衛兵隊長のクエストは `c_wolf` など）、`consumables` は道具の数 `{ 道具のキー: 数 }`（`data/items.js` の `consumables`。v4 から。v3 までは `potions`）、`knownSkills` は覚えているスキルの id の並び（`data/skills.js`。v3 から）
+- `base` は行動で伸びたステータス `{ con, will, mag, spi, str, vit, agi, int }`（小数点以下まで。v6 から。v7 から さいだいHP・MP のかわりに 体力・意思・精神力。v8 で 知力 `wis` をやめ、`int` を 知力 と呼ぶ。v9 から 魔力 `mag`）、`potential` は潜在（どちらも `{ ステータス: 数 }`。v5 から潜在。[growth.md](growth.md)）。`inventory` / `equip` は装備（`{ id, slot, name, rarity, level, stats }`）そのもの、`materials` は素材の数 `{ 素材のid: 数 }`、`quests` は `{ クエストのid: { state, count } }`（id は `data/quests.js`。v2 から衛兵隊長のクエストは `c_wolf` など）、`consumables` は道具の数 `{ 道具のキー: 数 }`（`data/items.js` の `consumables`。v4 から。v3 までは `potions`）、`knownSkills` は覚えているスキルの id の並び（`data/skills.js`。v3 から）
 - `tab` はサーバーに書いたタブの名前（サーバーへ送るときに付ける。ブラウザのセーブにはない。ゲームは読まない。[server.md](server.md)）
 - `progress.time` はゲーム内の時刻（ターン）。`progress.kills` は倒した数。どちらも数でない（文字列など）・負の値は読むとき 0 にする（時刻が `NaN` になると行動順が壊れるため）。`location` の `tx`, `ty` はマス
 - ステータスそのもの（こうげき力など）は保存せず、読み込むときに「`base` + 装備」から計算し直す（`computeStats`）。式や装備の数値を変えても、続きから遊ぶと新しい数値が反映される

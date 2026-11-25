@@ -30,7 +30,7 @@ function enemyStatsByFormula(g, type, level) {
   const d = g.ENEMIES[type], EL = g.PARAMS.enemyLevel, k = level - 1;
   const b = { ...d.stats };
   for (const s of ['con', 'will']) b[s] *= 1 + EL.hpGrowth * k;
-  b.spi *= 1 + EL.mpGrowth * k;
+  for (const s of ['mag', 'spi']) b[s] *= 1 + EL.mpGrowth * k;
   b.str *= 1 + EL.strGrowth * k;
   b.int *= 1 + EL.intGrowth * k;
   b.vit += EL.vitGrowth * k;
