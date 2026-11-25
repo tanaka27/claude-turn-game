@@ -14,14 +14,14 @@
 // glyph: 行動順の欄に出す 1 文字 (絵がないときは体の上にも出す)
 // stats: 主人公と同じステータス (意味は data/player.js の【ステータスの意味】)。Lv1 の値
 //   con / will / mag / spi / mus / dex / agi / int / luk / critMult / hpRegen / mpRegen
-//   さいだいHP (体力 + 意思)・さいだいMP (魔力 + (知力 + 精神力) ÷ 3)・ちから (筋力 × 0.7 + 器用さ × 0.3)・みのまもり (筋力 × 0.32 + 器用さ × 0.08) も計算で決まるので書かない
+//   さいだいHP (体力 + 意思)・さいだいMP (魔力 + (知力 + 精神力) ÷ 3)・ちから (筋力 × 0.7 + 器用さ × 0.3)・みのまもり (筋力 × 0.32 + 器用さ × 0.08)・術攻撃力 (知力 × 0.8 + 魔力 × 0.5) も計算で決まるので書かない
 //   (みのまもり は、前に書いていた値との差を gear の vit に入れてある)
 //   こうげき力・しゅび力・術防御・速度・スキル加速・会心率は、主人公と同じ式 (params.js の derivedStats) で計算する
 //   (すばやさ 20 で速度 100。すばやさ 1 につき速度 +2 / うんのよさ 1 につき会心率 +0.5%)
 //   hpRegen は今はどの敵も 0 (戦っている間に HP は戻らない)
 // gear: 装備のかわりに足す値 (主人公の装備と同じく、計算で決まるステータスに直接足す)。省略可
 // 技の mp: 使うと減る MP。足りない技は使わない。毎回使える近接技 (主人公の通常攻撃にあたる) は mp なし
-// 技の kind: 'magic' は術 (base + int で計算し、相手の術防御で減る)。省略すると物理
+// 技の kind: 'magic' は術 (base + 術攻撃力 (知力 × 0.8 + 魔力 × 0.5) で計算し、相手の術防御で減る)。省略すると物理
 // attacks: 技の一覧。基本の技 (MP を使わない技。主人公の通常攻撃にあたる) は一番下に書く
 //   次に狙う技は、使える技 (再使用待ちでなく MP が足りる) と基本の技のくじで選ぶ
 //   技の重み = weight (省略時 1) × 状況の倍率。見る状況は技の形から自動で決まる (直線・弾 → aligned、
@@ -64,7 +64,7 @@ const ENEMIES = {
   salamander: {
     name: 'サラマンダー', glyph: '蜥', sprite: 'assets/sprites/enemies/salamander.png', radius: 14, color: '#ff8a65', exp: 22, itemRate: 0.12, keepDistance: 4,
     drops: [{ id: 'fireScale', rate: 1 }, { id: 'flameSac', rate: 0.12 }],
-    stats: { con: 5, will: 4, mag: 3, spi: 15.5, mus: 5.6, dex: 5.6, agi: 12.5, int: 2.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    stats: { con: 5, will: 4, mag: 1, spi: 21.5, mus: 5.6, dex: 5.6, agi: 12.5, int: 2.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { vit: 1.76, mdef: 9 },
     attacks: [
       { name: '火炎弾', type: 'lob', kind: 'magic', castRange: 6, radius: 1.5, charge: 1, cooldown: 3, mp: 3, base: 1 },
@@ -98,7 +98,7 @@ const ENEMIES = {
   treant: {
     name: '森の主', glyph: '樹', sprite: 'assets/sprites/enemies/treant.png', radius: 26, color: '#558b2f', exp: 350, itemRate: 1, itemCount: 2, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'ancientBranch', rate: 1 }, { id: 'treantFruit', rate: 0.5 }],
-    stats: { con: 78, will: 78, mag: 12, spi: 68, mus: 6.5, dex: 6.5, agi: 10, int: 4, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.9 },
+    stats: { con: 78, will: 78, mag: 1.6, spi: 99.3, mus: 6.5, dex: 6.5, agi: 10, int: 4, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.9 },
     gear: { vit: 11.4, mdef: 14 },
     attacks: [
       { name: '根の衝撃', type: 'melee', shape: 'circle', range: 3.3, charge: 1, cooldown: 4, mp: 4, power: 1.6 },
@@ -111,7 +111,7 @@ const ENEMIES = {
   dragon: {
     name: '魔竜', glyph: '竜', sprite: 'assets/sprites/enemies/dragon.png', radius: 27, color: '#ef5350', exp: 400, itemRate: 1, itemCount: 2, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'dragonScale', rate: 1, count: 2 }, { id: 'dragonHeart', rate: 0.5 }],
-    stats: { con: 84, will: 84, mag: 14, spi: 73.5, mus: 7.3, dex: 7.3, agi: 20, int: 4.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 1 },
+    stats: { con: 84, will: 84, mag: 1.8, spi: 110.2, mus: 7.3, dex: 7.3, agi: 20, int: 4.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 1 },
     gear: { vit: 15.08, mdef: 18 },
     attacks: [
       { name: '尾の薙ぎ払い', type: 'melee', shape: 'fan', range: 2.5, angle: 160, charge: 1, cooldown: 3, mp: 4, power: 1.6 },

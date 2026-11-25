@@ -290,10 +290,10 @@ function drawTooltip() {
   ], e.color, 100);
 }
 
-// ツールチップの HP・MP の行と、こうげき・まもり・知力・まほうのまもりの行 (敵・NPC)
+// ツールチップの HP・MP の行と、こうげき・まもり・術攻撃力・術防御の行 (敵・NPC)
 const hpMpLine = (u) => txt('hud.hpMp', { hp: Math.ceil(u.hp), maxHp: u.stats.maxHp, mp: Math.floor(u.mp), maxMp: u.stats.maxMp });
 const stats4Line = (st) => txt('hud.stats4', { atkLabel: STATS.atk.label, atk: st.atk.toFixed(0), defLabel: STATS.def.label, def: st.def.toFixed(0),
-  intLabel: STATS.int.label, int: st.int.toFixed(0), mdefLabel: STATS.mdef.label, mdef: st.mdef.toFixed(0) });
+  matkLabel: STATS.matk.label, matk: st.matk.toFixed(0), mdefLabel: STATS.mdef.label, mdef: st.mdef.toFixed(0) });
 
 // 仲間の欄の強化のアイコンにマウスを乗せたとき: 名前・効果・残り。出したら true
 function drawBuffTooltip() {

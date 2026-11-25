@@ -175,14 +175,14 @@ function dash(u, sk, tx, ty) {
   return true;
 }
 
-// 技 a (kind / power / base / intRate) のダメージ。戻り値 { dmg, crit }
+// 技 a (kind / power / base / matkRate) のダメージ。戻り値 { dmg, crit }
 function rollDamage(src, tgt, a) {
   const s = src.stats, D = PARAMS.damage;
   const vary = () => 1 + rand(-1, 1) * D.variance;
   if (a.kind === 'magic') {
-    // 術: 固定値 + 知力に比例した分を、術防御で割合で減らす。会心・ミスはない
+    // 術: 固定値 + 術攻撃力に比例した分を、術防御で割合で減らす。会心・ミスはない
     const M = PARAMS.magic;
-    const base = a.base + s.int * (a.intRate !== undefined ? a.intRate : M.intRate);
+    const base = a.base + s.matk * (a.matkRate !== undefined ? a.matkRate : M.matkRate);
     return { dmg: Math.max(1, Math.round(base * M.mdefScale / (M.mdefScale + Math.max(0, tgt.stats.mdef)) * vary())), crit: false };
   }
   // 物理 (ドラクエ式)

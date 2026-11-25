@@ -20,7 +20,7 @@
 //   これは物理 (kind: 'physical'、省略時) の技。術 (kind: 'magic') は下の【術のダメージ計算式】
 //
 // 【術のダメージ計算式】
-//   基礎ダメージ = 技の固定値(base) + 攻撃側int × 技の intRate (省略時は magic.intRate)
+//   基礎ダメージ = 技の固定値(base) + 攻撃側の術攻撃力(matk) × 技の matkRate (省略時は magic.matkRate)
 //   ダメージ = 基礎ダメージ × mdefScale / (mdefScale + 防御側mdef) × 乱数(1 ± variance)
 //   ※四捨五入。最低 1。術は会心にならず、ミスもない
 //
@@ -43,7 +43,7 @@ const PARAMS = {
   },
 
   magic: {
-    intRate: 0.8,       // 知力 1 につき基礎ダメージ +0.8 (技に intRate があればそちら)
+    matkRate: 0.8,      // 術攻撃力 1 につき基礎ダメージ +0.8 (技に matkRate があればそちら)
     mdefScale: 50,      // 術防御がこの値のとき、ダメージが半分になる
   },
 
@@ -108,7 +108,8 @@ const PARAMS = {
     maxHp: { from: { con: 1, will: 1 }, start: 0, round: true },     // さいだいHP = 体力 + 意思
     maxMp: { from: { mag: 1, int: 1 / 3, spi: 1 / 3 }, start: 0, floor: true }, // さいだいMP = 魔力 + (知力 + 精神力) ÷ 3 (切り捨て)
     vit: { from: { mus: 0.32, dex: 0.08 }, start: 0 },             // みのまもり = 筋力 × 0.32 + 器用さ × 0.08 (8:2。しゅび力 より前に書く)
-    atk: { from: 'str', base: 0, per: 1, start: 0 },              // こうげき力 = ちから + 武器
+    atk: { from: 'str', base: 0, per: 1, start: 0 },
+    matk: { from: { int: 0.8, mag: 0.5 }, start: 0 },              // 術攻撃力 = 知力 × 0.8 + 魔力 × 0.5 + 装備 (知力のほうが効く)              // こうげき力 = ちから + 武器
     def: { from: 'vit', base: 0, per: 1, start: 0 },              // しゅび力 = みのまもり + 防具
     speed: { from: 'agi', base: 20, per: 2, start: 100 },         // 速度: すばやさ 20 で 100。すばやさ 1 につき +2
     skillHaste: { from: 'int', base: 10, per: 0.5, start: 0 },    // 知力 10 で 0

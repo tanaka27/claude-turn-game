@@ -46,14 +46,14 @@ test('物理: 基礎ダメージが 1 未満なら 0 (ミス) か 1。ミスで�
   assert.strictEqual(b.e.hp, 73);
 });
 
-test('術: (固定値 + 知力 × 0.8) × 50 / (50 + 術防御)。会心なし', () => {
+test('術: (固定値 + 術攻撃力 × 0.8) × 50 / (50 + 術防御)。会心なし', () => {
   const g = newGame();
   const [e] = arena(g, { cols: 12, rows: 12, player: [3, 5], enemies: [{ type: 'golem', at: [6, 5], level: 7 }] });
   setLevel(g, 6); // メテオは Lv6 から
   const mp0 = g.player.mp;
   g.rng.force(0.5);
   castAt(g, '3', 6, 5);
-  // (6 + 10 × 0.8) × 50 / (50 + 8.81) = 11.9 → 12
+  // 術攻撃力 = 知力 10 × 0.8 + 魔力 4 × 0.5 = 10。(6 + 10 × 0.8) × 50 / (50 + 8.81) = 11.9 → 12
   assert.strictEqual(e.hp, 74 - 12);
   assert.ok(g.player.mp < mp0 - 8 + 1, 'MP 8 を使う');
 });
@@ -80,3 +80,29 @@ test('術は会心にならない (乱数が小さくても同じダメージ)',
   castAt(g, '3', 6, 5);
   assert.strictEqual(e.hp, 74 - 12);
 });
+
+test('術攻撃力 = 知力 × 0.8 + 魔力 × 0.5 (知力のほうが効く)。魔力を伸ばすと術のダメージが増える', () => {
+  const g = newGame();
+  const at = (int, mag) => g.deriveStats({ ...g.PLAYER.stats, int, mag }, []).matk;
+  assert.strictEqual(at(10, 4), 10);
+  assert.strictEqual(at(20, 4), 18);
+  assert.strictEqual(at(10, 14), 15);
+  const [e] = arena(g, { cols: 12, rows: 12, player: [3, 5], enemies: [{ type: 'golem', at: [6, 5], level: 7 }] });
+  setLevel(g, 6);
+  g.player.base.mag = 24; // 術攻撃力 8 + 12 = 20
+  g.refreshStats(g.player, 'clamp');
+  g.player.mp = g.player.stats.maxMp;
+  g.rng.force(0.5);
+  castAt(g, '3', 6, 5);
+  // (6 + 20 × 0.8) × 50 / (50 + 8.81) = 18.7 → 19
+  assert.strictEqual(e.hp, 74 - 19);
+});
+
+test('術を使う敵の術攻撃力は、知力だけで計算していたころの値 (知力) と同じ', () => {
+  const g = newGame();
+  for (const type of ['salamander', 'treant', 'dragon']) {
+    const s = g.ENEMIES[type].stats;
+    assert.strictEqual(g.deriveStats({ ...s }, []).matk, s.int, type);
+  }
+});
+

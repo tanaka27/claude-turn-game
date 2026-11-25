@@ -258,7 +258,7 @@ const TEXT = {
     // ツールチップ
     unitTitle: 'Lv{level} {name}',
     hpMp: 'HP {hp} / {maxHp}　MP {mp} / {maxMp}',
-    stats4: '{atkLabel} {atk}  {defLabel} {def}  {intLabel} {int}  {mdefLabel} {mdef}',
+    stats4: '{atkLabel} {atk}  {defLabel} {def}  {matkLabel} {matk}  {mdefLabel} {mdef}',
     speed: '速度 {speed}（あなたの {ratio} 倍）',
     attacks: '技: {list}',
     attackMagic: '（術）',

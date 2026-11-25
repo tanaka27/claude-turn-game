@@ -23,6 +23,7 @@ const STATS = {
   int: { label: '知力', dec: 0 },
   luk: { label: 'うんのよさ', dec: 0 },
   atk: { label: 'こうげき力', dec: 0 },
+  matk: { label: '術攻撃力', dec: 0 },
   def: { label: 'しゅび力', dec: 0 },
   mdef: { label: '術防御', dec: 0 },
   speed: { label: '速度', dec: 0 },
