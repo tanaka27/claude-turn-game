@@ -24,14 +24,28 @@ test('はじめの潜在は data/player.js の potential、伸びた値は Lv1 �
   assert.ok(!('train' in g.player), '熟練度はない');
 });
 
-test('物理で殴ると、ちから が 与えたダメージ / 相手の最大HP × 倍率 だけ小数で伸びる (敵レベルの補正なし)', () => {
+test('物理で殴ると、筋力・器用さ が 与えたダメージ / 相手の最大HP × 倍率 だけ小数で伸びる (敵レベルの補正なし)', () => {
   const { g, p, e } = withWolf();
   g.rng.force(0.99, 0.5); // 会心なし
-  const hp0 = e.hp;
+  const hp0 = e.hp, str0 = p.stats.str;
   step(g, 1, 0);
   assert.ok(!e.dead && e.hp < hp0, '当たって生きている');
-  assert.strictEqual(p.stats.str, g.PLAYER.stats.str, '一の位に届くまで戦いの値は変わらない');
-  near(grown(g, 'str'), (hp0 - e.hp) / e.stats.maxHp * growthOf(g).events.dealPhysical.str);
+  assert.strictEqual(p.stats.str, str0, '一の位に届くまで戦いの値は変わらない');
+  const f = (hp0 - e.hp) / e.stats.maxHp, ev = growthOf(g).events.dealPhysical;
+  near(grown(g, 'mus'), f * ev.mus, '筋力');
+  near(grown(g, 'dex'), f * ev.dex, '器用さ');
+});
+
+test('ちから = 筋力 × 0.7 + 器用さ × 0.3 (筋力のほうが効く)。会心を出すと 器用さ が伸びる', () => {
+  const { g, p, e } = withWolf();
+  assert.strictEqual(g.deriveStats({ ...g.PLAYER.stats }, []).str, 10, '筋力 10・器用さ 10');
+  const at = (mus, dex) => g.deriveStats({ ...g.PLAYER.stats, mus, dex }, []).str;
+  near(at(20, 10), 17);
+  near(at(10, 20), 13);
+  g.rng.force(0.0, 0.5); // 会心
+  const dex0 = p.base.dex;
+  g.dealDamage(p, e, { name: 'x', power: 1 }, 'x');
+  assert.ok(p.base.dex - dex0 >= growthOf(g).events.critHit.dex - 1e-9, '会心の分だけは伸びる');
 });
 
 test('潜在が高いほど多く伸びる (潜在 / 100 倍)', () => {
@@ -45,14 +59,14 @@ test('潜在が高いほど多く伸びる (潜在 / 100 倍)', () => {
 
 test('一の位が上がるとステータスが 1 上がり、潜在が × (1 − drop) に下がる。残りは下がった潜在で伸びる', () => {
   const { g, p } = withWolf();
-  const S = growthOf(g).stats.str, base0 = p.base.str, atk0 = p.stats.atk;
+  const S = growthOf(g).stats.mus, base0 = p.base.mus, atk0 = p.stats.atk;
   const d1 = 1 - S.drop;
   // 潜在 100 で 1 → 潜在 100×d1 で 1 → 残り 0.5 を潜在 100×d1² で
-  const up = g.trainStat(p, 'str', 1 + 1 / d1 + 0.5);
+  const up = g.trainStat(p, 'mus', 1 + 1 / d1 + 0.5);
   assert.strictEqual(up, 2);
-  near(p.base.str, base0 + 2 + 0.5 * d1 * d1);
-  assert.strictEqual(p.stats.atk, atk0 + 2, 'ステータスはすぐ計算し直し、小数は切り捨て');
-  near(p.potential.str, 100 * d1 * d1);
+  near(p.base.mus, base0 + 2 + 0.5 * d1 * d1);
+  near(p.stats.atk, atk0 + 2 * 0.7, 'ステータスはすぐ計算し直す (筋力は一の位まで。ちから は 筋力 × 0.7)');
+  near(p.potential.mus, 100 * d1 * d1);
 });
 
 test('体力・意思 が上がると さいだいHP と今の HP も同じだけ増える。上限 max でちょうど止まる', () => {
@@ -150,9 +164,9 @@ test('敵は潜在を持たないので育たない', () => {
 test('レベルアップでは全部の潜在が levelUp 上がる (上限 max まで)。ステータスは上がらない', () => {
   const g = newGame();
   const p = g.player, P = growthOf(g).potential, base0 = { ...p.base };
-  p.potential.str = P.max - 3;
+  p.potential.mus = P.max - 3;
   levelUp(g);
-  assert.strictEqual(p.potential.str, P.max);
+  assert.strictEqual(p.potential.mus, P.max);
   assert.strictEqual(p.potential.int, 100 + P.levelUp);
   assert.deepStrictEqual({ ...p.base }, base0);
 });
@@ -160,9 +174,9 @@ test('レベルアップでは全部の潜在が levelUp 上がる (上限 max �
 test('潜在のうち decayFloor を超えた分は時間で下がる。decayFloor 以下は下がらない', () => {
   const g = newGame();
   const p = g.player, P = growthOf(g).potential;
-  p.potential.str = 150;
+  p.potential.mus = 150;
   p.potential.vit = 80;
   passTime(g, 100);
-  near(p.potential.str, P.decayFloor + (150 - P.decayFloor) * Math.pow(1 - P.decayRate, 100));
+  near(p.potential.mus, P.decayFloor + (150 - P.decayFloor) * Math.pow(1 - P.decayRate, 100));
   assert.strictEqual(p.potential.vit, 80);
 });

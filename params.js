@@ -73,14 +73,16 @@ const PARAMS = {
         will: { drop: 0.06, max: 150 },  // 意思 (さいだいHP のもと)
         mag: { drop: 0.06, max: 100 },   // 魔力 (さいだいMP のもと。1 で さいだいMP +1)
         spi: { drop: 0.04, max: 200 },   // 精神力 (さいだいMP のもと)
-        str: { drop: 0.08, max: 80 },
+        mus: { drop: 0.08, max: 80 },    // 筋力 (ちから のもと。ちから への効きが大きい)
+        dex: { drop: 0.08, max: 80 },    // 器用さ (ちから のもと)
         vit: { drop: 0.15, max: 50 },
         agi: { drop: 0.06, max: 100 },
         int: { drop: 0.04, max: 120 },   // 知力。今は行動で伸びる出来事がない (下の events にない)
       },
       // 行動 → 能力値の伸び { ステータス: 倍率 }。潜在 100 のとき 量 × 倍率 だけ伸びる (敵レベルによる補正はない)
       events: {
-        dealPhysical: { str: 0.06 },           // 物理で与えたダメージ / 相手の最大HP (倒しきるまでの分)
+        dealPhysical: { mus: 0.06, dex: 0.03 }, // 物理で与えたダメージ / 相手の最大HP (倒しきるまでの分)
+        critHit: { dex: 0.15 },                 // 物理の会心を出した 1 回
         dealMagic: {},                          // 術で与えたダメージ / 相手の最大HP (今は何も伸びない)
         takePhysical: { vit: 0.3, con: 1, will: 0.4 },  // 物理で受けたダメージ / 自分の最大HP
         takeMagic: { will: 1, con: 0.4 },       // 術で受けたダメージ / 自分の最大HP
@@ -100,8 +102,10 @@ const PARAMS = {
   // ほかのステータスから計算するステータス (主人公も敵も同じ式)
   //   from が 1 つ (文字): 値 = start + (from のステータス − base) × per (+ 装備でそのステータスに直接足す分)
   //   from が表 { ステータス: 倍率 }: 値 = start + Σ ステータス × 倍率 (+ 装備の分)。round なら Σ の部分を四捨五入、floor なら切り捨て
+  //   計算で決まるステータスをもとにするときは、もとのほうを先に書く (上から順に計算する)
   //   max があればそれ以下
   derivedStats: {
+    str: { from: { mus: 0.7, dex: 0.3 }, start: 0 },                  // ちから = 筋力 × 0.7 + 器用さ × 0.3 (こうげき力 より前に書く)
     maxHp: { from: { con: 1, will: 1 }, start: 0, round: true },     // さいだいHP = 体力 + 意思
     maxMp: { from: { mag: 1, int: 1 / 3, spi: 1 / 3 }, start: 0, floor: true }, // さいだいMP = 魔力 + (知力 + 精神力) ÷ 3 (切り捨て)
     atk: { from: 'str', base: 0, per: 1, start: 0 },              // こうげき力 = ちから + 武器
@@ -117,7 +121,7 @@ const PARAMS = {
   enemyLevel: {
     hpGrowth: 0.15,       // 体力・意思 +15% (さいだいHP +15%)
     mpGrowth: 0.1,        // 魔力・精神力 +10% (さいだいMP は 魔力・精神力 と 知力 (下の intGrowth) から計算)
-    strGrowth: 0.17,      // ちから +17% (こうげき力 +17%)
+    strGrowth: 0.17,      // 筋力・器用さ +17% (ちから・こうげき力 +17%)
     intGrowth: 0.17,      // 知力 +17%
     vitGrowth: 0.8,       // みのまもり +0.8 (しゅび力 +0.8)
     mdefGrowth: 0.8,      // 術防御 +0.8 (敵の gear の術防御に足す)

@@ -4,14 +4,14 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v9。くわしくは docs/save-format.md)
-//   { v: 9, savedAt,
+// セーブの形 (v10。くわしくは docs/save-format.md)
+//   { v: 10, savedAt,
 //     player:   { level, exp, base, potential, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 9;
+const SAVE_VERSION = 10;
 const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
@@ -115,6 +115,18 @@ const SAVE_MIGRATIONS = {
     if (b && Number.isFinite(b.int) && Number.isFinite(b.spi)) {
       const sum = Math.floor(b.int) + Math.floor(b.spi);
       b.mag = Math.floor(sum / 2) - Math.floor(sum / 3);
+    }
+    return d;
+  },
+  // v9 → v10: ちから str を行動で伸ばすのをやめ、筋力 × 0.7 + 器用さ × 0.3 で決まるようにした。
+  //   伸びた ちから を 筋力・器用さ の両方に入れ (倍率の和が 1 なので同じ ちから)、str を消す。潜在も両方に写す
+  9: (d) => {
+    const p = d.player;
+    if (!p || typeof p !== 'object') return d;
+    for (const o of [p.base, p.potential]) {
+      if (!o || typeof o !== 'object') continue;
+      if (Number.isFinite(o.str)) o.mus = o.dex = o.str;
+      delete o.str;
     }
     return d;
   },

@@ -15,6 +15,8 @@ const STATS = {
   will: { label: '意思', dec: 0 },
   mag: { label: '魔力', dec: 0 },
   spi: { label: '精神力', dec: 0 },
+  mus: { label: '筋力', dec: 0 },
+  dex: { label: '器用さ', dec: 0 },
   str: { label: 'ちから', dec: 0 },
   vit: { label: 'みのまもり', dec: 0 },
   agi: { label: 'すばやさ', dec: 0 },

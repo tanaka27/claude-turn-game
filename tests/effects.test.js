@@ -31,7 +31,7 @@ function enemyStatsByFormula(g, type, level) {
   const b = { ...d.stats };
   for (const s of ['con', 'will']) b[s] *= 1 + EL.hpGrowth * k;
   for (const s of ['mag', 'spi']) b[s] *= 1 + EL.mpGrowth * k;
-  b.str *= 1 + EL.strGrowth * k;
+  for (const s of ['mus', 'dex']) b[s] *= 1 + EL.strGrowth * k;
   b.int *= 1 + EL.intGrowth * k;
   b.vit += EL.vitGrowth * k;
   b.agi += EL.agiGrowth * k;
@@ -69,7 +69,7 @@ test('効果なし: 湧き場所から湧いた敵 (Lv1 と Lv7) を計算し直
 test('効果なし: 仲間 (gear あり・なし) を計算し直しても作ったときと同じ', () => {
   const g = game();
   arena(g, { cols: 12, rows: 12, player: [5, 5], safe: true });
-  const a = addAlly(g, [7, 7], { stats: { agi: 33, str: 12.5 }, gear: { atk: 3, mdef: 2, luk: 5 } });
+  const a = addAlly(g, [7, 7], { stats: { agi: 33, mus: 12.5, dex: 12.5 }, gear: { atk: 3, mdef: 2, luk: 5 } });
   const b = addAlly(g, [8, 8]);
   for (const u of [a, b]) {
     const want = plain(g.deriveStats({ ...u.def.stats }, [u.def.gear]));

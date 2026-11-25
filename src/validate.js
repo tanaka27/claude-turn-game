@@ -107,7 +107,8 @@ function validateData() {
     check(!(k in PLAYER.stats), `data/player.js stats: '${k}' は params.js の derivedStats で計算するので書かない`);
     const from = typeof d.from === 'string' ? [d.from] : Object.keys(d.from || {});
     check(from.length > 0, `params.js derivedStats.${k}: from (もとのステータス) がない`);
-    for (const f of from) check(f in PLAYER.stats, `params.js derivedStats.${k}: もとのステータス '${f}' が data/player.js の stats にない`);
+    const before = Object.keys(PARAMS.derivedStats).slice(0, Object.keys(PARAMS.derivedStats).indexOf(k));
+    for (const f of from) check(f in PLAYER.stats || before.includes(f), `params.js derivedStats.${k}: もとのステータス '${f}' が data/player.js の stats にも、これより前の derivedStats にもない`);
   }
   // 強化 (data/buffs.js) と、強化をかける技
   for (const [id, b] of Object.entries(BUFFS)) {

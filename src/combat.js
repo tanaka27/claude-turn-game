@@ -227,6 +227,7 @@ function dealDamage(src, tgt, a, what) {
     const dealt = Math.min(dmg, Math.max(0, tgt.hp)), magic = a.kind === 'magic';
     growthEvent(src, magic ? 'dealMagic' : 'dealPhysical', dealt / tgt.stats.maxHp);
     growthEvent(tgt, magic ? 'takeMagic' : 'takePhysical', dealt / tgt.stats.maxHp);
+    if (crit) growthEvent(src, 'critHit'); // 会心を出すと器用さが伸びる
   }
   tgt.hp -= dmg;
   tgt.hitFlash = 0.15;

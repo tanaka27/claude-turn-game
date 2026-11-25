@@ -38,7 +38,7 @@ function createEnemy(type, tx, ty, camp, slot) {
   const b = { ...d.stats };
   for (const k of ['con', 'will']) b[k] *= 1 + EL.hpGrowth * g;  // さいだいHP のもと (さいだいHP は計算で四捨五入)
   for (const k of ['mag', 'spi']) b[k] *= 1 + EL.mpGrowth * g;   // さいだいMP のもと (知力 は下で伸ばす)
-  b.str *= 1 + EL.strGrowth * g;
+  for (const k of ['mus', 'dex']) b[k] *= 1 + EL.strGrowth * g; // ちから のもと
   b.int *= 1 + EL.intGrowth * g;
   b.vit += EL.vitGrowth * g;
   b.agi += EL.agiGrowth * g;
@@ -242,7 +242,8 @@ function deriveStats(base, gears) {
     // from が表 { ステータス: 倍率 } (さいだいHP = 体力 + 意思 など)。持っていないステータスは 0
     let v = 0;
     for (const s in d.from) v += (st[s] || 0) * d.from[s];
-    st[k] += d.start + (d.round ? Math.round(v + 1e-9) : d.floor ? Math.floor(v + 1e-9) : v);
+    // 倍率の和が 1 のとき (ちから = 筋力 × 0.7 + 器用さ × 0.3 など) に小数の誤差が残らないよう、端数を 1e-9 で丸める
+    st[k] += d.start + (d.round ? Math.round(v + 1e-9) : d.floor ? Math.floor(v + 1e-9) : Math.round(v * 1e9) / 1e9);
   }
   for (const k in DERIVED_STATS) if (DERIVED_STATS[k].max !== undefined) st[k] = Math.min(DERIVED_STATS[k].max, st[k]);
   return st;
