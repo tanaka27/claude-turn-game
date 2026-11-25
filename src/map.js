@@ -304,7 +304,8 @@ function campField(c) {
 
 // 敵レベルの範囲 (表示用)。region を渡すと、その地方の中の湧き場所だけを見る
 function zoneLevelText(z, region) {
-  const inside = (c) => !region || (c.x >= region.x && c.x < region.x + region.w && c.y >= region.y && c.y < region.y + region.h);
+  // 地方が重なっているところは先に書いた地方のもの (regionAt と同じ) なので、湧き場所の地方も regionAt で決める
+  const inside = (c) => !region || regionAt(z, tileOf(c.x), tileOf(c.y)) === region;
   const cs = (z.camps || []).filter(inside);
   if (z.safe || !cs.length) return txt('zone.safe');
   const lv = cs.map((c) => c.level);

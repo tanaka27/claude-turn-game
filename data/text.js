@@ -252,7 +252,8 @@ const TEXT = {
     itemsKey: 'I',
     bossBar: 'Lv{level} {name}  {hp} / {max}',
     mapHintWorld: 'M: 世界地図',
-    mapHintZone: 'M: このエリアの地図',
+    mapHintZoom: 'ホイール: 拡大 ×{zoom}　クリック・M: 大きく',  // 右下の世界地図
+    mapHintBig: 'ホイール: 拡大 ×{zoom}　ドラッグ: 動かす　M: このエリアの地図',  // 大きく出した世界地図
     turnOrder: '行動順',
     turnHero: '自',
     // ツールチップ

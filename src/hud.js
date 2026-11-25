@@ -181,9 +181,50 @@ function drawHUD() {
   }
 }
 
-// 右下の地図。M キーかクリックで、今いるゾーンの地図 (minimap) と世界地図 (worldMap) を切り替える
-let worldMapOn = false;
-function toggleWorldMap() { worldMapOn = !worldMapOn; }
+// 右下の地図。M キーで、今いるゾーンの地図 (minimap) → 世界地図 (右下) → 世界地図 (大きく) → ゾーンの地図 と切り替える
+// 世界地図は、ホイールか + / - キーで拡大・縮小し、ドラッグで動かす (worldMapView)
+let worldMapOn = false;   // 世界地図を出しているか
+let worldMapBig = false;  // 世界地図を大きく出しているか
+// 世界地図の見ている範囲: zoom: 全体が収まる大きさからの倍率 / cx, cy: まん中の位置 (ワールドマップの px) /
+// panel: 最後に描いた地図の場所 (画面の px。mx, my, mw, mh) と 1 px あたりの倍率 s
+const worldMapView = { zoom: 1, cx: 0, cy: 0, panel: null };
+function toggleWorldMap() {
+  if (!worldMapOn) { worldMapOn = true; worldMapBig = false; centerWorldMapOnPlayer(); }
+  else if (!worldMapBig) worldMapBig = true;
+  else { worldMapOn = false; worldMapBig = false; }
+}
+// 世界地図だけを右下と大きくとで切り替える (地図をクリックしたとき)
+function toggleWorldMapSize() { if (worldMapOn) worldMapBig = !worldMapBig; }
+// 見ている範囲のまん中を主人公 (町・ダンジョンの中ならその入口) にする
+function centerWorldMapOnPlayer() {
+  const spot = worldMapSpot();
+  if (spot) { worldMapView.cx = spot.x; worldMapView.cy = spot.y; }
+}
+// 世界地図での主人公の位置 (ワールドマップの px)。つながっていないゾーンなら null
+function worldMapSpot() {
+  if (!player || !zone) return null;
+  if (zone.id === WORLD.overworld) return { x: player.x, y: player.y };
+  const g = worldPlaceOf(zone.id);
+  return g ? { x: g.x + g.w / 2, y: g.y + g.h / 2 } : null;
+}
+// 拡大・縮小 (factor 倍)。画面の点 (sx, sy) の下にある場所を動かさない (省略すると地図のまん中)
+function zoomWorldMap(factor, sx, sy) {
+  const v = worldMapView, P = v.panel, M = WORLD.worldMap;
+  const zoom = clamp(v.zoom * factor, 1, M.maxZoom);
+  if (P && sx !== undefined) {
+    // 点の下の場所 (px) を、拡大のあとも同じ画面の点に置く
+    const wx = v.cx + (sx - (P.mx + P.mw / 2)) / P.s, wy = v.cy + (sy - (P.my + P.mh / 2)) / P.s;
+    const k = v.zoom / zoom;
+    v.cx = wx - (wx - v.cx) * k; v.cy = wy - (wy - v.cy) * k;
+  }
+  v.zoom = zoom;
+}
+// 画面の (dx, dy) px だけ地図を動かす (ドラッグ)
+function panWorldMap(dx, dy) {
+  const v = worldMapView, P = v.panel;
+  if (!P) return;
+  v.cx -= dx / P.s; v.cy -= dy / P.s;
+}
 function mapHint(x, y, w, text) {
   ctx.font = fontOf(11, false); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = THEME.map.hintBg; ctx.fillRect(x + w - ctx.measureText(text).width - 9, y - 19, ctx.measureText(text).width + 12, 16);
@@ -238,41 +279,63 @@ function worldMapCanvas() {
   return (worldMapImage = cv);
 }
 function drawWorldMap() {
-  const M = WORLD.worldMap, C = THEME.map, z = WORLD.zones[WORLD.overworld];
+  const M = WORLD.worldMap, C = THEME.map, z = WORLD.zones[WORLD.overworld], v = worldMapView;
   const pad = 8, margin = 13;
   // 大きさ: スキル欄の右と、上中央の行動順 (HUD_TOP) の下に収まるように縮める (文字は縮めない)
+  // 大きく出すときは、行動順の下からスキル欄の上までの画面いっぱい
   const sb = hudButtons.find((b) => b.id === 'items');
-  const availW = VIEW_W - margin - (sb ? sb.x + sb.w + 12 : 0) - pad * 2, availH = VIEW_H - margin - HUD_TOP - 12 - pad * 2;
-  const fit = Math.min(M.maxW / z.w, M.maxH / z.h);
-  const s = fit * clamp(Math.min(1, availW / (z.w * fit), availH / (z.h * fit)), M.minScale, 1);
-  const mw = z.w * s, mh = z.h * s, ww = mw + pad * 2, wh = mh + pad * 2;
-  const ox = VIEW_W - ww - margin, oy = VIEW_H - wh - margin, mx = ox + pad, my = oy + pad;
+  let mw, mh, ox, oy;
+  if (worldMapBig) {
+    // 左上の仲間の欄と重ならないように、欄の横を空ける (左右同じ幅) か、欄の下から出すかの、地図が大きくなるほう
+    const bottom = (sb ? sb.y : VIEW_H) - margin, partyRight = 16 + PARTY_CARD.w + 12;
+    const partyBottom = 16 + partyMembers().length * (PARTY_CARD.h + PARTY_CARD.gap) + 4;
+    const fitOf = (w, top) => Math.min((w - pad * 2) / z.w, (bottom - top - pad * 2) / z.h);
+    const beside = fitOf(VIEW_W - partyRight * 2, HUD_TOP + 12), below = fitOf(VIEW_W - margin * 2, partyBottom);
+    const fit = Math.max(beside, below), top = beside >= below ? HUD_TOP + 12 : partyBottom;
+    mw = z.w * fit; mh = z.h * fit;
+    ox = (VIEW_W - mw) / 2 - pad; oy = top;
+  } else {
+    const availW = VIEW_W - margin - (sb ? sb.x + sb.w + 12 : 0) - pad * 2, availH = VIEW_H - margin - HUD_TOP - 12 - pad * 2;
+    const fit = Math.min(M.maxW / z.w, M.maxH / z.h);
+    const s0 = fit * clamp(Math.min(1, availW / (z.w * fit), availH / (z.h * fit)), M.minScale, 1);
+    mw = z.w * s0; mh = z.h * s0;
+    ox = VIEW_W - mw - pad * 2 - margin; oy = VIEW_H - mh - pad * 2 - margin;
+  }
+  const ww = mw + pad * 2, wh = mh + pad * 2, mx = ox + pad, my = oy + pad;
+  // 倍率と見ている範囲 (地図の外を映さないように、まん中の位置を寄せる)
+  const s = (mw / z.w) * v.zoom, hw = mw / 2 / s, hh = mh / 2 / s;
+  v.cx = clamp(v.cx, hw, z.w - hw); v.cy = clamp(v.cy, hh, z.h - hh);
+  v.panel = { mx, my, mw, mh, s };
+  const left = v.cx - hw, top = v.cy - hh;
+  const X = (px) => mx + (px - left) * s, Y = (py) => my + (py - top) * s;
   hudButtons.push({ id: 'map', x: ox, y: oy, w: ww, h: wh });
-  mapHint(ox, oy, ww, txt('hud.mapHintZone'));
+  mapHint(ox, oy, ww, txt(worldMapBig ? 'hud.mapHintBig' : 'hud.mapHintZoom', { zoom: v.zoom.toFixed(1) }));
   ctx.fillStyle = C.worldBg; roundRect(ox, oy, ww, wh, 8); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.rect(mx, my, mw, mh); ctx.clip();
   const smooth = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(worldMapCanvas(), mx, my, mw, mh);
+  ctx.drawImage(worldMapCanvas(), X(0), Y(0), z.w * s, z.h * s);
   ctx.imageSmoothingEnabled = smooth;
   // 地方の名前 (地方の四角のまん中に薄く)
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(11); ctx.fillStyle = C.region;
-  for (const g of z.regions || []) ctx.fillText(g.name, mx + (g.x + g.w / 2) * s, my + (g.y + g.h / 2) * s);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = fontOf(worldMapBig ? 14 : 11); ctx.fillStyle = C.region;
+  for (const g of z.regions || []) ctx.fillText(g.name, X(g.x + g.w / 2), Y(g.y + g.h / 2));
   // 入口の印と名前 (倒れたときに戻る町はかがり火の色)
+  const mark = worldMapBig ? 6 : 4;
   for (const g of z.gates) {
     if (!g.place) continue;
-    const cx = mx + (g.x + g.w / 2) * s, cy = my + (g.y + g.h / 2) * s, dest = WORLD.zones[g.to];
+    const cx = X(g.x + g.w / 2), cy = Y(g.y + g.h / 2), dest = WORLD.zones[g.to];
+    if (cx < mx - 60 || cx > mx + mw + 60 || cy < my - 20 || cy > my + mh + 20) continue;
     ctx.fillStyle = g.to === player.home ? C.bonfire : g.place === 'dungeon' ? C.dungeon : C.town;
-    if (g.place === 'dungeon') { ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx + 5, cy + 4); ctx.lineTo(cx - 5, cy + 4); ctx.closePath(); ctx.fill(); }
-    else ctx.fillRect(cx - 4, cy - 4, 8, 8);
-    ctx.font = fontOf(10); ctx.textBaseline = 'alphabetic';
-    outlineText(dest.name, cx, cy - 7, C.name, 3);
+    if (g.place === 'dungeon') { ctx.beginPath(); ctx.moveTo(cx, cy - mark - 1); ctx.lineTo(cx + mark + 1, cy + mark); ctx.lineTo(cx - mark - 1, cy + mark); ctx.closePath(); ctx.fill(); }
+    else ctx.fillRect(cx - mark, cy - mark, mark * 2, mark * 2);
+    ctx.font = fontOf(worldMapBig ? 12 : 10); ctx.textBaseline = 'alphabetic';
+    outlineText(dest.name, cx, cy - mark - 3, C.name, 3);
   }
   // 主人公
-  const spot = zone.id === WORLD.overworld ? player : worldPlaceOf(zone.id);
-  if (spot) {
-    const px = spot === player ? player.x : spot.x + spot.w / 2, py = spot === player ? player.y : spot.y + spot.h / 2;
-    ctx.fillStyle = C.here; pathCircle(mx + px * s, my + py * s, 3.5 + Math.sin(game.rt * 6)); ctx.fill();
-  }
+  const spot = worldMapSpot();
+  if (spot) { ctx.fillStyle = C.here; pathCircle(X(spot.x), Y(spot.y), (worldMapBig ? 5 : 3.5) + Math.sin(game.rt * 6)); ctx.fill(); }
+  ctx.restore();
 }
 
 // マウスを重ねたものの説明 (強化のアイコン → 敵 → NPC の順に探し、最初に見つかったものだけ出す)
