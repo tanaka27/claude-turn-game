@@ -63,7 +63,7 @@ python tools/codex_image.py --name slime --kind sprite --pixel --size 64 --subje
 |---|---|---|
 | `assets/sprites/player.png` | 主人公の絵（`data/player.js` の `sprite`） | `--kind sprite --size 128 --out-dir assets/sprites --ref assets/sprites/enemies/wolf.png`。空色の服の剣士 |
 | `assets/portraits/player.png` | 主人公の顔の絵（`data/player.js` の `face`。HUD の左上の仲間の欄とキャラクターの画面） | `--kind portrait --size 128 --ref assets/sprites/player.png --framing "head and shoulders bust, face centered, fills the frame"`。主人公の絵と同じ紺の髪・青いマントの胸から上 |
-| `assets/sprites/enemies/<キー>.png` | 敵の絵（`data/enemies.js` の `sprite`。[enemies.md](enemies.md)） | `--kind sprite --size 128 --out-dir assets/sprites/enemies`。まずウルフを作り、ほかは `--ref assets/sprites/enemies/wolf.png` で絵柄をそろえた |
+| `assets/sprites/enemies/<キー>.png` | 敵の絵（`data/enemies.js` の `sprite`。[enemies.md](enemies.md)） | `--kind sprite --size 128 --out-dir assets/sprites/enemies`。まずウルフを作り、ほかは `--ref assets/sprites/enemies/wolf.png` で絵柄をそろえた。2026-11-25 に足した 8 種類（slime / crow / goblin / scorpion / harpy / spider / mushroom / kobold）も同じ引数で、`--subject` に姿（色・持ち物・弱そうか）を英語で書いて作った |
 
 新しい敵の絵を足すときは、同じ引数でキーの名前にして作り、`data/enemies.js` のその敵に `sprite` を書く。NPC の絵は `--out-dir assets/sprites/npcs` で NPC の `id` の名前にして作り、`world.js` のその NPC に `sprite` を書く（[drawing.md](drawing.md)）。
 

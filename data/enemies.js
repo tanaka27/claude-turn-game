@@ -82,6 +82,90 @@ const ENEMIES = {
       { name: '岩の拳', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
     ],
   },
+  // ---- 風の草原 ----
+  slime: {
+    name: 'スライム', glyph: '粘', sprite: 'assets/sprites/enemies/slime.png', radius: 13, color: '#4fc3f7', exp: 10, itemRate: 0.06,
+    drops: [{ id: 'slimeJelly', rate: 1 }, { id: 'slimeCore', rate: 0.12 }],
+    stats: { con: 7, will: 7, mag: 3.67, spi: 0, mus: 4.2, dex: 4.2, agi: 10, int: 1, luk: 5, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
+    gear: { vit: 5.32, mdef: 4.34 },
+    attacks: [
+      { name: 'のしかかり', type: 'melee', shape: 'circle', range: 1.5, charge: 1, cooldown: 3, mp: 2, power: 1.4 },
+      { name: '体当たり', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.8 },
+    ],
+  },
+  crow: {
+    name: '大ガラス', glyph: '鴉', sprite: 'assets/sprites/enemies/crow.png', radius: 13, color: '#5c6bc0', exp: 14, itemRate: 0.08,
+    drops: [{ id: 'blackFeather', rate: 1 }, { id: 'shinyTrinket', rate: 0.12 }],
+    stats: { con: 4, will: 3, mag: 5.5, spi: 0, mus: 4.4, dex: 4.4, agi: 27.5, int: 1.5, luk: 15, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
+    gear: { vit: 0.24, mdef: 2.51 },
+    attacks: [
+      { name: '急降下', type: 'melee', shape: 'line', range: 4, width: 1, charge: 1, cooldown: 4, mp: 3, power: 1.4 },
+      { name: 'つつく', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.8 },
+    ],
+  },
+  goblin: {
+    name: 'ゴブリン', glyph: '鬼', sprite: 'assets/sprites/enemies/goblin.png', radius: 14, color: '#9ccc65', exp: 18, itemRate: 0.12, keepDistance: 3,
+    drops: [{ id: 'ragCloth', rate: 1 }, { id: 'goblinEarring', rate: 0.12 }],
+    stats: { con: 7, will: 6, mag: 7.5, spi: 0, mus: 5.2, dex: 5.2, agi: 18, int: 1.5, luk: 12, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { vit: 2.92, mdef: 2.51 },
+    attacks: [
+      { name: '石投げ', type: 'lob', castRange: 5, radius: 1, charge: 1, cooldown: 3, mp: 2, power: 0.9 },
+      { name: '棍棒', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.9 },
+    ],
+  },
+  // ---- 赤岩の峡谷 ----
+  scorpion: {
+    name: '大サソリ', glyph: '蠍', sprite: 'assets/sprites/enemies/scorpion.png', radius: 15, color: '#d4a056', exp: 30, itemRate: 0.15,
+    drops: [{ id: 'scorpionShell', rate: 1 }, { id: 'venomTail', rate: 0.15 }],
+    stats: { con: 9, will: 9, mag: 7.67, spi: 0, mus: 6, dex: 6, agi: 14, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { vit: 7.6, mdef: 3.34 },
+    attacks: [
+      { name: '尾の一撃', type: 'melee', shape: 'line', range: 2, width: 1, charge: 1, cooldown: 3, mp: 3, power: 1.8 },
+      { name: 'はさみ', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.9 },
+    ],
+  },
+  harpy: {
+    name: 'ハーピー', glyph: '翼', sprite: 'assets/sprites/enemies/harpy.png', radius: 15, color: '#ce93d8', exp: 30, itemRate: 0.15, keepDistance: 4,
+    drops: [{ id: 'harpyFeather', rate: 1 }, { id: 'windCharm', rate: 0.12 }],
+    stats: { con: 6, will: 6, mag: 9.34, spi: 0, mus: 5.4, dex: 5.4, agi: 24, int: 2, luk: 14, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { vit: 1.84, mdef: 4.68 },
+    attacks: [
+      { name: '羽根飛ばし', type: 'projectile', range: 6, width: 1, count: 3, spread: 40, charge: 1, cooldown: 4, mp: 3, power: 0.8 },
+      { name: '爪', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.8 },
+    ],
+  },
+  // ---- 黒き森 ----
+  spider: {
+    name: '大蜘蛛', glyph: '蜘', sprite: 'assets/sprites/enemies/spider.png', radius: 15, color: '#7e57c2', exp: 32, itemRate: 0.15, keepDistance: 3,
+    drops: [{ id: 'spiderSilk', rate: 1 }, { id: 'venomGland', rate: 0.12 }],
+    stats: { con: 7, will: 7, mag: 8.5, spi: 0, mus: 5.8, dex: 5.8, agi: 20, int: 1.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { vit: 3.68, mdef: 3.51 },
+    attacks: [
+      { name: '糸吐き', type: 'projectile', range: 5, width: 1, charge: 0, cooldown: 3, mp: 2, power: 0.9 },
+      { name: '毒牙', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
+    ],
+  },
+  mushroom: {
+    name: '毒キノコ', glyph: '茸', sprite: 'assets/sprites/enemies/mushroom.png', radius: 15, color: '#e57373', exp: 34, itemRate: 0.15,
+    drops: [{ id: 'mushroomCap', rate: 1 }, { id: 'dreamSpore', rate: 0.12 }],
+    stats: { con: 10, will: 10, mag: 2, spi: 27, mus: 5, dex: 5, agi: 9, int: 3, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.4 },
+    gear: { vit: 5, mdef: 0.54 },
+    attacks: [
+      { name: '胞子噴出', type: 'melee', kind: 'magic', shape: 'circle', range: 2, charge: 1, cooldown: 3, mp: 4, base: 1 },
+      { name: '頭突き', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.9 },
+    ],
+  },
+  // ---- 魔竜の山 ----
+  kobold: {
+    name: 'コボルト', glyph: '犬', sprite: 'assets/sprites/enemies/kobold.png', radius: 14, color: '#a1887f', exp: 28, itemRate: 0.15,
+    drops: [{ id: 'koboldFur', rate: 1 }, { id: 'scrapOre', rate: 0.15 }],
+    stats: { con: 8, will: 7, mag: 5.5, spi: 0, mus: 5.8, dex: 5.8, agi: 15, int: 1.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { vit: 4.68, mdef: 3.51 },
+    attacks: [
+      { name: 'つるはし振り', type: 'melee', shape: 'fan', range: 1.5, angle: 150, charge: 1, cooldown: 3, mp: 3, power: 1.5 },
+      { name: 'ひっかく', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.8 },
+    ],
+  },
   // ダンジョンのボス (狼の洞穴)
   wolfKing: {
     name: '狼王', glyph: '牙', sprite: 'assets/sprites/enemies/wolfKing.png', radius: 24, color: '#607d8b', exp: 250, itemRate: 1, itemCount: 1, isBoss: true, skillChance: 0.7,
