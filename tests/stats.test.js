@@ -11,7 +11,7 @@ test('deriveStats: 主人公の Lv1 (装備なし)', () => {
   const st = plain(g.deriveStats({ ...g.PLAYER.stats }, []));
   assert.deepStrictEqual(st, {
     con: 10, will: 10, mag: 4, spi: 14, mus: 10, dex: 10, str: 10, vit: 4, agi: 20, int: 10, luk: 20, critMult: 1.6, hpRegen: 0.05, mpRegen: 0.2,
-    maxHp: 20, maxMp: 12, atk: 10, matk: 10, def: 4, speed: 100, skillHaste: 0, mdef: 5, critRate: 0.1,
+    maxHp: 20, maxMp: 12, atk: 10, matk: 11.2, def: 4, speed: 100, skillHaste: 0, mdef: 5, critRate: 0.1,
   });
 });
 

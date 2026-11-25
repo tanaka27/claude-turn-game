@@ -109,7 +109,7 @@ const PARAMS = {
     maxMp: { from: { mag: 1, int: 1 / 3, spi: 1 / 3 }, start: 0, floor: true }, // さいだいMP = 魔力 + (知力 + 精神力) ÷ 3 (切り捨て)
     vit: { from: { mus: 0.32, dex: 0.08 }, start: 0 },             // みのまもり = 筋力 × 0.32 + 器用さ × 0.08 (8:2。しゅび力 より前に書く)
     atk: { from: 'str', base: 0, per: 1, start: 0 },
-    matk: { from: { int: 0.8, mag: 0.5 }, start: 0 },              // 術攻撃力 = 知力 × 0.8 + 魔力 × 0.5 + 装備 (知力のほうが効く)              // こうげき力 = ちから + 武器
+    matk: { from: { int: 1, mag: 0.3 }, start: 0 },                // 術攻撃力 = 知力 + 魔力 × 0.3 + 装備 (知力のほうが効く)              // こうげき力 = ちから + 武器
     def: { from: 'vit', base: 0, per: 1, start: 0 },              // しゅび力 = みのまもり + 防具
     speed: { from: 'agi', base: 20, per: 2, start: 100 },         // 速度: すばやさ 20 で 100。すばやさ 1 につき +2
     skillHaste: { from: 'int', base: 10, per: 0.5, start: 0 },    // 知力 10 で 0
