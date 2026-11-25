@@ -99,7 +99,7 @@ const ENEMIES = {
   treant: {
     name: '森の主', glyph: '樹', sprite: 'assets/sprites/enemies/treant.png', radius: 26, color: '#558b2f', exp: 350, itemRate: 1, itemCount: 2, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'ancientBranch', rate: 1 }, { id: 'treantFruit', rate: 0.5 }],
-    stats: { con: 78, will: 78, mag: 1.6, spi: 99.3, mus: 6.5, dex: 6.5, agi: 10, int: 4, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.9 },
+    stats: { con: 78, will: 78, mag: 1.6, spi: 40, mus: 6.5, dex: 6.5, agi: 10, int: 4, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.9 },
     gear: { vit: 11.4 },
     attacks: [
       { name: '根の衝撃', type: 'melee', shape: 'circle', range: 3.3, charge: 1, cooldown: 4, mp: 4, power: 1.6 },
@@ -112,7 +112,7 @@ const ENEMIES = {
   dragon: {
     name: '魔竜', glyph: '竜', sprite: 'assets/sprites/enemies/dragon.png', radius: 27, color: '#ef5350', exp: 400, itemRate: 1, itemCount: 2, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'dragonScale', rate: 1, count: 2 }, { id: 'dragonHeart', rate: 0.5 }],
-    stats: { con: 84, will: 84, mag: 1.8, spi: 110.2, mus: 7.3, dex: 7.3, agi: 20, int: 4.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 1 },
+    stats: { con: 84, will: 84, mag: 1.8, spi: 48, mus: 7.3, dex: 7.3, agi: 20, int: 4.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 1 },
     gear: { vit: 15.08 },
     attacks: [
       { name: '尾の薙ぎ払い', type: 'melee', shape: 'fan', range: 2.5, angle: 160, charge: 1, cooldown: 3, mp: 4, power: 1.6 },
