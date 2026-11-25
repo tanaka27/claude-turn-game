@@ -40,7 +40,7 @@ test('潜在が高いほど多く伸びる (潜在 / 100 倍)', () => {
   g.growthEvent(p, 'spendMp', 5);
   const ev = growthOf(g).events.spendMp;
   near(grown(g, 'int'), 5 * ev.int * 2);
-  near(grown(g, 'maxMp'), 5 * ev.maxMp);
+  near(grown(g, 'spi'), 5 * ev.spi);
 });
 
 test('一の位が上がるとステータスが 1 上がり、潜在が × (1 − drop) に下がる。残りは下がった潜在で伸びる', () => {
@@ -55,20 +55,33 @@ test('一の位が上がるとステータスが 1 上がり、潜在が × (1 �
   near(p.potential.str, 100 * d1 * d1);
 });
 
-test('さいだいHP が上がると今の HP も同じだけ増える。上限 max でちょうど止まる', () => {
+test('体力・意思 が上がると さいだいHP と今の HP も同じだけ増える。上限 max でちょうど止まる', () => {
   const { g, p } = withWolf();
-  const S = growthOf(g).stats.maxHp;
+  const S = growthOf(g).stats.con, max0 = p.stats.maxHp;
   p.hp = 10;
-  g.trainStat(p, 'maxHp', 1);
+  g.trainStat(p, 'con', 1);
+  assert.strictEqual(p.stats.maxHp, max0 + 1);
   assert.strictEqual(p.hp, 11);
-  p.base.maxHp = S.max - 0.5;
+  g.trainStat(p, 'will', 1);
+  assert.strictEqual(p.stats.maxHp, max0 + 2);
+  assert.strictEqual(p.hp, 12);
+  p.base.con = S.max - 0.5;
   g.refreshStats(p);
-  g.trainStat(p, 'maxHp', 50);
-  assert.strictEqual(p.base.maxHp, S.max);
-  assert.strictEqual(g.trainStat(p, 'maxHp', 50), 0, '上限ではもう上がらない');
+  g.trainStat(p, 'con', 50);
+  assert.strictEqual(p.base.con, S.max);
+  assert.strictEqual(g.trainStat(p, 'con', 50), 0, '上限ではもう上がらない');
 });
 
-test('物理のダメージを受けると みのまもり と さいだいHP が伸びる', () => {
+test('知力・精神力 が上がると さいだいMP = (知力 + 精神力) ÷ 2 (四捨五入) が増える', () => {
+  const { g, p } = withWolf();
+  const max0 = p.stats.maxMp; // 知力 12・精神力 12 で 12
+  g.trainStat(p, 'wis', 1);
+  assert.strictEqual(p.stats.maxMp, Math.round((13 + 12) / 2));
+  g.trainStat(p, 'spi', 1);
+  assert.strictEqual(p.stats.maxMp, max0 + 1);
+});
+
+test('物理のダメージを受けると みのまもり・体力・意思 が伸びる', () => {
   const { g, p, e } = withWolf();
   g.rng.force(0.99, 0.5);
   const hp0 = p.hp, max = p.stats.maxHp;
@@ -76,16 +89,17 @@ test('物理のダメージを受けると みのまもり と さいだいHP �
   assert.ok(p.hp < hp0, '当たる');
   const ev = growthOf(g).events.takePhysical, f = (hp0 - p.hp) / max;
   near(grown(g, 'vit'), f * ev.vit);
-  assert.ok(f * ev.maxHp < 1, '一の位をまたがない量 (またぐと潜在が下がって比べられない)');
-  near(grown(g, 'maxHp'), f * ev.maxHp, 'さいだいHP');
+  assert.ok(f * ev.con < 1, '一の位をまたがない量 (またぐと潜在が下がって比べられない)');
+  near(grown(g, 'con'), f * ev.con, '体力');
+  near(grown(g, 'will'), f * ev.will, '意思');
 });
 
-test('スキルで MP を使うと さいだいMP と かしこさ が伸びる', () => {
+test('スキルで MP を使うと 精神力 と かしこさ が伸びる', () => {
   const { g, p } = withWolf();
   const sk = skillById(g, 'shockwave');
   assert.ok(useSkillBy(g, p, sk, 5, 1), '使える');
   const ev = growthOf(g).events.spendMp;
-  near(grown(g, 'maxMp'), sk.mp * ev.maxMp);
+  near(grown(g, 'spi'), sk.mp * ev.spi);
   near(grown(g, 'int'), sk.mp * ev.int);
 });
 

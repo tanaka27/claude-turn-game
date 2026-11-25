@@ -11,6 +11,10 @@
 const STATS = {
   maxHp: { label: 'さいだいHP', dec: 0 },
   maxMp: { label: 'さいだいMP', dec: 0 },
+  con: { label: '体力', dec: 0 },
+  will: { label: '意思', dec: 0 },
+  wis: { label: '知力', dec: 0 },
+  spi: { label: '精神力', dec: 0 },
   str: { label: 'ちから', dec: 0 },
   vit: { label: 'みのまもり', dec: 0 },
   agi: { label: 'すばやさ', dec: 0 },

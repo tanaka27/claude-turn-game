@@ -4,8 +4,10 @@
 //
 // 【ステータスの意味】(主人公はドラクエ風。敵も同じステータスを持ち、同じ式で計算する。data/enemies.js)
 //   行動で上がる (上がり方は params.js の progression.growth。潜在で伸びやすさが変わる):
-//     maxHp       : さいだいHP
-//     maxMp       : さいだいMP。スキルを使うと減る (スキルごとの mp)
+//     con         : 体力。さいだいHP のもと
+//     will        : 意思。さいだいHP のもと
+//     wis         : 知力。さいだいMP のもと
+//     spi         : 精神力。さいだいMP のもと
 //     str         : ちから。こうげき力のもと
 //     vit         : みのまもり。しゅび力のもと
 //     agi         : すばやさ。速度を決める
@@ -16,6 +18,8 @@
 //     hpRegen     : 1 ターンごとの HP 回復量
 //     mpRegen     : 1 ターンごとの MP 回復量
 //   上の値から計算する (式は params.js の derivedStats。ここには書かない):
+//     maxHp       : さいだいHP = 体力 + 意思 + 装備
+//     maxMp       : さいだいMP = (知力 + 精神力) ÷ 2 (四捨五入) + 装備。スキルを使うと減る (スキルごとの mp)
 //     atk         : こうげき力 = ちから + 装備。ダメージの基礎値
 //     def         : しゅび力 = みのまもり + 装備。物理の被ダメージを軽減
 //     mdef        : 術防御 = かしこさ × 0.5 + 装備。術の被ダメージを軽減
@@ -37,8 +41,10 @@ const PLAYER = {
   color: '#4fc3f7',
   // Lv1 の値
   stats: {
-    maxHp: 20,
-    maxMp: 12,
+    con: 10,
+    will: 10,
+    wis: 12,
+    spi: 12,
     str: 10,
     vit: 4,
     agi: 20,
@@ -50,7 +56,7 @@ const PLAYER = {
   },
   // 最初の潜在 (100 が基準。高いほど行動で伸びやすい。params.js の progression.growth.potential)
   //   ここにない、行動で上がるステータスは基準 (potential.base) から始まる
-  potential: { maxHp: 100, maxMp: 100, str: 100, vit: 100, agi: 100, int: 100 },
+  potential: { con: 100, will: 100, wis: 100, spi: 100, str: 100, vit: 100, agi: 100, int: 100 },
   // 通常攻撃: 敵のいるマスへ移動しようとすると、その敵を攻撃する (体当たり)
   basicAttack: { name: '斬撃', power: 1.0 },
   // スキル (技の定義は data/skills.js。ここでは id で指す)

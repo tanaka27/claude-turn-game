@@ -50,7 +50,7 @@ test('仲間しか見えない敵は、仲間を狙って近づき、攻撃す�
   const g = newGame();
   // 主人公は敵をはさんで仲間の反対側 (壁の向こう。下の端だけ通れる)。主人公への道をたどると仲間から離れてしまう
   const [wolf] = arena(g, { cols: 30, rows: 15, player: [2, 7], walls: [[7, 1, 1, 12]], enemies: [{ type: 'wolf', at: [18, 7] }] });
-  const ally = addAlly(g, [24, 7], { name: 'テスト仲間', stats: { maxHp: 400 } });
+  const ally = addAlly(g, [24, 7], { name: 'テスト仲間', stats: { con: 200, will: 200 } });
   const d0 = Math.max(Math.abs(wolf.tx - ally.tx), Math.abs(wolf.ty - ally.ty));
   wait(g);
   assert.ok(isHostile(wolf), '気づく');
@@ -67,7 +67,7 @@ test('仲間しか見えない敵は、仲間を狙って近づき、攻撃す�
 test('予告の技の範囲に仲間が立っていれば当たる', () => {
   const g = newGame(3);
   const [boar] = arena(g, { ...HIDE, enemies: [{ type: 'boar', at: [8, 7] }] });
-  const ally = addAlly(g, [11, 7], { stats: { maxHp: 400 } });
+  const ally = addAlly(g, [11, 7], { stats: { con: 200, will: 200 } });
   let found = false;
   for (let i = 0; i < 80 && !found; i++) {
     ally.hp = ally.stats.maxHp;

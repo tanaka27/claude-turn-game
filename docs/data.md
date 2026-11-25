@@ -45,7 +45,7 @@
 - 道具・素材のレア度が `rarities` にあるか
 - 強化の `stat` が `data/stats.js` にあり `mult` が 0 より大きいか、強化の技の `buff` が `data/buffs.js` にあり `duration` が 1 以上か（`data/buffs.js`・`data/skills.js`）
 - 湧き場所の敵、地形の種類、門の行き先、`start` / `respawnZone` の復活地点、店の NPC の `shop` / 鍛冶屋の NPC の `smith`、NPC の `kind`、話すだけの NPC の `lines`、建物の中のゾーンの `parent` と入口、門をたどって全部のゾーンに行けるか（`world.js`）
-- 最初の装備の部位とレア度、`maxMp` / `mpRegen` があるか（`data/player.js`）、スキルの `mp` が 0 以上で Lv1 の `maxMp` 以下か、スキルに `id` があり重なっていないか（`data/skills.js`）
+- 最初の装備の部位とレア度、`mpRegen` があるか（`data/player.js`）、スキルの `mp` が 0 以上で Lv1 の さいだいMP（`deriveStats` で計算した値）以下か、スキルに `id` があり重なっていないか（`data/skills.js`）
 - スキルの覚え方 `learnAtLevel` のスキルが `data/skills.js` にあり、レベルが 1〜最大レベルの整数か、Lv1 で覚えるスキルがあるか。スキル欄 `skillSlots` のスキルが `data/skills.js` にあるか、同じスキルを 2 つのキーに置いていないか、キーの重なり、キーが移動・画面のキーと重なっていないか（`data/player.js`）
 - 敵のステータスが主人公と同じものだけそろっているか（計算で決まるものを書いていないか）、`gear` のステータスが `data/stats.js` にあるか、技の `cooldown` が 1 以上か、技の `mp` が 0 以上で Lv1 の `maxMp` 以下か、MP を使わない基本の技があるか、`skillChance` が 0〜1・`keepDistance` と技の `weight` が 0 より大きいか、技の `situations` が `params.js` にあるか、`surround` が true / false か（`data/enemies.js`）。`src/ai.js` の `SITUATIONS` の数値が `params.js` にあるか
 - 技の `kind` が physical か magic か、物理の技に `power`、術に `base` があるか（主人公と敵）

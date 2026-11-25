@@ -29,8 +29,8 @@ const count = (tr, u) => tr.filter((x) => x.who === u).length;
 function enemyStatsByFormula(g, type, level) {
   const d = g.ENEMIES[type], EL = g.PARAMS.enemyLevel, k = level - 1;
   const b = { ...d.stats };
-  b.maxHp = Math.round(b.maxHp * (1 + EL.hpGrowth * k));
-  b.maxMp = Math.round(b.maxMp * (1 + EL.mpGrowth * k));
+  for (const s of ['con', 'will']) b[s] *= 1 + EL.hpGrowth * k;
+  for (const s of ['wis', 'spi']) b[s] *= 1 + EL.mpGrowth * k;
   b.str *= 1 + EL.strGrowth * k;
   b.int *= 1 + EL.intGrowth * k;
   b.vit += EL.vitGrowth * k;

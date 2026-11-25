@@ -10,8 +10,8 @@ test('deriveStats: 主人公の Lv1 (装備なし)', () => {
   const g = newGame();
   const st = plain(g.deriveStats({ ...g.PLAYER.stats }, []));
   assert.deepStrictEqual(st, {
-    maxHp: 20, maxMp: 12, str: 10, vit: 4, agi: 20, int: 10, luk: 20, critMult: 1.6, hpRegen: 0.05, mpRegen: 0.2,
-    atk: 10, def: 4, speed: 100, skillHaste: 0, mdef: 5, critRate: 0.1,
+    con: 10, will: 10, wis: 12, spi: 12, str: 10, vit: 4, agi: 20, int: 10, luk: 20, critMult: 1.6, hpRegen: 0.05, mpRegen: 0.2,
+    maxHp: 20, maxMp: 12, atk: 10, def: 4, speed: 100, skillHaste: 0, mdef: 5, critRate: 0.1,
   });
 });
 
@@ -92,8 +92,9 @@ test('敵のステータスは params.js の enemyLevel の式どおりに伸び
   const EL = g.PARAMS.enemyLevel, base = g.ENEMIES.boar.stats, L = 4;
   const [e] = arena(g, { cols: 12, rows: 12, enemies: [{ type: 'boar', at: [9, 9], level: L }] });
   const k = L - 1;
-  assert.strictEqual(e.stats.maxHp, Math.round(base.maxHp * (1 + EL.hpGrowth * k)));
-  assert.strictEqual(e.stats.maxMp, Math.round(base.maxMp * (1 + EL.mpGrowth * k)));
+  // さいだいHP = 体力 + 意思、さいだいMP = (知力 + 精神力) ÷ 2 を、それぞれ hpGrowth / mpGrowth で伸ばして四捨五入
+  assert.strictEqual(e.stats.maxHp, Math.round((base.con + base.will) * (1 + EL.hpGrowth * k)));
+  assert.strictEqual(e.stats.maxMp, Math.round((base.wis + base.spi) / 2 * (1 + EL.mpGrowth * k)));
   near(e.stats.atk, base.str * (1 + EL.strGrowth * k));
   near(e.stats.def, base.vit + EL.vitGrowth * k);
   near(e.stats.speed, 100 + (base.agi + EL.agiGrowth * k - 20) * 2);

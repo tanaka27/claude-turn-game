@@ -105,7 +105,9 @@ function validateData() {
   for (const [k, d] of Object.entries(PARAMS.derivedStats)) {
     check(STATS[k], `params.js derivedStats: '${k}' が data/stats.js にない`);
     check(!(k in PLAYER.stats), `data/player.js stats: '${k}' は params.js の derivedStats で計算するので書かない`);
-    check(d.from in PLAYER.stats, `params.js derivedStats.${k}: もとのステータス '${d.from}' が data/player.js の stats にない`);
+    const from = typeof d.from === 'string' ? [d.from] : Object.keys(d.from || {});
+    check(from.length > 0, `params.js derivedStats.${k}: from (もとのステータス) がない`);
+    for (const f of from) check(f in PLAYER.stats, `params.js derivedStats.${k}: もとのステータス '${f}' が data/player.js の stats にない`);
   }
   // 強化 (data/buffs.js) と、強化をかける技
   for (const [id, b] of Object.entries(BUFFS)) {
@@ -127,10 +129,11 @@ function validateData() {
     check(kind !== 'magic' || a.base >= 0, `${where} の技「${a.name}」: 術に base がない`);
   }
   // MP: 主人公は最大 MP と MP 再生を持つ。スキルの消費 MP は 0 以上で、Lv1 の最大 MP を超えない (超えると使えない技になる)
-  for (const k of ['maxMp', 'mpRegen']) check(PLAYER.stats[k] >= 0, `data/player.js stats: ${k} がない`);
+  check(PLAYER.stats.mpRegen >= 0, 'data/player.js stats: mpRegen がない');
+  const lv1MaxMp = deriveStats({ ...PLAYER.stats }, []).maxMp;
   for (const s of SKILLS) {
     check(s.mp === undefined || s.mp >= 0, `data/skills.js のスキル「${s.name}」: mp は 0 以上にする`);
-    check(!(s.mp > PLAYER.stats.maxMp), `data/skills.js のスキル「${s.name}」: mp ${s.mp} が Lv1 の maxMp ${PLAYER.stats.maxMp} より大きい`);
+    check(!(s.mp > lv1MaxMp), `data/skills.js のスキル「${s.name}」: mp ${s.mp} が Lv1 の さいだいMP ${lv1MaxMp} より大きい`);
   }
   // スキルの id (覚えたスキル・スキル欄・セーブが指す)・覚え方 (learnAtLevel)・スキル欄 (skillSlots)
   const skillIds = SKILLS.map((s) => s.id);

@@ -82,7 +82,7 @@ function untilTelegraph(g, boar) {
 }
 function boarSetup(seed) {
   const g = newGame(seed);
-  setPlayerBase(g, { maxHp: 400 });
+  setPlayerBase(g, { con: 200, will: 200 });
   const [boar] = arena(g, { cols: 20, rows: 15, player: [5, 7], enemies: [{ type: 'boar', at: [8, 7] }] });
   return { g, boar };
 }

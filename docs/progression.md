@@ -26,7 +26,7 @@
 ## 仕組み: 成長
 
 - 敵を倒すと `gainExp` で経験値が入り、必要量を超えるたびに `levelUp`（潜在を上げる・全回復・スキルを覚える）
-- 伸びた値は `player.base`（`{ maxHp, maxMp, str, vit, agi, int }`。はじめは Lv1 の値 `startBase()`。小数点以下まで持ち、戦いで使うのは一の位まで）、潜在は `player.potential`（`startPotential()`）。どちらもセーブに残る
+- 伸びた値は `player.base`（`{ con, will, wis, spi, str, vit, agi, int }`。はじめは Lv1 の値 `startBase()`。小数点以下まで持ち、戦いで使うのは一の位まで）、潜在は `player.potential`（`startPotential()`）。どちらもセーブに残る
 - 行動による伸び（`growthEvent` / `trainStat` / `decayPotential`）は [growth.md](growth.md) の「仕組み」
 - ステータスは `computeStats` で毎回計算する: Lv1 の値（成長するものは `base` の一の位まで）→ `derivedStats` で こうげき力などを計算 → 強化・弱体（`player.buffs`）の倍率を掛ける → 装備（`player.equip`）で上がる分を足す。装備で上がる分は `statParts` が「装備ありで計算した値 − 装備なしで計算した値」で出す（ちから +3 の装備ならこうげき力にも +3 が入る）。上限（`max`）は最後にかける
 - プレイヤーが倒れると、その場で所持金（と `deathExpLoss` 分の経験値）を減らして保存し、1.4 秒後（実時間）に `respawnPlayer` で最後に立ち寄った町（`player.home`。[world.md](world.md)）のかがり火へ戻る

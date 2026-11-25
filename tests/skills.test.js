@@ -11,7 +11,7 @@ const {
 const HIDE = { cols: 30, rows: 15, player: [27, 7], walls: [[22, 1, 1, 13]] };
 // 主人公のスキルを持った仲間 (MP は多め)
 const heroSkillAlly = (g, at, extra = {}) =>
-  addAlly(g, at, { stats: { maxMp: 40 }, skills: ['1', '2', '3', '4', '5'].map((k) => skill(g, k)), ...extra });
+  addAlly(g, at, { stats: { wis: 40, spi: 40 }, skills: ['1', '2', '3', '4', '5'].map((k) => skill(g, k)), ...extra });
 const last = (g) => messages(g)[messages(g).length - 1];
 
 test('仲間が弾のスキル (衝撃波) を使う: 当たり、MP を払い、再使用待ちになる', () => {
@@ -90,7 +90,7 @@ test('仲間の予告ありの技: 予告を出し、仲間の次の行動で範
   const g = newGame();
   const [near, far] = arena(g, { ...HIDE, enemies: [{ type: 'golem', at: [11, 7] }, { type: 'golem', at: [17, 7] }] });
   const slam = { name: 'テスト叩きつけ', type: 'melee', shape: 'circle', range: 2.3, charge: 1, cooldown: 3, mp: 4, power: 1.6 };
-  const ally = addAlly(g, [10, 7], { stats: { maxHp: 400 }, skills: [slam] });
+  const ally = addAlly(g, [10, 7], { stats: { con: 200, will: 200 }, skills: [slam] });
   const mp0 = ally.mp;
   assert.strictEqual(useSkillBy(g, ally, slam, 11, 7), true);
   assert.strictEqual(last(g), '仲間はテスト叩きつけの構えをとった。');

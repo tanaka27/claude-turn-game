@@ -4,14 +4,14 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v6。くわしくは docs/save-format.md)
-//   { v: 6, savedAt,
+// セーブの形 (v7。くわしくは docs/save-format.md)
+//   { v: 7, savedAt,
 //     player:   { level, exp, base, potential, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
@@ -71,6 +71,27 @@ const SAVE_MIGRATIONS = {
         for (const k in p.train) if (Number.isFinite(p.base[k]) && Number.isFinite(p.train[k]) && p.train[k] > 0) p.base[k] += p.train[k] / 10;
       }
       delete p.train;
+    }
+    return d;
+  },
+  // v6 → v7: さいだいHP・さいだいMP が行動で伸びるのをやめ、体力 + 意思・(知力 + 精神力) ÷ 2 で決まるようにした
+  //   伸びた さいだいHP h は 意思 = h の整数部分の半分 (切り捨て)・体力 = 残り (小数も) に分ける (一の位までで同じ さいだいHP になる)
+  //   さいだいMP はそのまま 知力・精神力 の両方にする。潜在も さいだいHP の分を 体力・意思 に、さいだいMP の分を 知力・精神力 に写す
+  6: (d) => {
+    const p = d.player;
+    if (!p || typeof p !== 'object') return d;
+    const b = p.base && typeof p.base === 'object' ? p.base : null;
+    const pot = p.potential && typeof p.potential === 'object' ? p.potential : null;
+    if (b && Number.isFinite(b.maxHp)) {
+      b.will = Math.floor(Math.floor(b.maxHp) / 2);
+      b.con = b.maxHp - b.will;
+    }
+    if (b && Number.isFinite(b.maxMp)) b.wis = b.spi = b.maxMp;
+    const to = { maxHp: ['con', 'will'], maxMp: ['wis', 'spi'] };
+    for (const old in to) {
+      if (pot && Number.isFinite(pot[old])) for (const k of to[old]) pot[k] = pot[old];
+      if (b) delete b[old];
+      if (pot) delete pot[old];
     }
     return d;
   },

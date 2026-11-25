@@ -21,7 +21,7 @@ function createPlayer() {
   }
   const p = {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
-    stats: null, base: startBase(), potential: startPotential(), hp: d.stats.maxHp, mp: d.stats.maxMp, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
+    stats: null, base: startBase(), potential: startPotential(), hp: 0, mp: 0, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: ECON.startGold, consumables: startConsumables(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
     equip, next: 0, travel: null, control: 'input',
     // 覚えられる技 (data/skills.js 全部)・覚えている技の id (はじめは下の learnSkillsByLevel で Lv1 のもの)・スキル欄 (キー → スキルの id)
@@ -36,8 +36,8 @@ function createEnemy(type, tx, ty, camp, slot) {
   const g = camp.level - 1, EL = PARAMS.enemyLevel;
   // 主人公と同じステータスをレベルで補正し、主人公と同じ式で計算する (gear は装備のかわり)
   const b = { ...d.stats };
-  b.maxHp = Math.round(b.maxHp * (1 + EL.hpGrowth * g));
-  b.maxMp = Math.round(b.maxMp * (1 + EL.mpGrowth * g));
+  for (const k of ['con', 'will']) b[k] *= 1 + EL.hpGrowth * g;  // さいだいHP のもと (さいだいHP は計算で四捨五入)
+  for (const k of ['wis', 'spi']) b[k] *= 1 + EL.mpGrowth * g;   // さいだいMP のもと
   b.str *= 1 + EL.strGrowth * g;
   b.int *= 1 + EL.intGrowth * g;
   b.vit += EL.vitGrowth * g;
@@ -237,7 +237,11 @@ function deriveStats(base, gears) {
   for (const gs of gears) if (gs) for (const k in gs) st[k] = (st[k] || 0) + gs[k];
   for (const k in DERIVED_STATS) {
     const d = DERIVED_STATS[k];
-    st[k] += d.start + (st[d.from] - d.base) * d.per;
+    if (typeof d.from === 'string') { st[k] += d.start + (st[d.from] - d.base) * d.per; continue; }
+    // from が表 { ステータス: 倍率 } (さいだいHP = 体力 + 意思 など)。持っていないステータスは 0
+    let v = 0;
+    for (const s in d.from) v += (st[s] || 0) * d.from[s];
+    st[k] += d.start + (d.round ? Math.round(v + 1e-9) : v);
   }
   for (const k in DERIVED_STATS) if (DERIVED_STATS[k].max !== undefined) st[k] = Math.min(DERIVED_STATS[k].max, st[k]);
   return st;

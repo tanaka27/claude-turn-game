@@ -5,7 +5,7 @@ const { loadGame } = require('./harness');
 const { plain, bagOf } = require('./helpers');
 
 // 今のセーブの形の版 (src/save.js の SAVE_VERSION。版を上げたらここも上げる)
-const CURRENT = 6;
+const CURRENT = 7;
 // 形 v1 のセーブ (クエストの id が古い名前のころ)。そのまま書いておく
 const V1_SAVE = {
   v: 1, savedAt: 1794000000000,
@@ -98,6 +98,17 @@ const V5_SAVE = {
   ...V4_SAVE, v: 5,
   player: { ...V4_SAVE.player, potential: { str: 120 }, train: { str: 2.5, vit: 9, int: 'x' } },
 };
+// 形 v6 のセーブ (さいだいHP・さいだいMP を行動で伸ばしていたころ)
+const V6_SAVE = {
+  ...V4_SAVE, v: 6,
+  player: { ...V4_SAVE.player, base: { ...V4_SAVE.player.base, maxHp: 37.5 }, potential: { maxHp: 130, maxMp: 90, str: 120 } },
+};
+// v7 で さいだいHP は 意思 (整数部分の半分、切り捨て) と 体力 (残り) に、さいだいMP は 知力・精神力 にそのまま移る
+function v7Base(b) {
+  const { maxHp, maxMp, ...rest } = b;
+  const will = Math.floor(Math.floor(maxHp) / 2);
+  return { ...rest, con: maxHp - will, will, wis: maxMp, spi: maxMp };
+}
 const copy = (x) => JSON.parse(JSON.stringify(x));
 // 起動時の initSave → refreshTitle が終わるまで待つ
 const settle = () => new Promise((r) => setTimeout(r, 0));
@@ -116,7 +127,7 @@ test('v1 のセーブは今の形に直して読め、クエストの進み具�
   const p = g.player;
   assert.strictEqual(p.level, 5);
   assert.strictEqual(p.exp, 420);
-  assert.deepStrictEqual(plain(p.base), V1_SAVE.player.base);
+  assert.deepStrictEqual(plain(p.base), v7Base(V1_SAVE.player.base));
   assert.strictEqual(p.hp, 21);
   assert.strictEqual(p.mp, 9);
   assert.strictEqual(p.gold, 210);
@@ -369,7 +380,7 @@ test('v4 のセーブは、成長した値 (base) をそのまま残し、潜在
   assert.ok(!('train' in d.player));
   g.startGame(d);
   const p = g.player;
-  assert.deepStrictEqual(plain(p.base), V4_SAVE.player.base);
+  assert.deepStrictEqual(plain(p.base), v7Base(V4_SAVE.player.base));
   assert.deepStrictEqual(plain(p.potential), plain(g.startPotential()));
   assert.strictEqual(p.level, 7);
   const saved = JSON.parse(g.storage.get('zankai-turn-save'));
@@ -382,10 +393,27 @@ test('v5 のセーブは、熟練度 / 10 を伸びた値 (base) に小数で足
   const d = g.readLocalSave();
   assert.strictEqual(d.v, CURRENT);
   assert.ok(!('train' in d.player));
-  const b = V4_SAVE.player.base;
+  const b = v7Base(V4_SAVE.player.base);
   assert.deepStrictEqual(plain(d.player.base), { ...b, str: b.str + 0.25, vit: b.vit + 0.9 }, '数でない熟練度は捨てる');
   g.startGame(d);
   assert.strictEqual(g.player.base.str, b.str + 0.25);
   assert.strictEqual(g.player.stats.str, b.str);
   assert.strictEqual(g.player.potential.str, 120);
+});
+
+test('v6 のセーブは、さいだいHP を 体力・意思 に、さいだいMP を 知力・精神力 に移し、さいだいHP・MP は同じまま', () => {
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V6_SAVE) } });
+  const d = g.readLocalSave();
+  assert.strictEqual(d.v, CURRENT);
+  const old = V6_SAVE.player.base;
+  assert.deepStrictEqual(plain(d.player.base), v7Base(old));
+  assert.deepStrictEqual(plain(d.player.potential), { str: 120, con: 130, will: 130, wis: 90, spi: 90 }, '潜在も写す');
+  g.startGame(d);
+  const p = g.player;
+  assert.deepStrictEqual([p.base.con, p.base.will], [19.5, 18], '37.5 → 体力 19.5・意思 18');
+  assert.strictEqual(p.stats.maxHp, Math.floor(old.maxHp), '装備なしなので さいだいHP は v6 と同じ 37');
+  assert.strictEqual(p.stats.maxMp, old.maxMp);
+  assert.strictEqual(p.potential.con, 130);
+  const saved = JSON.parse(g.storage.get('zankai-turn-save'));
+  assert.ok(!('maxHp' in saved.player.base) && !('maxHp' in saved.player.potential));
 });
