@@ -79,10 +79,10 @@ const ENEMIES = {
       { name: '岩の拳', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
     ],
   },
-  // ----- 新しい地方の敵 (絵はまだない。図形と glyph の字で描く) -----
+  // ----- 新しい地方の敵 (docs/enemies-regions.md) -----
   // 潮騒の海岸
   crab: {
-    name: 'ハサミガニ', glyph: '蟹', radius: 15, color: '#e57373', exp: 26, itemRate: 0.12,
+    name: 'ハサミガニ', glyph: '蟹', sprite: 'assets/sprites/enemies/crab.png', radius: 15, color: '#e57373', exp: 26, itemRate: 0.12,
     drops: [{ id: 'crabShell', rate: 1 }, { id: 'bigClaw', rate: 0.15 }],
     stats: { maxHp: 22, maxMp: 6, str: 5.4, vit: 10, agi: 10, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
     gear: { mdef: 4 },
@@ -92,7 +92,7 @@ const ENEMIES = {
     ],
   },
   seagull: {
-    name: 'シーガル', glyph: '鳥', radius: 13, color: '#eceff1', exp: 18, itemRate: 0.1, keepDistance: 4,
+    name: 'シーガル', glyph: '鳥', sprite: 'assets/sprites/enemies/seagull.png', radius: 13, color: '#eceff1', exp: 18, itemRate: 0.1, keepDistance: 4,
     drops: [{ id: 'seabirdFeather', rate: 1 }, { id: 'prettyShell', rate: 0.15 }],
     stats: { maxHp: 8, maxMp: 8, str: 5.0, vit: 2, agi: 27.5, int: 1, luk: 15, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 2 },
@@ -102,7 +102,7 @@ const ENEMIES = {
     ],
   },
   seaSlug: {
-    name: 'ウミウシ', glyph: '海', radius: 15, color: '#ba68c8', exp: 22, itemRate: 0.1, keepDistance: 4,
+    name: 'ウミウシ', glyph: '海', sprite: 'assets/sprites/enemies/seaSlug.png', radius: 15, color: '#ba68c8', exp: 22, itemRate: 0.1, keepDistance: 4,
     drops: [{ id: 'inkSac', rate: 1 }, { id: 'pearl', rate: 0.1 }],
     stats: { maxHp: 18, maxMp: 9, str: 4.6, vit: 5, agi: 7.5, int: 2.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 12 },
@@ -113,7 +113,7 @@ const ENEMIES = {
   },
   // 霜降りの高原
   snowWolf: {
-    name: 'スノーウルフ', glyph: '白', radius: 14, color: '#e3f2fd', exp: 20, itemRate: 0.1,
+    name: 'スノーウルフ', glyph: '白', sprite: 'assets/sprites/enemies/snowWolf.png', radius: 14, color: '#e3f2fd', exp: 20, itemRate: 0.1,
     drops: [{ id: 'whitePelt', rate: 1 }, { id: 'iceFang', rate: 0.15 }],
     stats: { maxHp: 11, maxMp: 4, str: 5.0, vit: 5, agi: 27.5, int: 1, luk: 12, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
     gear: { mdef: 4 },
@@ -123,7 +123,7 @@ const ENEMIES = {
     ],
   },
   iceWisp: {
-    name: 'アイスウィスプ', glyph: '氷', radius: 12, color: '#80deea', exp: 24, itemRate: 0.12, keepDistance: 4,
+    name: 'アイスウィスプ', glyph: '氷', sprite: 'assets/sprites/enemies/iceWisp.png', radius: 12, color: '#80deea', exp: 24, itemRate: 0.12, keepDistance: 4,
     drops: [{ id: 'frostCrystal', rate: 1 }, { id: 'wispCore', rate: 0.12 }],
     stats: { maxHp: 8, maxMp: 12, str: 3.5, vit: 2, agi: 20, int: 3, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.4 },
     gear: { mdef: 14 },
@@ -133,7 +133,7 @@ const ENEMIES = {
     ],
   },
   yeti: {
-    name: 'イエティ', glyph: '雪', radius: 20, color: '#cfd8dc', exp: 46, itemRate: 0.25,
+    name: 'イエティ', glyph: '雪', sprite: 'assets/sprites/enemies/yeti.png', radius: 20, color: '#cfd8dc', exp: 46, itemRate: 0.25,
     drops: [{ id: 'yetiFur', rate: 1 }, { id: 'iceBlock', rate: 0.15 }],
     stats: { maxHp: 44, maxMp: 14, str: 7.4, vit: 12, agi: 9, int: 1.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 6 },
@@ -145,7 +145,7 @@ const ENEMIES = {
   },
   // 迷いの湿地
   poisonFrog: {
-    name: '毒ガエル', glyph: '蛙', radius: 13, color: '#66bb6a', exp: 22, itemRate: 0.12, keepDistance: 3,
+    name: '毒ガエル', glyph: '蛙', sprite: 'assets/sprites/enemies/poisonFrog.png', radius: 13, color: '#66bb6a', exp: 22, itemRate: 0.12, keepDistance: 3,
     drops: [{ id: 'frogSkin', rate: 1 }, { id: 'poisonGland', rate: 0.15 }],
     stats: { maxHp: 12, maxMp: 9, str: 5.2, vit: 4, agi: 20, int: 2, luk: 12, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 4 },
@@ -156,7 +156,7 @@ const ENEMIES = {
     ],
   },
   willWisp: {
-    name: '鬼火', glyph: '鬼', radius: 12, color: '#7e57c2', exp: 22, itemRate: 0.12, keepDistance: 5,
+    name: '鬼火', glyph: '鬼', sprite: 'assets/sprites/enemies/willWisp.png', radius: 12, color: '#7e57c2', exp: 22, itemRate: 0.12, keepDistance: 5,
     drops: [{ id: 'wispLight', rate: 1 }, { id: 'soulShard', rate: 0.12 }],
     stats: { maxHp: 7, maxMp: 12, str: 3.5, vit: 2, agi: 22.5, int: 3, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.4 },
     gear: { mdef: 12 },
@@ -167,7 +167,7 @@ const ENEMIES = {
   },
   // 灼熱の砂丘
   scorpion: {
-    name: 'デザートスコーピオン', glyph: '蠍', radius: 15, color: '#d4a056', exp: 30, itemRate: 0.14,
+    name: 'デザートスコーピオン', glyph: '蠍', sprite: 'assets/sprites/enemies/scorpion.png', radius: 15, color: '#d4a056', exp: 30, itemRate: 0.14,
     drops: [{ id: 'scorpionShell', rate: 1 }, { id: 'venomTail', rate: 0.15 }],
     stats: { maxHp: 20, maxMp: 8, str: 6.2, vit: 11, agi: 15, int: 1, luk: 12, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 4 },
@@ -177,7 +177,7 @@ const ENEMIES = {
     ],
   },
   sandworm: {
-    name: 'サンドワーム', glyph: '虫', radius: 21, color: '#c8a165', exp: 50, itemRate: 0.25,
+    name: 'サンドワーム', glyph: '虫', sprite: 'assets/sprites/enemies/sandworm.png', radius: 21, color: '#c8a165', exp: 50, itemRate: 0.25,
     drops: [{ id: 'wormHide', rate: 1 }, { id: 'desertOrb', rate: 0.12 }],
     stats: { maxHp: 46, maxMp: 14, str: 7.2, vit: 10, agi: 7.5, int: 2, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 8 },
@@ -188,7 +188,7 @@ const ENEMIES = {
     ],
   },
   mummy: {
-    name: 'ミイラ兵', glyph: '包', radius: 15, color: '#d7ccc8', exp: 32, itemRate: 0.15,
+    name: 'ミイラ兵', glyph: '包', sprite: 'assets/sprites/enemies/mummy.png', radius: 15, color: '#d7ccc8', exp: 32, itemRate: 0.15,
     drops: [{ id: 'oldBandage', rate: 1 }, { id: 'ancientCoin', rate: 0.2 }],
     stats: { maxHp: 30, maxMp: 8, str: 6.4, vit: 9, agi: 9, int: 1, luk: 8, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 2 },
@@ -199,7 +199,7 @@ const ENEMIES = {
     ],
   },
   bandit: {
-    name: '砂漠の盗賊', glyph: '賊', radius: 14, color: '#8d6e63', exp: 28, itemRate: 0.2,
+    name: '砂漠の盗賊', glyph: '賊', sprite: 'assets/sprites/enemies/bandit.png', radius: 14, color: '#8d6e63', exp: 28, itemRate: 0.2,
     drops: [{ id: 'stolenPouch', rate: 1 }, { id: 'stolenJewel', rate: 0.1 }],
     stats: { maxHp: 14, maxMp: 8, str: 6.0, vit: 6, agi: 27.5, int: 1.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
     gear: { mdef: 4 },

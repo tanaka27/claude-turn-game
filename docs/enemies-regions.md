@@ -2,7 +2,7 @@
 
 東と南の地方（[overworld.md](overworld.md)）にだけ出る敵。定義は `data/enemies.js`、素材は `data/items.js` の `materials`。数値の意味・レベル補正・MP は [enemies.md](enemies.md)、動き（間合い・技のくじ）は [enemy-ai.md](enemy-ai.md)。
 どれも今ある技の形（扇・円・直線の近接、まっすぐ飛ぶ弾、投げる範囲攻撃、予告）だけで作った。強化・弱体・状態異常・分裂・潜る・跳ぶは使っていない。
-絵（`sprite`）はまだないので、丸い体と `glyph` の字で描く（[enemies.md](enemies.md) の「敵の見た目」）。
+絵は `assets/sprites/enemies/<キー>.png`（ほかの敵と同じく Codex で、ウルフの絵に絵柄を合わせて作った。[image-assets.md](image-assets.md)）。
 
 ## 種類（レベル 1 の値）
 
