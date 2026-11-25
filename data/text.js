@@ -225,7 +225,9 @@ const TEXT = {
     noQuests: '受けているクエストはない',
     // つよさ ({buffed} は buffedSample を強化の色で書いたもの)
     strength: 'つよさ',
-    strengthNote: 'Lv{level}　（ ）は装備で上がっている分。{buffed}は強化（バフ）中。行動で伸びる能力はマウスを重ねると潜在が出る',
+    strengthNote: 'Lv{level}　（ ）は装備で上がっている分。{buffed}は強化（バフ）中。基礎能力値はマウスを重ねると潜在が出る',
+    baseStats: '基礎能力値（行動で伸びる）',            // つよさの見出し: params.js の progression.growth.stats にあるもの
+    derivedStats: 'ステータス（基礎能力値と装備で決まる）',  // つよさの見出し: それ以外 (計算で決まるもの・装備でだけ変わるもの)
     potential: '潜在 {n}',                            // 能力にマウスを重ねたときの吹き出し (100 が基準)
     exact: 'いまの値 {n}',                            // 小数点以下まで入れた値 (一の位が上がるとステータスが上がる)
     buffedSample: 'この色',

@@ -310,17 +310,22 @@ function growthTipHtml(k) {
   return `<div class="stat-tip"><span>${txt('menu.potential', { n: Math.round(p.potential[k]) })}</span><span class="sub">${txt('menu.exact', { n: (Math.floor(p.base[k] * 100) / 100).toFixed(2) })}</span></div>`;
 }
 // つよさ: 全ステータスの最終的な値 (強化と装備を入れたもの) と、( ) に装備で上がっている分。強化がかかっている値は色を変える
+//   「基礎能力値」(行動で伸びる。params.js の progression.growth.stats) と、それ以外の「ステータス」(基礎能力値から計算で決まるもの・装備でだけ変わるもの) に分けて出す
 function strengthHtml() {
   const p = player, st = p.stats, { equip } = statParts(p);
   const buffed = new Set(p.buffs.map((b) => BUFFS[b.id] && BUFFS[b.id].stat));
-  const rows = Object.keys(STATS).map((k) => {
+  const row = (k) => {
     const e = equip[k] || 0;
     const d = e ? `<span class="${e > 0 ? 'up' : 'down'}">${txt('menu.equipBonus', { v: fmtStat(k, e, true) })}</span>` : '';
     const v = buffed.has(k) ? `<span class="buffed">${fmtStat(k, st[k])}</span>` : fmtStat(k, st[k]);
     return `<div class="row${GROWTH.stats[k] ? ' has-tip' : ''}"><span>${STATS[k].label}</span><span>${v} ${d}</span>${growthTipHtml(k)}</div>`;
-  }).join('');
+  };
+  const keys = Object.keys(STATS);
+  const section = (title, ks) => `<div class="shead">${title}</div><div class="stats">${ks.map(row).join('')}</div>`;
   const note = txt('menu.strengthNote', { level: p.level, buffed: `<span class="buffed">${txt('menu.buffedSample')}</span>` });
-  return `<div class="dname">${txt('menu.strength')}</div><div class="dsub">${note}</div><div class="stats">${rows}</div>`;
+  return `<div class="dname">${txt('menu.strength')}</div><div class="dsub">${note}</div>`
+    + section(txt('menu.baseStats'), keys.filter((k) => GROWTH.stats[k]))
+    + section(txt('menu.derivedStats'), keys.filter((k) => !GROWTH.stats[k]));
 }
 
 // ----- 道具 (使うもの。data/items.js の ITEMS.consumables) -----
