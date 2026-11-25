@@ -40,9 +40,9 @@ function createEnemy(type, tx, ty, camp, slot) {
   for (const k of ['mag', 'spi']) b[k] *= 1 + EL.mpGrowth * g;   // さいだいMP のもと (知力 は下で伸ばす)
   for (const k of ['mus', 'dex']) b[k] *= 1 + EL.strGrowth * g; // ちから のもと
   b.int *= 1 + EL.intGrowth * g;
-  b.vit += EL.vitGrowth * g;
   b.agi += EL.agiGrowth * g;
-  const gear = { ...d.gear, mdef: ((d.gear && d.gear.mdef) || 0) + EL.mdefGrowth * g };
+  const dg = d.gear || {};
+  const gear = { ...dg, vit: (dg.vit || 0) + EL.vitGrowth * g, mdef: (dg.mdef || 0) + EL.mdefGrowth * g };
   // baseStats / gear を持っておき、強化・弱体がかかるたびに主人公と同じ順番で計算し直す (computeStats)
   const e = {
     type, def: d, faction: 'enemy', name: d.name, isBoss: !!d.isBoss, tx, ty, x: 0, y: 0, r: d.radius, color: d.color,

@@ -11,7 +11,7 @@
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 10;
+const SAVE_VERSION = 11;
 const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
@@ -128,6 +128,13 @@ const SAVE_MIGRATIONS = {
       if (Number.isFinite(o.str)) o.mus = o.dex = o.str;
       delete o.str;
     }
+    return d;
+  },
+  // v10 → v11: みのまもり vit を行動で伸ばすのをやめ、筋力 × 0.32 + 器用さ × 0.08 で決まるようにした。伸びた vit と潜在は捨てる
+  10: (d) => {
+    const p = d.player;
+    if (!p || typeof p !== 'object') return d;
+    for (const o of [p.base, p.potential]) if (o && typeof o === 'object') delete o.vit;
     return d;
   },
 };

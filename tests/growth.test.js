@@ -48,6 +48,18 @@ test('ちから = 筋力 × 0.7 + 器用さ × 0.3 (筋力のほうが効く)。
   assert.ok(p.base.dex - dex0 >= growthOf(g).events.critHit.dex - 1e-9, '会心の分だけは伸びる');
 });
 
+test('みのまもり = 筋力 × 0.32 + 器用さ × 0.08 (8:2)。しゅび力 = みのまもり + 装備。みのまもり は行動では直接伸びない', () => {
+  const g = newGame();
+  const p = g.player;
+  assert.strictEqual(p.stats.vit, 4, '筋力 10・器用さ 10 で 3.2 + 0.8');
+  assert.strictEqual(p.stats.def, p.stats.vit + (p.equip.armor ? p.equip.armor.stats.def || 0 : 0) + (p.equip.weapon ? p.equip.weapon.stats.def || 0 : 0) + (p.equip.accessory ? p.equip.accessory.stats.def || 0 : 0));
+  const at = (mus, dex) => g.deriveStats({ ...g.PLAYER.stats, mus, dex }, []).vit;
+  near(at(20, 10), 7.2);
+  near(at(10, 20), 4.8);
+  assert.ok(!('vit' in g.PLAYER.stats) && !('vit' in growthOf(g).stats), '伸びる値・潜在を持たない');
+  for (const [ev, gains] of Object.entries(growthOf(g).events)) assert.ok(!('vit' in gains), `${ev} に みのまもり がある`);
+});
+
 test('潜在が高いほど多く伸びる (潜在 / 100 倍)', () => {
   const { g, p } = withWolf();
   p.potential.spi = 200;
@@ -103,14 +115,16 @@ test('知力 は今は行動で伸びない (どの出来事にも入ってい�
   for (const [ev, gains] of Object.entries(G.events)) assert.ok(!('int' in gains), `${ev} に知力がある`);
 });
 
-test('物理のダメージを受けると みのまもり・体力・意思 が伸びる', () => {
+test('物理のダメージを受けると 体力・意思 と、わずかに 筋力 が伸びる', () => {
   const { g, p, e } = withWolf();
   g.rng.force(0.99, 0.5);
   const hp0 = p.hp, max = p.stats.maxHp;
   g.dealDamage(e, p, enemyAttack(e, '噛みつき'), '噛みつき');
   assert.ok(p.hp < hp0, '当たる');
   const ev = growthOf(g).events.takePhysical, f = (hp0 - p.hp) / max;
-  near(grown(g, 'vit'), f * ev.vit);
+  near(grown(g, 'mus'), f * ev.mus, '筋力');
+  assert.ok(ev.mus < growthOf(g).events.dealPhysical.mus, '与えたときより伸びにくい');
+  assert.strictEqual(grown(g, 'dex'), 0, '器用さ は伸びない');
   assert.ok(f * ev.con < 1, '一の位をまたがない量 (またぐと潜在が下がって比べられない)');
   near(grown(g, 'con'), f * ev.con, '体力');
   near(grown(g, 'will'), f * ev.will, '意思');
@@ -175,8 +189,8 @@ test('潜在のうち decayFloor を超えた分は時間で下がる。decayFlo
   const g = newGame();
   const p = g.player, P = growthOf(g).potential;
   p.potential.mus = 150;
-  p.potential.vit = 80;
+  p.potential.agi = 80;
   passTime(g, 100);
   near(p.potential.mus, P.decayFloor + (150 - P.decayFloor) * Math.pow(1 - P.decayRate, 100));
-  assert.strictEqual(p.potential.vit, 80);
+  assert.strictEqual(p.potential.agi, 80);
 });

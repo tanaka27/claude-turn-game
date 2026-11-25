@@ -70,11 +70,11 @@ test('強化の倍率は装備の分には掛からない', () => {
 // 敵のステータス: 主人公と同じ式 + 湧き場所のレベルの補正 (params.js の enemyLevel)
 const enemyCases = [
   ['wolf', 1, { maxHp: 9, maxMp: 0, atk: 4.6, def: 4, speed: 110, mdef: 2.5, critRate: 0.05 }],
-  ['wolf', 5, { maxHp: 14, maxMp: 0, atk: 7.728, def: 7.2, speed: 118, mdef: 6.04, critRate: 0.05 }],
+  ['wolf', 5, { maxHp: 14, maxMp: 0, atk: 7.728, def: 6.8512, speed: 118, mdef: 6.04, critRate: 0.05 }],
   ['boar', 1, { maxHp: 16, maxMp: 6, atk: 5.6, def: 6, speed: 95, mdef: 2.5 }],
-  ['boar', 5, { maxHp: 26, maxMp: 8, atk: 9.408, def: 9.2, speed: 103, mdef: 6.04 }],
+  ['boar', 5, { maxHp: 26, maxMp: 8, atk: 9.408, def: 9.1232, speed: 103, mdef: 6.04 }],
   ['golem', 1, { maxHp: 39, maxMp: 12, atk: 7.1, def: 14, speed: 70, mdef: 3.5 }],
-  ['golem', 7, { maxHp: 74, maxMp: 19, atk: 14.342, def: 18.8, speed: 82, mdef: 8.81 }],
+  ['golem', 7, { maxHp: 74, maxMp: 19, atk: 14.342, def: 19.2968, speed: 82, mdef: 8.81 }],
 ];
 for (const [type, level, want] of enemyCases) {
   test(`敵のステータス: ${type} Lv${level}`, () => {
@@ -98,6 +98,7 @@ test('敵のステータスは params.js の enemyLevel の式どおりに伸び
   const mp = (1 + EL.mpGrowth * k);
   assert.strictEqual(e.stats.maxMp, Math.floor(base.mag * mp + (base.int * (1 + EL.intGrowth * k) + base.spi * mp) / 3 + 1e-9));
   near(e.stats.atk, (base.mus * 0.7 + base.dex * 0.3) * (1 + EL.strGrowth * k));
-  near(e.stats.def, base.vit + EL.vitGrowth * k);
+  // みのまもり = (筋力 × 0.32 + 器用さ × 0.08) (strGrowth で伸びる) + gear の みのまもり + vitGrowth
+  near(e.stats.def, (base.mus * 0.32 + base.dex * 0.08) * (1 + EL.strGrowth * k) + g.ENEMIES.boar.gear.vit + EL.vitGrowth * k);
   near(e.stats.speed, 100 + (base.agi + EL.agiGrowth * k - 20) * 2);
 });

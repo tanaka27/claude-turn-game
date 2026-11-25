@@ -73,9 +73,8 @@ const PARAMS = {
         will: { drop: 0.06, max: 150 },  // 意思 (さいだいHP のもと)
         mag: { drop: 0.06, max: 100 },   // 魔力 (さいだいMP のもと。1 で さいだいMP +1)
         spi: { drop: 0.04, max: 200 },   // 精神力 (さいだいMP のもと)
-        mus: { drop: 0.08, max: 80 },    // 筋力 (ちから のもと。ちから への効きが大きい)
-        dex: { drop: 0.08, max: 80 },    // 器用さ (ちから のもと)
-        vit: { drop: 0.15, max: 50 },
+        mus: { drop: 0.08, max: 80 },    // 筋力 (ちから・みのまもり のもと。どちらにも効きが大きい)
+        dex: { drop: 0.08, max: 80 },    // 器用さ (ちから・みのまもり のもと)
         agi: { drop: 0.06, max: 100 },
         int: { drop: 0.04, max: 120 },   // 知力。今は行動で伸びる出来事がない (下の events にない)
       },
@@ -84,7 +83,7 @@ const PARAMS = {
         dealPhysical: { mus: 0.06, dex: 0.03 }, // 物理で与えたダメージ / 相手の最大HP (倒しきるまでの分)
         critHit: { dex: 0.15 },                 // 物理の会心を出した 1 回
         dealMagic: {},                          // 術で与えたダメージ / 相手の最大HP (今は何も伸びない)
-        takePhysical: { vit: 0.3, con: 1, will: 0.4 },  // 物理で受けたダメージ / 自分の最大HP
+        takePhysical: { con: 1, will: 0.4, mus: 0.02 },  // 物理で受けたダメージ / 自分の最大HP
         takeMagic: { will: 1, con: 0.4 },       // 術で受けたダメージ / 自分の最大HP
         spendMp: { spi: 0.04 },                 // 使った MP (どのスキルでも)
         castMagic: { mag: 0.04 },               // 術 (kind: 'magic') のスキルに使った MP
@@ -108,6 +107,7 @@ const PARAMS = {
     str: { from: { mus: 0.7, dex: 0.3 }, start: 0 },                  // ちから = 筋力 × 0.7 + 器用さ × 0.3 (こうげき力 より前に書く)
     maxHp: { from: { con: 1, will: 1 }, start: 0, round: true },     // さいだいHP = 体力 + 意思
     maxMp: { from: { mag: 1, int: 1 / 3, spi: 1 / 3 }, start: 0, floor: true }, // さいだいMP = 魔力 + (知力 + 精神力) ÷ 3 (切り捨て)
+    vit: { from: { mus: 0.32, dex: 0.08 }, start: 0 },             // みのまもり = 筋力 × 0.32 + 器用さ × 0.08 (8:2。しゅび力 より前に書く)
     atk: { from: 'str', base: 0, per: 1, start: 0 },              // こうげき力 = ちから + 武器
     def: { from: 'vit', base: 0, per: 1, start: 0 },              // しゅび力 = みのまもり + 防具
     speed: { from: 'agi', base: 20, per: 2, start: 100 },         // 速度: すばやさ 20 で 100。すばやさ 1 につき +2
@@ -123,7 +123,7 @@ const PARAMS = {
     mpGrowth: 0.1,        // 魔力・精神力 +10% (さいだいMP は 魔力・精神力 と 知力 (下の intGrowth) から計算)
     strGrowth: 0.17,      // 筋力・器用さ +17% (ちから・こうげき力 +17%)
     intGrowth: 0.17,      // 知力 +17%
-    vitGrowth: 0.8,       // みのまもり +0.8 (しゅび力 +0.8)
+    vitGrowth: 0.4,       // みのまもり +0.4 (敵の gear の みのまもり に足す。筋力・器用さ の伸びでも ちから の 0.4 倍ほど増えるので、合わせて前の +0.8 くらい)
     mdefGrowth: 0.8,      // 術防御 +0.8 (敵の gear の術防御に足す)
     agiGrowth: 1,         // すばやさ +1 (速度 +2)
     expGrowth: 0.25,      // 獲得経験値 +25%

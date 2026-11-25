@@ -5,7 +5,7 @@ const { loadGame } = require('./harness');
 const { plain, bagOf } = require('./helpers');
 
 // 今のセーブの形の版 (src/save.js の SAVE_VERSION。版を上げたらここも上げる)
-const CURRENT = 10;
+const CURRENT = 11;
 // 形 v1 のセーブ (クエストの id が古い名前のころ)。そのまま書いておく
 const V1_SAVE = {
   v: 1, savedAt: 1794000000000,
@@ -116,10 +116,10 @@ function v8Base(b) {
   return withMag({ ...rest, con: maxHp - will, will, spi: maxMp + maxMp - b.int });
 }
 // v9 で 魔力 = (知力 + 精神力) ÷ 2 の切り捨て − ÷ 3 の切り捨て を足す (同じ さいだいMP)
-// v10 で ちから str を 筋力・器用さ の両方に移す (同じ ちから)
+// v10 で ちから str を 筋力・器用さ の両方に移す (同じ ちから)。v11 で みのまもり vit を消す (計算で決まる)
 function withMag(b) {
   const sum = Math.floor(b.int) + Math.floor(b.spi);
-  const { str, ...rest } = b;
+  const { str, vit, ...rest } = b;
   return { ...rest, mag: Math.floor(sum / 2) - Math.floor(sum / 3), mus: str, dex: str };
 }
 const copy = (x) => JSON.parse(JSON.stringify(x));
@@ -407,7 +407,7 @@ test('v5 のセーブは、熟練度 / 10 を伸びた値 (base) に小数で足
   assert.strictEqual(d.v, CURRENT);
   assert.ok(!('train' in d.player));
   const b = v8Base(V4_SAVE.player.base);
-  assert.deepStrictEqual(plain(d.player.base), { ...b, mus: b.mus + 0.25, dex: b.dex + 0.25, vit: b.vit + 0.9 }, '数でない熟練度は捨てる');
+  assert.deepStrictEqual(plain(d.player.base), { ...b, mus: b.mus + 0.25, dex: b.dex + 0.25 }, '数でない熟練度は捨てる');
   g.startGame(d);
   assert.strictEqual(g.player.base.mus, b.mus + 0.25);
   assert.strictEqual(g.player.stats.str, b.mus, 'ちから は v5 と同じ');
@@ -468,4 +468,18 @@ test('v9 のセーブは、ちから を 筋力・器用さ の両方に移し (
   assert.deepStrictEqual(plain(d.player.potential), { mus: 130, dex: 130 });
   g.startGame(d);
   assert.strictEqual(g.player.stats.str, 17, 'v9 の ちから 17 のまま (17 × 0.7 + 17 × 0.3)');
+});
+
+test('v10 のセーブは、みのまもり (伸びた値・潜在) を消す。ほかの値はそのままで、みのまもり は 筋力・器用さ から計算する', () => {
+  const base = { con: 19, will: 18, mag: 8, spi: 21, mus: 20, dex: 15, vit: 9.5, agi: 29, int: 23 };
+  const V10_SAVE = { ...V4_SAVE, v: 10, player: { ...V4_SAVE.player, base, potential: { mus: 130, vit: 140 } } };
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V10_SAVE) } });
+  const d = g.readLocalSave();
+  assert.strictEqual(d.v, CURRENT);
+  const { vit, ...rest } = base;
+  assert.deepStrictEqual(plain(d.player.base), rest);
+  assert.deepStrictEqual(plain(d.player.potential), { mus: 130 });
+  g.startGame(d);
+  assert.strictEqual(g.player.stats.vit, 7.6, 'みのまもり = 筋力 × 0.32 + 器用さ × 0.08 = 7.6');
+  assert.strictEqual(g.player.stats.str, 18.5, 'ちから は同じ式のまま 18.5');
 });

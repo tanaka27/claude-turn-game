@@ -33,9 +33,9 @@ function enemyStatsByFormula(g, type, level) {
   for (const s of ['mag', 'spi']) b[s] *= 1 + EL.mpGrowth * k;
   for (const s of ['mus', 'dex']) b[s] *= 1 + EL.strGrowth * k;
   b.int *= 1 + EL.intGrowth * k;
-  b.vit += EL.vitGrowth * k;
   b.agi += EL.agiGrowth * k;
-  return plain(g.deriveStats(b, [{ ...d.gear, mdef: ((d.gear && d.gear.mdef) || 0) + EL.mdefGrowth * k }]));
+  const dg = d.gear || {};
+  return plain(g.deriveStats(b, [{ ...dg, vit: (dg.vit || 0) + EL.vitGrowth * k, mdef: (dg.mdef || 0) + EL.mdefGrowth * k }]));
 }
 
 test('効果なし: どの敵もどのレベルでも、作ったときのステータスは今までの式とまったく同じで、計算し直しても変わらない', () => {
@@ -82,8 +82,16 @@ test('効果なし: 仲間 (gear あり・なし) を計算し直しても作っ
 
 // ----- 敵への弱体 -----
 
+// しゅび力 14 がすべて みのまもり (筋力 35・器用さ 35 から計算) から来るゴーレム。
+// gear の みのまもり は装備と同じで弱体の倍率を受けないので、弱体の確かめでは gear に置かない
+function bareGolem(g) {
+  const d = g.ENEMIES.golem;
+  g.ENEMIES.golem = { ...d, stats: { ...d.stats, mus: 35, dex: 35 }, gear: { ...d.gear, vit: 0 } };
+}
+
 test('敵の守備ダウン: しゅび力が下がり、主人公の通常攻撃で受けるダメージが増える', () => {
   const g = game();
+  bareGolem(g);
   const [e] = arena(g, { cols: 12, rows: 12, player: [5, 5], enemies: [{ type: 'golem', at: [6, 5] }] });
   const hitOnce = () => {
     e.hp = e.stats.maxHp;
@@ -99,6 +107,7 @@ test('敵の守備ダウン: しゅび力が下がり、主人公の通常攻撃
 
 test('敵の守備ダウン: その敵自身の行動 3 回で切れ、元の値にぴったり戻る', () => {
   const g = game();
+  bareGolem(g);
   const [e] = arena(g, { cols: 12, rows: 12, player: [2, 2], safe: true, enemies: [{ type: 'golem', at: [9, 9] }] });
   g.rng.constant(0.9); // うろつかない
   const st0 = plain(e.stats);
