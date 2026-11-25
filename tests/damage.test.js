@@ -146,3 +146,16 @@ test('物理: 当たる確率がおよそ式どおり (主人公 → ウルフ�
   // 基礎ダメージ 4.5 なので 0 になるのは外れたときだけ
   assert.ok(Math.abs(miss / N - 0.0625) < 0.015, `外れ ${miss / N}`);
 });
+
+test('術防御 = 知力 × 0.16 + 精神力 × 0.24 (4:6)。精神力を伸ばすと術で受けるダメージが減る', () => {
+  const g = newGame();
+  const at = (int, spi) => g.deriveStats({ ...g.PLAYER.stats, int, spi }, []).mdef;
+  near(at(10, 14), 4.96);
+  near(at(20, 14), 6.56);
+  near(at(10, 24), 7.36);
+  const u = (mdef) => ({ stats: { mdef } });
+  const src = { stats: { matk: 10 } };
+  g.rng.constant(0.5);
+  const dmg = (mdef) => g.rollDamage(src, u(mdef), { kind: 'magic', base: 6 }).dmg;
+  assert.ok(dmg(at(10, 74)) < dmg(at(10, 14)), '精神力 74 (術防御 19) なら 14 より受けるダメージが少ない');
+});

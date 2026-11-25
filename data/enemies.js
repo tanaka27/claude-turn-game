@@ -16,7 +16,8 @@
 //   con / will / mag / spi / mus / dex / agi / int / luk / critMult / hpRegen / mpRegen
 //   さいだいHP (体力 + 意思)・さいだいMP (魔力 + (知力 + 精神力) ÷ 3)・ちから (筋力 × 0.7 + 器用さ × 0.3)・みのまもり (筋力 × 0.32 + 器用さ × 0.08)・術攻撃力 (知力 + 魔力 × 0.3) も計算で決まるので書かない
 //   (みのまもり は、前に書いていた値との差を gear の vit に入れてある)
-//   こうげき力・しゅび力・術防御・速度・スキル加速・会心率は、主人公と同じ式 (params.js の derivedStats) で計算する
+//   こうげき力・しゅび力・術防御 (知力 × 0.16 + 精神力 × 0.24)・速度・スキル加速・会心率は、主人公と同じ式 (params.js の derivedStats) で計算する
+//   (術防御 は、前に書いていた値 (知力 × 0.5 + gear) との差を gear の mdef に入れてある)
 //   (すばやさ 20 で速度 100。すばやさ 1 につき速度 +2 / うんのよさ 1 につき会心率 +0.5%)
 //   hpRegen は今はどの敵も 0 (戦っている間に HP は戻らない)
 // gear: 装備のかわりに足す値 (主人公の装備と同じく、計算で決まるステータスに直接足す)。省略可
@@ -36,7 +37,7 @@ const ENEMIES = {
     name: 'ウルフ', glyph: '狼', sprite: 'assets/sprites/enemies/wolf.png', radius: 14, color: '#90a4ae', exp: 12, itemRate: 0.08,
     drops: [{ id: 'wolfPelt', rate: 1 }, { id: 'wolfFang', rate: 0.15 }],
     stats: { con: 5, will: 4, mag: 0, spi: 0, mus: 4.6, dex: 4.6, agi: 25, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0 },
-    gear: { vit: 2.16, mdef: 2 },
+    gear: { vit: 2.16, mdef: 2.34 },
     attacks: [
       { name: '噛みつき', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
     ],
@@ -44,8 +45,8 @@ const ENEMIES = {
   boar: {
     name: 'ホーンボア', glyph: '猪', sprite: 'assets/sprites/enemies/boar.png', radius: 15, color: '#bc8f6f', exp: 18, itemRate: 0.1,
     drops: [{ id: 'boarHorn', rate: 1 }, { id: 'boarMeat', rate: 0.2 }],
-    stats: { con: 8, will: 8, mag: 2, spi: 11, mus: 5.6, dex: 5.6, agi: 17.5, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
-    gear: { vit: 3.76, mdef: 2 },
+    stats: { con: 8, will: 8, mag: 5.67, spi: 0, mus: 5.6, dex: 5.6, agi: 17.5, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
+    gear: { vit: 3.76, mdef: 2.34 },
     attacks: [
       { name: '角突き', type: 'melee', shape: 'line', range: 3, width: 1, charge: 1, cooldown: 4, mp: 3, power: 1.7 },
       { name: '体当たり', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.8 },
@@ -55,7 +56,7 @@ const ENEMIES = {
     name: 'キラービー', glyph: '蜂', sprite: 'assets/sprites/enemies/bee.png', radius: 13, color: '#fff176', exp: 16, itemRate: 0.1, keepDistance: 4,
     drops: [{ id: 'beeStinger', rate: 1 }, { id: 'honey', rate: 0.15 }],
     stats: { con: 5, will: 4, mag: 3, spi: 13, mus: 4.8, dex: 4.8, agi: 22.5, int: 2, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
-    gear: { vit: 0.08, mdef: 3 },
+    gear: { vit: 0.08, mdef: 0.56 },
     attacks: [
       { name: '毒針', type: 'projectile', range: 6, width: 1, charge: 0, cooldown: 4, mp: 2, power: 1.0 },
       { name: '刺す', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.7 },
@@ -65,7 +66,7 @@ const ENEMIES = {
     name: 'サラマンダー', glyph: '蜥', sprite: 'assets/sprites/enemies/salamander.png', radius: 14, color: '#ff8a65', exp: 22, itemRate: 0.12, keepDistance: 4,
     drops: [{ id: 'fireScale', rate: 1 }, { id: 'flameSac', rate: 0.12 }],
     stats: { con: 5, will: 4, mag: 1, spi: 21.5, mus: 5.6, dex: 5.6, agi: 12.5, int: 2.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
-    gear: { vit: 1.76, mdef: 9 },
+    gear: { vit: 1.76, mdef: 4.69 },
     attacks: [
       { name: '火炎弾', type: 'lob', kind: 'magic', castRange: 6, radius: 1.5, charge: 1, cooldown: 3, mp: 3, base: 1 },
       { name: '噛みつき', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.7 },
@@ -74,8 +75,8 @@ const ENEMIES = {
   golem: {
     name: 'ロックゴーレム', glyph: '岩', sprite: 'assets/sprites/enemies/golem.png', radius: 19, color: '#a1887f', exp: 40, itemRate: 0.25,
     drops: [{ id: 'stoneShard', rate: 1 }, { id: 'manaCore', rate: 0.15 }],
-    stats: { con: 20, will: 19, mag: 4, spi: 23, mus: 7.1, dex: 7.1, agi: 5, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
-    gear: { vit: 11.16, mdef: 3 },
+    stats: { con: 20, will: 19, mag: 11.67, spi: 0, mus: 7.1, dex: 7.1, agi: 5, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { vit: 11.16, mdef: 3.34 },
     attacks: [
       { name: '叩きつけ', type: 'melee', shape: 'circle', range: 2.3, charge: 1, cooldown: 3, mp: 4, power: 1.6 },
       { name: '岩の拳', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
@@ -85,8 +86,8 @@ const ENEMIES = {
   wolfKing: {
     name: '狼王', glyph: '牙', sprite: 'assets/sprites/enemies/wolfKing.png', radius: 24, color: '#607d8b', exp: 250, itemRate: 1, itemCount: 1, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'kingPelt', rate: 1 }, { id: 'kingFang', rate: 0.5 }],
-    stats: { con: 64, will: 64, mag: 10, spi: 58, mus: 6.1, dex: 6.1, agi: 25, int: 2, luk: 16, critMult: 1.5, hpRegen: 0, mpRegen: 0.8 },
-    gear: { vit: 7.56, mdef: 7 },
+    stats: { con: 64, will: 64, mag: 29.34, spi: 0, mus: 6.1, dex: 6.1, agi: 25, int: 2, luk: 16, critMult: 1.5, hpRegen: 0, mpRegen: 0.8 },
+    gear: { vit: 7.56, mdef: 7.68 },
     attacks: [
       { name: '突進', type: 'melee', shape: 'line', range: 5, width: 1, charge: 1, cooldown: 5, mp: 4, power: 1.6 },
       { name: '爪の薙ぎ払い', type: 'melee', shape: 'fan', range: 2.3, angle: 150, charge: 1, cooldown: 3, mp: 3, power: 1.5 },
@@ -99,7 +100,7 @@ const ENEMIES = {
     name: '森の主', glyph: '樹', sprite: 'assets/sprites/enemies/treant.png', radius: 26, color: '#558b2f', exp: 350, itemRate: 1, itemCount: 2, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'ancientBranch', rate: 1 }, { id: 'treantFruit', rate: 0.5 }],
     stats: { con: 78, will: 78, mag: 1.6, spi: 99.3, mus: 6.5, dex: 6.5, agi: 10, int: 4, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.9 },
-    gear: { vit: 11.4, mdef: 14 },
+    gear: { vit: 11.4 },
     attacks: [
       { name: '根の衝撃', type: 'melee', shape: 'circle', range: 3.3, charge: 1, cooldown: 4, mp: 4, power: 1.6 },
       { name: '種飛ばし', type: 'projectile', range: 7, width: 1, count: 5, spread: 70, charge: 1, cooldown: 5, mp: 5, power: 0.9 },
@@ -112,7 +113,7 @@ const ENEMIES = {
     name: '魔竜', glyph: '竜', sprite: 'assets/sprites/enemies/dragon.png', radius: 27, color: '#ef5350', exp: 400, itemRate: 1, itemCount: 2, isBoss: true, skillChance: 0.7,
     drops: [{ id: 'dragonScale', rate: 1, count: 2 }, { id: 'dragonHeart', rate: 0.5 }],
     stats: { con: 84, will: 84, mag: 1.8, spi: 110.2, mus: 7.3, dex: 7.3, agi: 20, int: 4.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 1 },
-    gear: { vit: 15.08, mdef: 18 },
+    gear: { vit: 15.08 },
     attacks: [
       { name: '尾の薙ぎ払い', type: 'melee', shape: 'fan', range: 2.5, angle: 160, charge: 1, cooldown: 3, mp: 4, power: 1.6 },
       { name: '火炎の息', type: 'projectile', kind: 'magic', range: 7, width: 1, count: 5, spread: 50, charge: 1, cooldown: 5, mp: 5, base: 0.5 },

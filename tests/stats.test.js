@@ -11,7 +11,7 @@ test('deriveStats: 主人公の Lv1 (装備なし)', () => {
   const st = plain(g.deriveStats({ ...g.PLAYER.stats }, []));
   assert.deepStrictEqual(st, {
     con: 10, will: 10, mag: 4, spi: 14, mus: 10, dex: 10, str: 10, vit: 4, agi: 20, int: 10, luk: 20, critMult: 1.6, hpRegen: 0.05, mpRegen: 0.2,
-    maxHp: 20, maxMp: 12, atk: 10, matk: 11.2, def: 4, speed: 100, skillHaste: 0, mdef: 5, hit: 1, eva: 0.05, critRate: 0.1,
+    maxHp: 20, maxMp: 12, atk: 10, matk: 11.2, def: 4, speed: 100, skillHaste: 0, mdef: 4.96, hit: 1, eva: 0.05, critRate: 0.1,
   });
 });
 
@@ -30,7 +30,7 @@ test('主人公の Lv1: はじめの装備 (木の剣・布の服) あり', () =
   assert.strictEqual(st.atk, 11);
   assert.strictEqual(st.def, 5);
   assert.strictEqual(st.speed, 100);
-  assert.strictEqual(st.mdef, 5);
+  assert.strictEqual(st.mdef, 4.96); // 知力 10 × 0.16 + 精神力 14 × 0.24 (画面では 5)
   near(st.critRate, 0.1);
 });
 
@@ -70,11 +70,11 @@ test('強化の倍率は装備の分には掛からない', () => {
 // 敵のステータス: 主人公と同じ式 + 湧き場所のレベルの補正 (params.js の enemyLevel)
 const enemyCases = [
   ['wolf', 1, { maxHp: 9, maxMp: 0, atk: 4.6, def: 4, speed: 110, mdef: 2.5, critRate: 0.05 }],
-  ['wolf', 5, { maxHp: 14, maxMp: 0, atk: 7.728, def: 6.8512, speed: 118, mdef: 6.04, critRate: 0.05 }],
+  ['wolf', 5, { maxHp: 14, maxMp: 0, atk: 7.728, def: 6.8512, speed: 118, mdef: 5.8088, critRate: 0.05 }],
   ['boar', 1, { maxHp: 16, maxMp: 6, atk: 5.6, def: 6, speed: 95, mdef: 2.5 }],
-  ['boar', 5, { maxHp: 26, maxMp: 8, atk: 9.408, def: 9.1232, speed: 103, mdef: 6.04 }],
+  ['boar', 5, { maxHp: 26, maxMp: 8, atk: 9.408, def: 9.1232, speed: 103, mdef: 5.8088 }],
   ['golem', 1, { maxHp: 39, maxMp: 12, atk: 7.1, def: 14, speed: 70, mdef: 3.5 }],
-  ['golem', 7, { maxHp: 74, maxMp: 19, atk: 14.342, def: 19.2968, speed: 82, mdef: 8.81 }],
+  ['golem', 7, { maxHp: 74, maxMp: 19, atk: 14.342, def: 19.2968, speed: 82, mdef: 8.4632 }],
 ];
 for (const [type, level, want] of enemyCases) {
   test(`敵のステータス: ${type} Lv${level}`, () => {

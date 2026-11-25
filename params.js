@@ -117,7 +117,7 @@ const PARAMS = {
     def: { from: 'vit', base: 0, per: 1, start: 0 },              // しゅび力 = みのまもり + 防具
     speed: { from: 'agi', base: 20, per: 2, start: 100 },         // 速度: すばやさ 20 で 100。すばやさ 1 につき +2
     skillHaste: { from: 'int', base: 10, per: 0.5, start: 0 },    // 知力 10 で 0
-    mdef: { from: 'int', base: 0, per: 0.5, start: 0 },           // 術防御 = 知力 × 0.5 + 装備
+    mdef: { from: { int: 0.16, spi: 0.24 }, start: 0 },           // 術防御 = 知力 × 0.16 + 精神力 × 0.24 + 装備 (4:6)
     hit: { from: 'dex', base: 0, per: 0.005, start: 0.95 },      // 命中 = 95% + 器用さ × 0.5% (器用さ 10 で 100%)
     eva: { from: 'agi', base: 0, per: 0.0025, start: 0 },        // 回避 = すばやさ × 0.25% (すばやさ 20 で 5%)
     critRate: { from: 'luk', base: 0, per: 0.005, start: 0, max: 1 }, // うんのよさ 20 で 10%
