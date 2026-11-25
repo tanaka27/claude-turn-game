@@ -16,6 +16,8 @@
 //   基礎ダメージが minBase 未満なら、0 か 1 (半々。0 は「ミス」)
 //   それ以外は 基礎ダメージ × 乱数(1 ± variance)
 //   会心のときは防御を無視して 攻撃側atk × atkRate × critMult × power × 乱数(1 ± variance)
+//   その前に命中を判定する: 当たる確率 = 攻撃側の命中(hit) − 防御側の回避(eva) を hitMin〜hitMax に収めたもの。外れたら「ミス」
+//   (乱数 1 つで判定: 会心率より小さければ会心 (会心は必ず当たる)、そのすぐ上の 1 − 当たる確率 の幅なら外れ)
 //   ※四捨五入。会心と通常は最低 1
 //   これは物理 (kind: 'physical'、省略時) の技。術 (kind: 'magic') は下の【術のダメージ計算式】
 //
@@ -40,6 +42,8 @@ const PARAMS = {
     defRate: 0.25,      // しゅび力の効き (ドラクエの「しゅび力 / 4」)
     minBase: 1,         // 基礎ダメージがこれ未満だと 0 か 1 になる
     variance: 1 / 16,   // 乱数の幅 (ドラクエの ±1/16)。術も同じ幅
+    hitMin: 0.75,       // 物理の当たる確率の下限 (どれだけ すばやさ に差があっても 4 回に 3 回は当たる)
+    hitMax: 1,          // 物理の当たる確率の上限
   },
 
   magic: {
@@ -114,6 +118,8 @@ const PARAMS = {
     speed: { from: 'agi', base: 20, per: 2, start: 100 },         // 速度: すばやさ 20 で 100。すばやさ 1 につき +2
     skillHaste: { from: 'int', base: 10, per: 0.5, start: 0 },    // 知力 10 で 0
     mdef: { from: 'int', base: 0, per: 0.5, start: 0 },           // 術防御 = 知力 × 0.5 + 装備
+    hit: { from: 'dex', base: 0, per: 0.005, start: 0.95 },      // 命中 = 95% + 器用さ × 0.5% (器用さ 10 で 100%)
+    eva: { from: 'agi', base: 0, per: 0.0025, start: 0 },        // 回避 = すばやさ × 0.25% (すばやさ 20 で 5%)
     critRate: { from: 'luk', base: 0, per: 0.005, start: 0, max: 1 }, // うんのよさ 20 で 10%
   },
 

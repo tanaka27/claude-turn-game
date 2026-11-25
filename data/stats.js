@@ -28,6 +28,8 @@ const STATS = {
   mdef: { label: '術防御', dec: 0 },
   speed: { label: '速度', dec: 0 },
   skillHaste: { label: 'スキル加速', dec: 0 },
+  hit: { label: '命中', pct: true },
+  eva: { label: '回避', pct: true },
   critRate: { label: '会心率', pct: true },
   critMult: { label: '会心倍率', dec: 2 },
   hpRegen: { label: 'HP再生', dec: 2 },

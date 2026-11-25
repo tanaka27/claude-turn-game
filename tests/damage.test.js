@@ -107,3 +107,42 @@ test('術を使う敵の術攻撃力も 知力 + 魔力 × 0.3 (魔力 = 知力 
   }
 });
 
+
+// ----- 命中と回避 -----
+
+test('命中 = 95% + 器用さ × 0.5%、回避 = すばやさ × 0.25%。当たる確率 = 命中 − 回避 (75%〜100%)', () => {
+  const g = newGame();
+  const at = (s) => g.deriveStats({ ...g.PLAYER.stats, ...s }, []);
+  near(at({}).hit, 1);
+  near(at({ dex: 30 }).hit, 1.1);
+  near(at({}).eva, 0.05);
+  near(at({ agi: 60 }).eva, 0.15);
+  const u = (hit, eva) => ({ stats: { hit, eva } });
+  near(g.hitChance(u(1, 0), u(0, 0.0625)), 0.9375, '主人公 → ウルフ (すばやさ 25)');
+  near(g.hitChance(u(1.2, 0), u(0, 0.05)), 1, '上限 100%');
+  near(g.hitChance(u(0.95, 0), u(0, 0.5)), 0.75, '下限 75% (すばやさ 200 でも)');
+});
+
+test('物理: 乱数が 会心率 〜 会心率 + (1 − 当たる確率) なら外れて「ミス」(すばやさ が伸びる)。会心は必ず当たる', () => {
+  const { g, e } = setup('wolf', 1); // 当たる確率 100% − 6.25% = 93.75%。会心率 10%
+  g.rng.constant(null);
+  const hit = (r) => { g.rng.clear(); g.rng.force(r, 0.5); return g.rollDamage(g.player, e, { power: 1 }); };
+  assert.strictEqual(hit(0.15).dmg, 0, '0.1 〜 0.1625 → 外れ');
+  assert.strictEqual(hit(0.17).dmg, 5, '0.1625 以上 → 当たる (4.5 → 5)');
+  assert.ok(hit(0.05).crit, '会心率より下 → 会心 (当たる)');
+  g.rng.clear();
+  g.rng.force(0.15); // 外れは乱数を 1 つしか使わない
+  step(g, 1, 0);
+  assert.strictEqual(e.hp, 9, '外れたらダメージなし');
+  assert.ok(messages(g).some((m) => m.includes('ミス')), messages(g).join(' / '));
+  near(e.stats.eva, 0.0625);
+});
+
+test('物理: 当たる確率がおよそ式どおり (主人公 → ウルフで約 94%)', () => {
+  const { g, e } = setup('wolf', 1);
+  let miss = 0;
+  const N = 4000;
+  for (let i = 0; i < N; i++) if (g.rollDamage(g.player, e, { power: 1 }).dmg === 0) miss++;
+  // 基礎ダメージ 4.5 なので 0 になるのは外れたときだけ
+  assert.ok(Math.abs(miss / N - 0.0625) < 0.015, `外れ ${miss / N}`);
+});

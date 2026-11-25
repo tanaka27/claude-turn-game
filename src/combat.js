@@ -175,6 +175,9 @@ function dash(u, sk, tx, ty) {
   return true;
 }
 
+// 物理の攻撃が当たる確率 = 攻撃側の命中 − 受ける側の回避 (params.js の damage.hitMin〜hitMax に収める)
+const hitChance = (src, tgt) => clamp(src.stats.hit - tgt.stats.eva, PARAMS.damage.hitMin, PARAMS.damage.hitMax);
+
 // 技 a (kind / power / base / matkRate) のダメージ。戻り値 { dmg, crit }
 function rollDamage(src, tgt, a) {
   const s = src.stats, D = PARAMS.damage;
@@ -185,9 +188,11 @@ function rollDamage(src, tgt, a) {
     const base = a.base + s.matk * (a.matkRate !== undefined ? a.matkRate : M.matkRate);
     return { dmg: Math.max(1, Math.round(base * M.mdefScale / (M.mdefScale + Math.max(0, tgt.stats.mdef)) * vary())), crit: false };
   }
-  // 物理 (ドラクエ式)
+  // 物理 (ドラクエ式)。乱数 1 つで、会心 (会心率より下) → 外れ (そのすぐ上の 1 − 当たる確率 の幅) → ふつう を決める
   const power = a.power;
-  const crit = Math.random() < s.critRate;
+  const r = Math.random();
+  const crit = r < s.critRate;
+  if (!crit && r < s.critRate + (1 - hitChance(src, tgt))) return { dmg: 0, crit: false };
   let dmg;
   if (crit) {
     // 会心は防御を無視する

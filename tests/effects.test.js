@@ -35,7 +35,10 @@ function enemyStatsByFormula(g, type, level) {
   b.int *= 1 + EL.intGrowth * k;
   b.agi += EL.agiGrowth * k;
   const dg = d.gear || {};
-  return plain(g.deriveStats(b, [{ ...dg, vit: (dg.vit || 0) + EL.vitGrowth * k, mdef: (dg.mdef || 0) + EL.mdefGrowth * k }]));
+  const st = plain(g.deriveStats(b, [{ ...dg, vit: (dg.vit || 0) + EL.vitGrowth * k, mdef: (dg.mdef || 0) + EL.mdefGrowth * k }]));
+  // 計算し直すとき (computeStats) は装備の分を足し戻した値を 1e-9 で丸めるので、同じように丸めて比べる
+  for (const s in st) st[s] = Math.round(st[s] * 1e9) / 1e9;
+  return st;
 }
 
 test('効果なし: どの敵もどのレベルでも、作ったときのステータスは今までの式とまったく同じで、計算し直しても変わらない', () => {

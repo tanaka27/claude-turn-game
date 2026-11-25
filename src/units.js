@@ -242,8 +242,9 @@ function deriveStats(base, gears) {
     // from が表 { ステータス: 倍率 } (さいだいHP = 体力 + 意思 など)。持っていないステータスは 0
     let v = 0;
     for (const s in d.from) v += (st[s] || 0) * d.from[s];
-    // 倍率の和が 1 のとき (ちから = 筋力 × 0.7 + 器用さ × 0.3 など) に小数の誤差が残らないよう、端数を 1e-9 で丸める
-    st[k] += d.start + (d.round ? Math.round(v + 1e-9) : d.floor ? Math.floor(v + 1e-9) : Math.round(v * 1e9) / 1e9);
+    // 小数の誤差が残らないよう (ちから = 筋力 × 0.7 + 器用さ × 0.3、敵の みのまもり = 計算した分 + gear の分 など)、
+    // 装備の分を足したあとの値を 1e-9 で丸める
+    st[k] = Math.round((st[k] + d.start + (d.round ? Math.round(v + 1e-9) : d.floor ? Math.floor(v + 1e-9) : v)) * 1e9) / 1e9;
   }
   for (const k in DERIVED_STATS) if (DERIVED_STATS[k].max !== undefined) st[k] = Math.min(DERIVED_STATS[k].max, st[k]);
   return st;
@@ -262,6 +263,8 @@ function computeStats(u) {
   const { bare, equip } = statParts(u);
   const st = applyBuffs({ ...bare }, u.buffs);
   for (const k in equip) st[k] = (st[k] || 0) + equip[k];
+  // 装備の分 (装備ありの値 − 装備なしの値) を足し戻すときなどの小数の誤差 (1.84 + 2.16 = 4.000000000000001 など) を 1e-9 で丸める
+  for (const k in st) st[k] = Math.round(st[k] * 1e9) / 1e9;
   for (const k in DERIVED_STATS) if (DERIVED_STATS[k].max !== undefined) st[k] = Math.min(DERIVED_STATS[k].max, st[k]);
   return st;
 }
