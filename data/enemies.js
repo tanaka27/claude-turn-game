@@ -79,6 +79,135 @@ const ENEMIES = {
       { name: '岩の拳', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
     ],
   },
+  // ----- 新しい地方の敵 (絵はまだない。図形と glyph の字で描く) -----
+  // 潮騒の海岸
+  crab: {
+    name: 'ハサミガニ', glyph: '蟹', radius: 15, color: '#e57373', exp: 26, itemRate: 0.12,
+    drops: [{ id: 'crabShell', rate: 1 }, { id: 'bigClaw', rate: 0.15 }],
+    stats: { maxHp: 22, maxMp: 6, str: 5.4, vit: 10, agi: 10, int: 1, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
+    gear: { mdef: 4 },
+    attacks: [
+      { name: '大バサミ', type: 'melee', shape: 'fan', range: 1.5, angle: 180, charge: 1, cooldown: 3, mp: 3, power: 1.5 },
+      { name: 'ハサミ', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.9 },
+    ],
+  },
+  seagull: {
+    name: 'シーガル', glyph: '鳥', radius: 13, color: '#eceff1', exp: 18, itemRate: 0.1, keepDistance: 4,
+    drops: [{ id: 'seabirdFeather', rate: 1 }, { id: 'prettyShell', rate: 0.15 }],
+    stats: { maxHp: 8, maxMp: 8, str: 5.0, vit: 2, agi: 27.5, int: 1, luk: 15, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { mdef: 2 },
+    attacks: [
+      { name: '急降下', type: 'melee', shape: 'line', range: 4, width: 1, charge: 1, cooldown: 4, mp: 3, power: 1.5 },
+      { name: 'つつく', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.7 },
+    ],
+  },
+  seaSlug: {
+    name: 'ウミウシ', glyph: '海', radius: 15, color: '#ba68c8', exp: 22, itemRate: 0.1, keepDistance: 4,
+    drops: [{ id: 'inkSac', rate: 1 }, { id: 'pearl', rate: 0.1 }],
+    stats: { maxHp: 18, maxMp: 9, str: 4.6, vit: 5, agi: 7.5, int: 2.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { mdef: 12 },
+    attacks: [
+      { name: '墨吐き', type: 'lob', kind: 'magic', castRange: 5, radius: 1.5, charge: 1, cooldown: 3, mp: 3, base: 1 },
+      { name: '体当たり', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.7 },
+    ],
+  },
+  // 霜降りの高原
+  snowWolf: {
+    name: 'スノーウルフ', glyph: '白', radius: 14, color: '#e3f2fd', exp: 20, itemRate: 0.1,
+    drops: [{ id: 'whitePelt', rate: 1 }, { id: 'iceFang', rate: 0.15 }],
+    stats: { maxHp: 11, maxMp: 4, str: 5.0, vit: 5, agi: 27.5, int: 1, luk: 12, critMult: 1.5, hpRegen: 0, mpRegen: 0.2 },
+    gear: { mdef: 4 },
+    attacks: [
+      { name: '引き裂き', type: 'melee', shape: 'fan', range: 1.5, angle: 150, charge: 0, cooldown: 3, mp: 2, power: 1.3 },
+      { name: '噛みつき', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
+    ],
+  },
+  iceWisp: {
+    name: 'アイスウィスプ', glyph: '氷', radius: 12, color: '#80deea', exp: 24, itemRate: 0.12, keepDistance: 4,
+    drops: [{ id: 'frostCrystal', rate: 1 }, { id: 'wispCore', rate: 0.12 }],
+    stats: { maxHp: 8, maxMp: 12, str: 3.5, vit: 2, agi: 20, int: 3, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.4 },
+    gear: { mdef: 14 },
+    attacks: [
+      { name: '氷の礫', type: 'projectile', kind: 'magic', range: 6, width: 1, count: 3, spread: 40, charge: 0, cooldown: 4, mp: 3, base: 0.6 },
+      { name: '冷たい手', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.6 },
+    ],
+  },
+  yeti: {
+    name: 'イエティ', glyph: '雪', radius: 20, color: '#cfd8dc', exp: 46, itemRate: 0.25,
+    drops: [{ id: 'yetiFur', rate: 1 }, { id: 'iceBlock', rate: 0.15 }],
+    stats: { maxHp: 44, maxMp: 14, str: 7.4, vit: 12, agi: 9, int: 1.5, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { mdef: 6 },
+    attacks: [
+      { name: '凍てつく大地', type: 'melee', shape: 'circle', range: 2.3, charge: 1, cooldown: 4, mp: 4, power: 1.5 },
+      { name: '雪玉', type: 'lob', castRange: 6, radius: 1.3, charge: 1, cooldown: 3, mp: 3, power: 1.1 },
+      { name: '剛腕', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
+    ],
+  },
+  // 迷いの湿地
+  poisonFrog: {
+    name: '毒ガエル', glyph: '蛙', radius: 13, color: '#66bb6a', exp: 22, itemRate: 0.12, keepDistance: 3,
+    drops: [{ id: 'frogSkin', rate: 1 }, { id: 'poisonGland', rate: 0.15 }],
+    stats: { maxHp: 12, maxMp: 9, str: 5.2, vit: 4, agi: 20, int: 2, luk: 12, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { mdef: 4 },
+    attacks: [
+      { name: '毒液', type: 'projectile', range: 5, width: 1, charge: 0, cooldown: 3, mp: 3, power: 1.0 },
+      { name: '舌打ち', type: 'melee', shape: 'line', range: 3, width: 1, charge: 0, cooldown: 2, mp: 2, power: 1.1 },
+      { name: '体当たり', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.7 },
+    ],
+  },
+  willWisp: {
+    name: '鬼火', glyph: '鬼', radius: 12, color: '#7e57c2', exp: 22, itemRate: 0.12, keepDistance: 5,
+    drops: [{ id: 'wispLight', rate: 1 }, { id: 'soulShard', rate: 0.12 }],
+    stats: { maxHp: 7, maxMp: 12, str: 3.5, vit: 2, agi: 22.5, int: 3, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.4 },
+    gear: { mdef: 12 },
+    attacks: [
+      { name: '鬼火の群れ', type: 'lob', kind: 'magic', castRange: 6, radius: 1.2, count: 4, scatter: 2.5, charge: 1, cooldown: 5, mp: 4, base: 0.7 },
+      { name: '火の粉', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.5 },
+    ],
+  },
+  // 灼熱の砂丘
+  scorpion: {
+    name: 'デザートスコーピオン', glyph: '蠍', radius: 15, color: '#d4a056', exp: 30, itemRate: 0.14,
+    drops: [{ id: 'scorpionShell', rate: 1 }, { id: 'venomTail', rate: 0.15 }],
+    stats: { maxHp: 20, maxMp: 8, str: 6.2, vit: 11, agi: 15, int: 1, luk: 12, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { mdef: 4 },
+    attacks: [
+      { name: '毒尾の一突き', type: 'melee', shape: 'line', range: 2, width: 1, charge: 1, cooldown: 3, mp: 3, power: 2.0 },
+      { name: 'ハサミ', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.9 },
+    ],
+  },
+  sandworm: {
+    name: 'サンドワーム', glyph: '虫', radius: 21, color: '#c8a165', exp: 50, itemRate: 0.25,
+    drops: [{ id: 'wormHide', rate: 1 }, { id: 'desertOrb', rate: 0.12 }],
+    stats: { maxHp: 46, maxMp: 14, str: 7.2, vit: 10, agi: 7.5, int: 2, luk: 10, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { mdef: 8 },
+    attacks: [
+      { name: '突き上げ', type: 'melee', shape: 'circle', range: 2.3, charge: 1, cooldown: 4, mp: 4, power: 1.6 },
+      { name: '砂吐き', type: 'projectile', range: 5, width: 1, count: 3, spread: 45, charge: 1, cooldown: 4, mp: 4, power: 0.9 },
+      { name: '噛みつき', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
+    ],
+  },
+  mummy: {
+    name: 'ミイラ兵', glyph: '包', radius: 15, color: '#d7ccc8', exp: 32, itemRate: 0.15,
+    drops: [{ id: 'oldBandage', rate: 1 }, { id: 'ancientCoin', rate: 0.2 }],
+    stats: { maxHp: 30, maxMp: 8, str: 6.4, vit: 9, agi: 9, int: 1, luk: 8, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { mdef: 2 },
+    attacks: [
+      { name: '錆びた剣', type: 'melee', shape: 'fan', range: 1.5, angle: 140, charge: 1, cooldown: 3, mp: 3, power: 1.5 },
+      { name: '包帯投げ', type: 'projectile', range: 5, width: 1, charge: 0, cooldown: 4, mp: 3, power: 1.0 },
+      { name: '殴る', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 0.9 },
+    ],
+  },
+  bandit: {
+    name: '砂漠の盗賊', glyph: '賊', radius: 14, color: '#8d6e63', exp: 28, itemRate: 0.2,
+    drops: [{ id: 'stolenPouch', rate: 1 }, { id: 'stolenJewel', rate: 0.1 }],
+    stats: { maxHp: 14, maxMp: 8, str: 6.0, vit: 6, agi: 27.5, int: 1.5, luk: 20, critMult: 1.5, hpRegen: 0, mpRegen: 0.3 },
+    gear: { mdef: 4 },
+    attacks: [
+      { name: '踏み込み斬り', type: 'melee', shape: 'line', range: 2.5, width: 1, charge: 0, cooldown: 3, mp: 3, power: 1.3 },
+      { name: '短刀', type: 'melee', shape: 'fan', range: 1.5, angle: 120, charge: 0, cooldown: 1, power: 1.0 },
+    ],
+  },
   // ダンジョンのボス (狼の洞穴)
   wolfKing: {
     name: '狼王', glyph: '牙', sprite: 'assets/sprites/enemies/wolfKing.png', radius: 24, color: '#607d8b', exp: 250, itemRate: 1, itemCount: 1, isBoss: true, skillChance: 0.7,
