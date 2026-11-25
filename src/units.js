@@ -200,10 +200,10 @@ const clampPotential = (v) => clamp(v, GROWTH.potential.min, GROWTH.potential.ma
 //   潜在 (u.potential) を持つキャラだけ育つ (今は主人公だけ)
 function trainStat(u, k, pts) {
   const S = GROWTH.stats[k], P = GROWTH.potential;
-  if (!u.potential || !S || !(pts > 0) || u.base[k] >= S.max) return 0;
+  if (!u.potential || !S || !(pts > 0)) return 0;
   let rest = pts, up = 0;
-  while (rest > 0 && u.base[k] < S.max) {
-    const next = Math.min(S.max, Math.floor(u.base[k]) + 1);
+  while (rest > 0) {
+    const next = Math.floor(u.base[k]) + 1;
     const need = (next - u.base[k]) * P.base / u.potential[k]; // 次の一の位まで伸ばすのに要る pts
     if (rest < need) { u.base[k] += rest * u.potential[k] / P.base; break; }
     rest -= need;

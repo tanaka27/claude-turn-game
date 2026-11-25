@@ -81,7 +81,7 @@ test('一の位が上がるとステータスが 1 上がり、潜在が × (1 �
   near(p.potential.mus, 100 * d1 * d1);
 });
 
-test('体力・意思 が上がると さいだいHP と今の HP も同じだけ増える。上限 max でちょうど止まる', () => {
+test('体力・意思 が上がると さいだいHP と今の HP も同じだけ増える。上限はない', () => {
   const { g, p } = withWolf();
   const S = growthOf(g).stats.con, max0 = p.stats.maxHp;
   p.hp = 10;
@@ -91,11 +91,13 @@ test('体力・意思 が上がると さいだいHP と今の HP も同じだ�
   g.trainStat(p, 'will', 1);
   assert.strictEqual(p.stats.maxHp, max0 + 2);
   assert.strictEqual(p.hp, 12);
-  p.base.con = S.max - 0.5;
+  assert.ok(!('max' in S), 'growth.stats に上限 max はない');
+  p.base.con = 999.5;
+  p.potential.con = 100;
   g.refreshStats(p);
-  g.trainStat(p, 'con', 50);
-  assert.strictEqual(p.base.con, S.max);
-  assert.strictEqual(g.trainStat(p, 'con', 50), 0, '上限ではもう上がらない');
+  assert.strictEqual(g.trainStat(p, 'con', 1), 1, '999 を超えても上がる');
+  assert.strictEqual(Math.floor(p.base.con), 1000);
+  assert.strictEqual(p.stats.maxHp, max0 + 2 + (1000 - 11), '装備の分は別 (体力 11 → 1000)');
 });
 
 test('さいだいMP = 魔力 + (知力 + 精神力) ÷ 3 (切り捨て)。魔力は 1 で +1、知力・精神力は 3 つで +1', () => {

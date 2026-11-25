@@ -209,14 +209,14 @@ function applySave(save) {
   const s = save.player, p = player;
   p.level = clamp(Math.floor(s.level) || 1, 1, PROGRESSION.maxLevel);
   p.exp = Math.max(0, s.exp || 0);
-  // 伸びた値 (小数のまま): ない・数でないものは Lv1 の値、Lv1 の値〜上限 (max) に収める
+  // 伸びた値 (小数のまま): ない・数でないものは Lv1 の値、Lv1 の値より小さければ Lv1 の値 (上限はない)
   // 潜在: ない・数でないものははじめの値、下限〜上限に収める
   p.base = startBase();
   p.potential = startPotential();
   const num = (o, k) => (o && typeof o === 'object' && Number.isFinite(o[k]) ? o[k] : undefined);
   for (const k in GROWTH.stats) {
-    const S = GROWTH.stats[k], b = num(s.base, k), pot = num(s.potential, k);
-    if (b !== undefined) p.base[k] = clamp(b, PLAYER.stats[k], S.max);
+    const b = num(s.base, k), pot = num(s.potential, k);
+    if (b !== undefined) p.base[k] = Math.max(b, PLAYER.stats[k]);
     if (pot !== undefined) p.potential[k] = clampPotential(pot);
   }
   // 数でない (文字列など) ・負の値は 0 にする (ゲーム内の時刻が NaN になると行動順が壊れる)

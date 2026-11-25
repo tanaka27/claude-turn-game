@@ -117,10 +117,11 @@ test('新しい版・古すぎる版・形がおかしいセーブは読まな�
   assert.strictEqual(g.migrateSave('save'), null);
 });
 
-test('おかしな値は直して読む (上限を超えたステータス・範囲外の潜在・知らない素材・壊れた装備)', () => {
+test('おかしな値は直して読む (大きなステータスはそのまま・Lv1 未満のステータス・範囲外の潜在・知らない素材・壊れた装備)', () => {
   const { save } = playedSave();
   save.player.base.mus = 999;
-  save.player.base.vit = 'x';
+  save.player.base.dex = 'x';
+  save.player.base.con = 3;
   save.player.potential.agi = 9999;
   save.player.potential.will = -5;
   save.player.materials.unknownThing = 3;
@@ -128,8 +129,9 @@ test('おかしな値は直して読む (上限を超えたステータス・範
   const g2 = loadGame();
   g2.startGame(g2.migrateSave(save));
   const G = g2.PARAMS.progression.growth;
-  assert.strictEqual(g2.player.base.mus, G.stats.mus.max, '上限まで');
-  assert.strictEqual(g2.player.base.vit, g2.PLAYER.stats.vit, '数でなければ Lv1 の値');
+  assert.strictEqual(g2.player.base.mus, 999, '上限はないのでそのまま');
+  assert.strictEqual(g2.player.base.dex, g2.PLAYER.stats.dex, '数でなければ Lv1 の値');
+  assert.strictEqual(g2.player.base.con, g2.PLAYER.stats.con, 'Lv1 の値より小さければ Lv1 の値');
   assert.strictEqual(g2.player.potential.agi, G.potential.max);
   assert.strictEqual(g2.player.potential.will, G.potential.min);
   assert.ok(!('unknownThing' in g2.player.materials));
