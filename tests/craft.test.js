@@ -17,10 +17,10 @@ function haveFor(g, id) {
 }
 
 // ----- 武器の種類 -----
-test('武器種: 武器はどれも種類 (剣・短剣・斧・杖・槍) を持ち、基本性能は種類で決まる。防具・装飾品は種類を持たない', () => {
+test('武器種: 武器はどれも種類 (剣・短剣・斧・杖・槍・弓) を持ち、基本性能は種類で決まる。防具・装飾品は種類を持たない', () => {
   const g = newGame();
   const types = g.ITEMS.slots.weapon.types;
-  assert.deepStrictEqual(Object.keys(types), ['sword', 'dagger', 'axe', 'staff', 'spear']);
+  assert.deepStrictEqual(Object.keys(types), ['sword', 'dagger', 'axe', 'staff', 'spear', 'bow']);
   for (const t of Object.keys(types)) {
     const it = g.makeItem('weapon', 5, 'common', false, { type: t });
     assert.strictEqual(it.type, t);

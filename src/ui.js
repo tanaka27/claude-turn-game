@@ -290,14 +290,17 @@ function renderPop() {
   $('itemPop').classList.toggle('show', !!html);
 }
 // 道具の詳細。道具一覧で、一時停止していなければ「使う」(画面を閉じて 1 行動。使えないときは理由)
+//   矢は「使う矢にする」(行動にならないので一時停止中でも選べる)
 function toolPopHtml(t) {
-  const r = rarityOf(t.rarity), canUse = !!screenNow().toolUse && !game.paused, reason = t.reason;
+  const r = rarityOf(t.rarity), canUse = !!screenNow().toolUse && (t.arrow || !game.paused), reason = t.reason;
+  const how = t.arrow ? `<div class="row"><span>${txt('menu.arrowUse')}</span><span>${txt('menu.arrowUseValue')}</span></div>`
+    : `<div class="row"><span>${txt('menu.useKey')}</span><span>${txt('menu.useKeyValue', { key: t.key.toUpperCase() })}</span></div>`;
   return `<div class="dname" style="color:${r.color}">${t.name}</div>
     <div class="dsub">${txt('menu.toolSub', { rarity: r.name })}</div>
     <div class="ptext">${t.desc}</div>
     <div class="stats"><div class="row"><span>${txt('menu.have')}</span><span>${txt('menu.haveOf', { n: t.count, max: t.max })}</span></div>
-      <div class="row"><span>${txt('menu.useKey')}</span><span>${txt('menu.useKeyValue', { key: t.key.toUpperCase() })}</span></div></div>
-    ${canUse ? `<div class="btns"><button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>${txt('menu.use')}</button></div>
+      ${how}</div>
+    ${canUse ? `<div class="btns"><button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>${toolUseLabel(t)}</button></div>
       ${reason ? `<p class="hint">${txt('menu.cannotUse', { reason })}</p>` : ''}` : ''}`;
 }
 // 素材の詳細: 数・売値・落とす魔物
@@ -369,9 +372,15 @@ function strengthHtml() {
 // 道具の種類を増やすときは data/items.js の consumables に足す (効果の種類は src/items.js の ITEM_EFFECTS)
 //   usable / reason: 使えるか・使えない理由 (どちらも consumableBlock。使うときと同じ判定) /
 //   use(): 1 行動を返す関数 (doPlayerAction に渡す。行動したら true)。今は主人公が自分に使う
+//   矢 (arrow): 「使う」のかわりに「使う矢にする」(行動にならない。picked: 次に撃つ矢か)
 function toolEntries() {
   const p = player;
   return Object.entries(ITEMS.consumables).map(([id, c]) => {
+    if (c.arrow) {
+      const count = consumableCount(p, id), picked = currentArrow(p) === id;
+      return { id, name: c.name, rarity: c.rarity, count, max: c.max, key: '', arrow: true, picked,
+        desc: consumableDesc(id, p), usable: count > 0 && !picked, reason: count > 0 ? '' : txt('items.noneReason'), use: () => selectArrow(p, id) };
+    }
     const block = consumableBlock(p, id);
     return {
       id, name: c.name, rarity: c.rarity, count: consumableCount(p, id), max: c.max, key: c.key,
@@ -384,14 +393,21 @@ function toolEntries() {
 function renderTools() {
   const inv = !!screenNow().toolUse;
   $('toolList').innerHTML = toolEntries().map((t) => {
-    const btn = inv ? `<button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>${txt('menu.use')}</button>` : '';
+    const btn = inv ? `<button data-act="use" data-tool="${t.id}"${t.usable ? '' : ' disabled'}>${toolUseLabel(t)}</button>` : '';
     const r = rarityOf(t.rarity);
+    const line = t.arrow ? txt('menu.arrowLine', { rarity: r.name, desc: t.desc }) : txt('menu.toolLine', { rarity: r.name, desc: t.desc, key: t.key.toUpperCase() });
     return `<div class="item tool${t.count ? '' : ' none'}${usesPop() ? ' pop' : ''}" data-tool="${t.id}" style="--rc:${r.color}"><b>${txt('menu.toolName', { name: t.name, n: t.count })}<small>${txt('menu.toolMax', { max: t.max })}</small></b>
-      <span>${txt('menu.toolLine', { rarity: r.name, desc: t.desc, key: t.key.toUpperCase() })}</span>${btn}</div>`;
+      <span>${line}</span>${btn}</div>`;
   }).join('');
 }
 
-const canBuyConsumable = (id) => player.gold >= ITEMS.consumables[id].price && consumableCount(player, id) < ITEMS.consumables[id].max;
+// 「使う」ボタンの文 (矢は「使う矢にする」、次に撃つ矢なら「使用中」)
+const toolUseLabel = (t) => (t.arrow ? txt(t.picked ? 'menu.arrowPicked' : 'menu.arrowPick') : txt('menu.use'));
+
+// 商人で 1 回に買う数 (buyCount。持てる数 max を超える分は買わない) と、その代金
+const buyCountOf = (id) => Math.max(0, Math.min(ITEMS.consumables[id].buyCount || 1, ITEMS.consumables[id].max - consumableCount(player, id)));
+const buyCostOf = (id) => ITEMS.consumables[id].price * buyCountOf(id);
+const canBuyConsumable = (id) => buyCountOf(id) > 0 && player.gold >= buyCostOf(id);
 
 // 素材の一覧。店では 1 つずつ・種類ごと・全部を売れる
 const materialTotal = () => Object.entries(player.materials).reduce((s, [id, n]) => s + ITEMS.materials[id].price * n, 0);
@@ -452,16 +468,19 @@ const MENU_ACTIONS = {
   },
 };
 // 道具を使う (画面を閉じて 1 行動)。使えなくても画面は作り直さない
+// 矢は選ぶだけ (画面は閉じない。行動にならない)
 function useToolAction(btn) {
   const t = toolEntries().find((x) => x.id === btn.dataset.tool);
+  if (t && t.arrow) { if (t.usable) t.use(); return; }
   if (t && t.usable) { closeMenu(); doPlayerAction(t.use); }
   return true;
 }
 function buyConsumableAction(btn) {
   const p = player, id = btn.dataset.item;
   if (shopDef().consumables.includes(id) && canBuyConsumable(id)) {
-    p.gold -= ITEMS.consumables[id].price;
-    p.consumables[id] = consumableCount(p, id) + 1;
+    const n = buyCountOf(id);
+    p.gold -= buyCostOf(id);
+    p.consumables[id] = consumableCount(p, id) + n;
   }
 }
 function sellGearAction() {
@@ -513,9 +532,11 @@ registerScreen('shop', menuScreen({
   defs: () => ITEMS.shops,
   open: (id) => { menuState.shop = id; },
   shopList: () => shopDef().consumables.map((id) => {
-    const c = ITEMS.consumables[id], ok = canBuyConsumable(id);
-    return `<div class="item potion" style="--rc:${rarityOf(c.rarity).color}"><b>${c.name}</b><span>${txt('menu.shopLine', { rarity: rarityOf(c.rarity).name, desc: consumableDesc(id), key: c.key.toUpperCase() })}</span>
-        <button data-act="buyItem" data-item="${id}"${ok ? '' : ' disabled'}>${txt('menu.shopBuy', { n: c.price })}</button></div>`;
+    const c = ITEMS.consumables[id], ok = canBuyConsumable(id), rn = rarityOf(c.rarity).name, n = buyCountOf(id) || c.buyCount || 1;
+    const line = c.key ? txt('menu.shopLine', { rarity: rn, desc: consumableDesc(id), key: c.key.toUpperCase() }) : txt('menu.shopLineArrow', { rarity: rn, desc: consumableDesc(id) });
+    const label = (c.buyCount || 1) > 1 ? txt('menu.shopBuyMany', { count: n, n: c.price * n }) : txt('menu.shopBuy', { n: c.price });
+    return `<div class="item potion" style="--rc:${rarityOf(c.rarity).color}"><b>${c.name}</b><span>${line}</span>
+        <button data-act="buyItem" data-item="${id}"${ok ? '' : ' disabled'}>${label}</button></div>`;
   }).join('') || `<p class="hint">${txt('menu.shopEmpty')}</p>`,
   actions: {
     buyItem: buyConsumableAction,

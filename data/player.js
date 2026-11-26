@@ -62,6 +62,7 @@ const PLAYER = {
   potential: { con: 100, will: 100, mag: 100, spi: 100, mus: 100, dex: 100, agi: 100, int: 100 },
   // 通常攻撃: 敵のいるマスへ移動しようとすると、その敵を攻撃する (体当たり)
   basicAttack: { name: '斬撃', power: 1.0 },
+  bowAttack: { power: 1.0 },          // 弓で撃つ (威力。こうげき力に矢の攻撃力を足し、投擲として距離で当たりにくくなる。docs/crafting.md)
   // スキル (技の定義は data/skills.js。ここでは id で指す)
   // スキルの覚え方 (はじめの決まり): このレベルになると自動で覚える { スキルの id: レベル }。はじめから遊ぶときは Lv1 のものを覚えている
   //   ほかの覚え方 (師匠・道具など) を足すときも、覚えさせるのは src/units.js の teachSkill だけ

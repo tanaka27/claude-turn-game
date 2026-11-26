@@ -17,6 +17,10 @@ const TEXT = {
     statUp: '{stat}↑',                               // 強化・弱体をかけたときに頭の上に浮かぶ文字
     statDown: '{stat}↓',
     noDash: 'その方向には進めない。',
+    // 弓 (src/player.js の shootAt / bumpAttack)
+    noArrow: '矢がない！ 素手で殴る。',
+    fist: '素手',
+    outOfArrows: '矢が尽きた。',
     // ダメージの文 (damageLine)。src: 使った者 / what: 技 / tgt: 受けた者 / crit: 会心なら critMark、そうでなければ空
     critMark: '（会心）',
     heroHurt: '{src}の{what}！ {dmg} のダメージを受けた{crit}',
@@ -93,6 +97,10 @@ const TEXT = {
     used: '{user}{target}{item}を使った。{effects}',
     usedBy: '{who}は',
     usedOn: '{who}に',
+    // 矢 (consumables の arrow)
+    arrowDesc: '弓で撃つ矢・こうげき力 +{atk}（撃つたびに 1 本使う）',
+    arrowNotUsable: '{item}は弓で撃つときに使う。',
+    arrowReason: '弓で撃つときに使うもの',
   },
 
   // ----- ゾーン (src/map.js) -----
@@ -206,6 +214,14 @@ const TEXT = {
     // 店
     shopLine: '{rarity}・{desc}（{key} で使う）',
     shopBuy: '買う（{n} G）',
+    shopLineArrow: '{rarity}・{desc}',
+    shopBuyMany: '{count} 本買う（{n} G）',
+    // 矢 (道具一覧)
+    arrowLine: '{rarity}・{desc}',
+    arrowPick: '使う矢にする',
+    arrowPicked: '使用中',
+    arrowUse: '使い方',
+    arrowUseValue: '弓を装備して撃つ（射程の中の敵をクリック・敵の方向へ動く）',
     shopEmpty: '売り物はない',
     smithEmpty: '装備は売り切れ（レベルが上がると入れ替わる）',
     goods: '商品',
@@ -281,6 +297,8 @@ const TEXT = {
     itemCount: '×{n}',
     itemsButton: '道具',
     itemsKey: 'I',
+    arrowKey: '矢',                                  // スキル欄: 弓を装備しているときの矢の欄
+    noArrow: '矢なし',
     bossBar: 'Lv{level} {name}  {hp} / {max}',
     mapHintWorld: 'M: 世界地図',
     mapHintZoom: 'ホイール: 拡大 ×{zoom}　クリック・M: 大きく',  // 右下の世界地図

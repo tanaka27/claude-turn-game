@@ -144,7 +144,7 @@ test('v1 のセーブは今の形に直して読め、クエストの進み具�
   assert.strictEqual(p.hp, 21);
   assert.strictEqual(p.mp, 9);
   assert.strictEqual(p.gold, 210);
-  assert.deepStrictEqual(plain(bagOf(p)), { potion: 5, hiPotion: 1 });
+  assert.deepStrictEqual(plain(bagOf(p)), { potion: 5, hiPotion: 1, woodArrow: 0, ironArrow: 0, steelArrow: 0 });
   assert.deepStrictEqual(plain(p.inventory), V1_SAVE.player.inventory);
   // v12 で武器に種類 (剣) が付く
   const sword = (eq) => ({ ...eq, weapon: eq.weapon && { ...eq.weapon, type: 'sword' } });
@@ -244,13 +244,13 @@ test('v3 のセーブは、回復薬の数 (potions) が道具の数 (consumable
   assert.deepStrictEqual(plain(d.player.knownSkills), V3_SAVE.player.knownSkills);
   g.startGame(d);
   const p = g.player;
-  assert.deepStrictEqual(plain(bagOf(p)), { potion: 12, hiPotion: 4 });
+  assert.deepStrictEqual(plain(bagOf(p)), { potion: 12, hiPotion: 4, woodArrow: 0, ironArrow: 0, steelArrow: 0 });
   assert.strictEqual(p.gold, 480);
   assert.strictEqual(g.zone.id, 'world');
   // 書いたものは今の形で、読み直してまた書いても同じ
   const saved = JSON.parse(g.storage.get('zankai-turn-save'));
   assert.strictEqual(saved.v, CURRENT);
-  assert.deepStrictEqual(saved.player.consumables, { potion: 12, hiPotion: 4 });
+  assert.deepStrictEqual(saved.player.consumables, { potion: 12, hiPotion: 4, woodArrow: 0, ironArrow: 0, steelArrow: 0 });
   assert.ok(!('potions' in saved.player));
   const g2 = loadGame();
   const d2 = g2.migrateSave(copy(saved));
@@ -262,7 +262,7 @@ test('v3 のセーブは、回復薬の数 (potions) が道具の数 (consumable
   // 持てる数を超えていたら上限まで
   const g3 = loadGame();
   g3.startGame(g3.migrateSave({ ...copy(V3_SAVE), player: { ...copy(V3_SAVE.player), potions: { potion: 99, hiPotion: -3 } } }));
-  assert.deepStrictEqual(plain(bagOf(g3.player)), { potion: g3.ITEMS.consumables.potion.max, hiPotion: 0 });
+  assert.deepStrictEqual(plain(bagOf(g3.player)), { potion: g3.ITEMS.consumables.potion.max, hiPotion: 0, woodArrow: 0, ironArrow: 0, steelArrow: 0 });
 });
 
 test('v3 → v4: 数だけ (v1 より前の形) は回復薬 potion の数にし、ない・おかしいときは空にする', () => {
@@ -280,7 +280,7 @@ test('v3 → v4: 数だけ (v1 より前の形) は回復薬 potion の数にし
   const d = g.migrateSave({ ...copy(V1_SAVE), player: { ...copy(V1_SAVE.player), potions: 6 } });
   assert.deepStrictEqual(plain(d.player.consumables), { potion: 6 });
   g.startGame(d);
-  assert.deepStrictEqual(plain(bagOf(g.player)), { potion: 6, hiPotion: 0 });
+  assert.deepStrictEqual(plain(bagOf(g.player)), { potion: 6, hiPotion: 0, woodArrow: 0, ironArrow: 0, steelArrow: 0 });
 });
 
 test('読むときに渡されたセーブは書き換えない', () => {

@@ -120,10 +120,15 @@ canvas.addEventListener('mousedown', (e) => {
   const n = tileSteps(player.tx, player.ty, tx, ty);
   if (n === 0) { doPlayerAction(waitTurn); return; }
   if (n === 1) { doPlayerAction(() => tryMove(tx - player.tx, ty - player.ty)); return; }
-  // 通常攻撃が届く敵 (槍。縦・横・斜めにまっすぐ並んだ 1 + 攻撃範囲 マス以内) をクリックしたら、その向きに攻撃する (当たるのはいちばん近い敵)
   const ddx = tx - player.tx, ddy = ty - player.ty, foe = unitAt(tx, ty);
+  // 弓 (矢がある): 射程の中で、間を壁などで遮られていない敵をクリックしたら撃つ
+  if (foe && hostileTo(player.faction, foe.faction) && canShoot(player) && n <= shotRange(player) && hasLOS(player.tx, player.ty, tx, ty)) {
+    doPlayerAction(() => shootAt(foe));
+    return;
+  }
+  // 通常攻撃が届く敵 (槍。縦・横・斜めにまっすぐ並んだ 1 + 攻撃範囲 マス以内) をクリックしたら、その向きに攻撃する (当たるのはいちばん近い敵)
   if (foe && hostileTo(player.faction, foe.faction) && (ddx === 0 || ddy === 0 || Math.abs(ddx) === Math.abs(ddy)) &&
-    n <= 1 + Math.floor(player.stats.reach || 0) && reachTarget(player, Math.sign(ddx), Math.sign(ddy))) {
+    n <= attackLength(player) && reachTarget(player, Math.sign(ddx), Math.sign(ddy))) {
     doPlayerAction(() => tryMove(Math.sign(ddx), Math.sign(ddy)));
     return;
   }
@@ -139,11 +144,23 @@ function doPlayerAction(fn) {
   if (fn()) endPlayerAction();
 }
 
-// 通常攻撃が届く相手と、そこまでのマス: (dx, dy) の向き (縦・横・斜めの 1 歩) に 1 + 攻撃範囲 (stats.reach。槍) マス先まで。
+// ----- 弓 (data/items.js の武器種のうち ammo のもの。矢は src/items.js の currentArrow) -----
+// 弓で撃てるか (弓を装備していて、矢がある)
+const canShoot = (u) => wieldsBow(u) && !!currentArrow(u);
+// 弓で撃てる距離 (マス。縦・横・斜めの歩数。弓の固有効果 stats.range)
+const shotRange = (u) => Math.max(1, Math.floor(u.stats.range || 0));
+// 通常攻撃が届く歩数: 弓で撃てるなら射程、弓で矢がなければとなりだけ (素手)、ほかは 1 + 攻撃範囲 (槍)
+function attackLength(u) {
+  if (canShoot(u)) return shotRange(u);
+  if (wieldsBow(u)) return 1;
+  return 1 + Math.max(0, Math.floor(u.stats.reach || 0));
+}
+
+// 通常攻撃が届く相手と、そこまでのマス: (dx, dy) の向き (縦・横・斜めの 1 歩) に attackLength マス先まで (槍は 1 + 攻撃範囲、弓は射程)。
 //   当たるのはいちばん近いキャラだけで、それが敵のときだけ { target, tiles } を返す (味方・NPC が手前にいれば届かない)。
 //   攻撃を遮る地形 (壁など) の先には届かない。2 マス目からは、斜めに進むとき角を挟む 2 マスが両方とも遮るなら止まる (直線 rayTiles と同じ決まり)
 function reachTarget(u, dx, dy) {
-  const reach = 1 + Math.max(0, Math.floor(u.stats.reach || 0));
+  const reach = attackLength(u);
   const tiles = [];
   let x = u.tx, y = u.ty;
   for (let i = 1; i <= reach; i++) {
@@ -165,9 +182,10 @@ function tryMove(dx, dy, walk = false) {
   const p = player, nx = p.tx + dx, ny = p.ty + dy;
   p.facing = Math.atan2(dy, dx);
   const hit = walk ? null : reachTarget(p, dx, dy);
+  if (hit && canShoot(p)) { shootAt(hit.target); return true; }
   if (hit) { bumpAttack(hit.target, hit.tiles); return true; }
   const u = unitAt(nx, ny);
-  if (u && hostileTo(p.faction, u.faction)) { bumpAttack(u); return true; }
+  if (u && hostileTo(p.faction, u.faction)) { if (canShoot(p)) shootAt(u); else bumpAttack(u); return true; }
   if (u) return false;
   const npc = (zone.npcs || []).find((n) => n.tx === nx && n.ty === ny);
   if (npc) { talkTo(npc); return false; }
@@ -179,11 +197,32 @@ function tryMove(dx, dy, walk = false) {
 }
 
 // tiles: 攻撃が通ったマス (槍で離れた敵を突いたときは、間のマスにも演出を出す)
+//   弓を装備しているのに矢がない (または撃てない) ときは素手で殴る: 武器のこうげき力を引き、「矢がない」と出す
 function bumpAttack(e, tiles = [[e.tx, e.ty]]) {
   const p = player;
   p.facing = Math.atan2(e.ty - p.ty, e.tx - p.tx);
+  if (wieldsBow(p) && !canShoot(p)) {
+    logMsg(txt('combat.noArrow'), THEME.msg.refuse);
+    fxTiles(tiles, 'player', FX_THEME.bump.life);
+    const fist = { ...BASIC_ATTACK, atkBonus: -((p.equip.weapon.stats || {}).atk || 0) };
+    dealDamage(p, e, fist, txt('combat.fist'));
+    return;
+  }
   fxTiles(tiles, 'player', FX_THEME.bump.life);
   dealDamage(p, e, BASIC_ATTACK, BASIC_ATTACK.name);
+}
+
+// 弓で敵 e を撃つ (1 行動)。矢を 1 本使い (当たっても外れても)、矢の攻撃力を足す。投擲なので離れるほど当たりにくい (hitChance)
+function shootAt(e) {
+  const p = player, id = currentArrow(p);
+  if (!id) return false;
+  const c = ITEMS.consumables[id];
+  p.facing = Math.atan2(e.ty - p.ty, e.tx - p.tx);
+  p.consumables[id]--;
+  fxBolt(p.x, p.y, e.x, e.y, 'player');
+  dealDamage(p, e, { ...PLAYER.bowAttack, atkBonus: c.arrow.atk, thrown: true }, c.name);
+  if (!currentArrow(p)) logMsg(txt('combat.outOfArrows'), THEME.msg.refuse);
+  return true;
 }
 
 function waitTurn() { return true; }

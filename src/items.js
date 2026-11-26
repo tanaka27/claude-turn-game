@@ -44,14 +44,16 @@ const gearTypesOf = (slot) => Object.keys(ITEMS.slots[slot].types || {});
 
 // 装備を作る。rarity を省略するとレア度の出やすさ (boss なら bossWeight) で決める
 //   opt.type: 種類 (武器種。省略するとくじ) / opt.name: 決まった名前 (作った装備) / opt.recipe: 作り方のキー (作った装備)
+//   opt.bonus: 基本性能に足す性能 { ステータス: [Lv1 の値, 1 レベルごとの増加] } (作り方の bonus。器用さの補正のある弓など)
 function makeItem(slot, level, rarity, boss, opt = {}) {
   const S = ITEMS.slots[slot], types = gearTypesOf(slot);
   const type = types.length ? (types.includes(opt.type) ? opt.type : types[Math.floor(Math.random() * types.length)]) : null;
   const K = gearKindOf(slot, type);
   const R = rarity ? rarityOf(rarity) : pickWeighted(ITEMS.rarities, boss ? 'bossWeight' : 'weight');
   const stats = {};
-  for (const k in K.base) {
-    const v = scaledByLevel(K.base[k], level);
+  const base = { ...K.base, ...(opt.bonus || {}) };
+  for (const k in base) {
+    const v = scaledByLevel(base[k], level);
     stats[k] = roundStat(k, v > 0 ? v * R.mult : v);
   }
   for (const k in K.fixed || {}) stats[k] = K.fixed[k]; // 種類だけが持つ決まった値 (槍の攻撃範囲。レベル・レア度で変わらない)
@@ -86,7 +88,7 @@ function craftItem(p, id) {
     if (!p.materials[m]) delete p.materials[m];
   }
   p.gold -= r.gold;
-  const it = makeItem(r.slot, r.level, pickWeighted(ITEMS.craftRarities, 'weight').rarity, false, { type: r.type, name: r.name, recipe: id });
+  const it = makeItem(r.slot, r.level, pickWeighted(ITEMS.craftRarities, 'weight').rarity, false, { type: r.type, name: r.name, recipe: id, bonus: r.bonus });
   p.inventory.push(it);
   questEvent('materials'); // 集めるクエストは素材が足りなくなると「受けている」に戻る
   return it;
@@ -200,16 +202,38 @@ const ITEM_EFFECTS = {
 
 // 道具の数 { 道具のキー: 数 } (主人公だけが持つ。ほかのキャラは持っていない = 0)
 const consumableCount = (u, id) => (u.consumables && u.consumables[id]) || 0;
+
+// ----- 矢 (consumables のうち arrow を持つもの。弓 (武器種の ammo) で撃つたびに 1 本使う) -----
+const isArrow = (id) => !!(ITEMS.consumables[id] && ITEMS.consumables[id].arrow);
+const arrowIds = () => Object.keys(ITEMS.consumables).filter(isArrow);
+// 矢を撃つ武器 (弓) を装備しているか
+const wieldsBow = (u) => !!(u.equip && u.equip.weapon && (itemKind(u.equip.weapon) || {}).ammo);
+// 次に撃つ矢のキー (なければ null): 選んだ矢 (u.arrow) があればそれ、なければ data/items.js に書いた順で先の矢
+function currentArrow(u) {
+  if (u.arrow && isArrow(u.arrow) && consumableCount(u, u.arrow) > 0) return u.arrow;
+  return arrowIds().find((id) => consumableCount(u, id) > 0) || null;
+}
+// 使う矢を選ぶ (行動にはならない)。持っていない矢は選べない
+function selectArrow(u, id) {
+  if (!isArrow(id) || consumableCount(u, id) <= 0) return false;
+  u.arrow = id;
+  return true;
+}
 // u が道具 id を t (省略時は u 自身) に使えるか。使えるなら null、使えないなら { log: メッセージ欄の文, reason: 道具一覧の理由 }
 function consumableBlock(u, id, t = u) {
   const c = ITEMS.consumables[id];
   if (!(consumableCount(u, id) > 0)) return { log: txt('items.none', { item: c.name }), reason: txt('items.noneReason') };
+  if (c.arrow) return { log: txt('items.arrowNotUsable', { item: c.name }), reason: txt('items.arrowReason') }; // 矢は弓で撃つときに使う
   if (c.effects.some((e) => ITEM_EFFECTS[e.kind].can(e, t))) return null;
   const e = c.effects[0], K = ITEM_EFFECTS[e.kind];
   return { log: K.refuse(e, t), reason: K.reason(e, t) };
 }
 // 道具の説明 (効果をつなげたもの)。t があれば今の値も出す
-const consumableDesc = (id, t) => ITEMS.consumables[id].effects.map((e) => ITEM_EFFECTS[e.kind].desc(e, t)).join(txt('items.descSep'));
+const consumableDesc = (id, t) => {
+  const c = ITEMS.consumables[id];
+  if (c.arrow) return txt('items.arrowDesc', { atk: c.arrow.atk });
+  return c.effects.map((e) => ITEM_EFFECTS[e.kind].desc(e, t)).join(txt('items.descSep'));
+};
 
 // キャラ u が道具 id を t (省略時は u 自身) に使う (1 行動)。どのキャラ・どの相手も、使うのはここだけ。使えたら true
 //   数を 1 減らし、効く効果だけを効かせる。文の頭: 主人公以外が使うと「〇〇は」、ほかの相手に使うと「〇〇に」

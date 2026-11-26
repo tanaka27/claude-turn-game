@@ -22,7 +22,9 @@ const ITEMS = {
   //   types: 種類 (武器種) に分かれる部位。種類ごとに label・base・names を書き、部位の base・names は使わない。
   //     装備は type に種類のキーを持つ (セーブにも残るので、キーは変えない)。店・敵が落とすときの種類はくじで決める
   //     base の値は負でもよい (重い斧のすばやさなど)。負の値にはレア度の倍率をかけない
-  //     fixed: 種類だけが持つ決まった値の能力 { ステータス: 値 } (レベル・レア度で変わらない。槍の攻撃範囲 +1)
+  //     fixed: 種類だけが持つ決まった値の能力 { ステータス: 値 } (レベル・レア度で変わらない。槍の攻撃範囲 +1・弓の射程 5)
+  //     ammo: true なら矢 (consumables の arrow を持つ道具) を撃つ武器 (弓)。撃つたびに矢を 1 本使い、矢の攻撃力を足す。
+  //       矢がないときは素手でとなりを殴る (武器のこうげき力は乗らない)。docs/crafting.md の「弓」
   slots: {
     weapon: { label: '武器', extraAffixes: 0,
       types: {
@@ -36,6 +38,8 @@ const ITEMS = {
           names: ['木の杖', '樫の杖', '魔術師の杖', '銀の杖', '賢者の杖', '魔鋼の杖', '竜骨の杖', '聖杖'] },
         spear: { label: '槍', base: { atk: [1.0, 0.5] }, fixed: { reach: 1 },
           names: ['木の槍', '銅の槍', '鉄の槍', '鋼の槍', '騎士の槍', '魔鋼の槍', '竜骨の槍', '聖槍'] },
+        bow: { label: '弓', base: { atk: [0.6, 0.3] }, fixed: { range: 5 }, ammo: true,
+          names: ['木の弓', '短弓', '狩人の弓', '長弓', '騎士の弓', '魔鋼の弓', '竜骨の弓', '聖弓'] },
       } },
     armor: { label: '防具', base: { def: [0.8, 0.4], maxHp: [1, 0.6] }, extraAffixes: 0,
       names: ['布の服', '革の鎧', '鋲打ちの鎧', '鎖かたびら', '鋼の鎧', '騎士の鎧', '魔鋼の鎧', '竜鱗の鎧'] },
@@ -54,21 +58,27 @@ const ITEMS = {
   //     { kind: 'healHp', ratio }        最大HP × ratio だけ HP を回復する
   //     { kind: 'healMp', ratio }        最大MP × ratio だけ MP を回復する
   //     { kind: 'addBuff', buff, actions } data/buffs.js の buff を、使った相手に actions 行動のあいだかける
+  //   矢 (arrow: { atk }): 弓 (ammo のある武器種) で撃つたびに 1 本使う道具。key・effects は持たない (キーで使わない)。
+  //     atk: 撃つときにこうげき力に足す値。道具一覧で「使う矢にする」と選べる (選んでいなければ、ここに書いた順で先の矢から使う)
+  //   buyCount: 商人で 1 回に買う数 (省略時 1。price は 1 つの値段)
   //   効果の種類 (kind) は src/items.js の ITEM_EFFECTS。足し方は docs/consumables.md
   consumables: {
     potion: { name: '回復薬', rarity: 'common', key: 'r', price: 25, max: 20, start: 3, effects: [{ kind: 'healHp', ratio: 0.4 }] },
     hiPotion: { name: '上回復薬', rarity: 'rare', key: 't', price: 80, max: 10, start: 0, effects: [{ kind: 'healHp', ratio: 0.8 }] },
+    woodArrow: { name: '木の矢', rarity: 'common', price: 3, buyCount: 10, max: 99, start: 0, arrow: { atk: 2 } },
+    ironArrow: { name: '鉄の矢', rarity: 'uncommon', price: 8, buyCount: 10, max: 99, start: 0, arrow: { atk: 5 } },
+    steelArrow: { name: '鋼の矢', rarity: 'rare', price: 15, buyCount: 10, max: 99, start: 0, arrow: { atk: 9 } },
   },
   // 商人の店。world.js の NPC (role: 'shop') の shop にキーを書く
   //   name: 画面の見出し / consumables: 売る道具 (consumables のキー)。素材はどの商人でも売れる (装備の売買は鍛冶屋)
   shops: {
-    townGeneral: { name: '始まりの町の商店', consumables: ['potion'] },
-    wayTools: { name: '宿場の道具屋', consumables: ['potion'] },
-    hamletHerbs: { name: '隠れ里の薬師', consumables: ['potion', 'hiPotion'] },
-    rockTools: { name: '岩根の村の道具屋', consumables: ['potion', 'hiPotion'] },
-    harborTools: { name: '潮風の港の道具屋', consumables: ['potion', 'hiPotion'] },
-    frostHerbs: { name: '霜の村の薬師', consumables: ['potion', 'hiPotion'] },
-    desertBazaar: { name: '砂の都の市場', consumables: ['potion', 'hiPotion'] },
+    townGeneral: { name: '始まりの町の商店', consumables: ['potion', 'woodArrow'] },
+    wayTools: { name: '宿場の道具屋', consumables: ['potion', 'woodArrow'] },
+    hamletHerbs: { name: '隠れ里の薬師', consumables: ['potion', 'hiPotion', 'woodArrow', 'ironArrow'] },
+    rockTools: { name: '岩根の村の道具屋', consumables: ['potion', 'hiPotion', 'woodArrow', 'ironArrow'] },
+    harborTools: { name: '潮風の港の道具屋', consumables: ['potion', 'hiPotion', 'woodArrow', 'ironArrow'] },
+    frostHerbs: { name: '霜の村の薬師', consumables: ['potion', 'hiPotion', 'woodArrow', 'ironArrow', 'steelArrow'] },
+    desertBazaar: { name: '砂の都の市場', consumables: ['potion', 'hiPotion', 'woodArrow', 'ironArrow', 'steelArrow'] },
   },
   // 鍛冶屋で買える装備のレア度 (smiths の gear に書けるのはこれだけ。起動時のデータの確認で調べる)
   smithRarities: ['common', 'uncommon'],
@@ -86,26 +96,27 @@ const ITEMS = {
   smiths: {
     townSmith: { name: '始まりの町の鍛冶屋', levelOffset: 0, maxLevel: 4,
       gear: [['weapon', 'common'], ['weapon', 'common'], ['armor', 'common'], ['accessory', 'common']],
-      recipes: ['fangKnife', 'stingerSword', 'hornAxe', 'jellyStaff', 'featherSpear'] },
+      recipes: ['fangKnife', 'stingerSword', 'hornAxe', 'jellyStaff', 'featherSpear', 'hunterBow'] },
     waySmith: { name: '宿場の鍛冶屋', levelOffset: 0, maxLevel: 8,
       gear: [['weapon', 'common'], ['weapon', 'uncommon'], ['armor', 'common'], ['armor', 'uncommon'], ['accessory', 'uncommon']],
-      recipes: ['flameSword', 'venomDagger', 'stoneAxe', 'windStaff', 'goblinSpear'] },
+      recipes: ['flameSword', 'venomDagger', 'stoneAxe', 'windStaff', 'goblinSpear', 'harpyBow'] },
     hamletSmith: { name: '隠れ里の鍛冶屋', levelOffset: 1,
       gear: [['weapon', 'uncommon'], ['weapon', 'uncommon'], ['armor', 'uncommon'], ['accessory', 'uncommon']],
-      recipes: ['silkDagger', 'scrapSword', 'kingAxe', 'treantStaff', 'koboldSpear'] },
+      recipes: ['silkDagger', 'scrapSword', 'kingAxe', 'treantStaff', 'koboldSpear', 'silkBow'] },
     harborSmith: { name: '港の鍛冶屋', levelOffset: 0, maxLevel: 10,
       gear: [['weapon', 'common'], ['weapon', 'uncommon'], ['armor', 'uncommon'], ['accessory', 'common'], ['accessory', 'uncommon']],
-      recipes: ['gullDagger', 'clawAxe', 'pearlStaff', 'clawSpear'] },
+      recipes: ['gullDagger', 'clawAxe', 'pearlStaff', 'clawSpear', 'gullBow'] },
     frostSmith: { name: '霜の村の鍛冶屋', levelOffset: 1,
       gear: [['weapon', 'uncommon'], ['weapon', 'uncommon'], ['armor', 'uncommon'], ['armor', 'uncommon'], ['accessory', 'uncommon']],
-      recipes: ['iceDagger', 'soulSword', 'yetiAxe', 'wispStaff', 'frogSpear'] },
+      recipes: ['iceDagger', 'soulSword', 'yetiAxe', 'wispStaff', 'frogSpear', 'frostBow'] },
     desertSmith: { name: '砂の都の鍛冶屋', levelOffset: 2,
       gear: [['weapon', 'uncommon'], ['weapon', 'uncommon'], ['armor', 'uncommon'], ['armor', 'uncommon'], ['accessory', 'uncommon'], ['accessory', 'uncommon']],
-      recipes: ['thiefDagger', 'dragonSword', 'wormAxe', 'pharaohStaff', 'orbSpear'] },
+      recipes: ['thiefDagger', 'dragonSword', 'wormAxe', 'pharaohStaff', 'orbSpear', 'dragonBow'] },
   },
   // 鍛冶屋で作る装備 (作り方)。キーは作った装備の recipe に残る (セーブにも残るので変えない)
   //   name: 作った装備の名前 / slot: 部位 / type: 種類 (部位に types があるとき。武器種) / level: 装備レベル (決まった値)
   //   materials: 使う素材 { 素材のキー: 数 } / gold: 作る代金
+  //   bonus: 種類の基本性能に足す性能 { ステータス: [Lv1 の値, 1 レベルごとの増加] } (器用さの補正のある弓など。基本性能と同じくレア度の倍率をかける)
   //   レア度は craftRarities のくじ。基本性能と追加性能の数はレア度で決まり、追加性能の種類と揺れはランダム (店・落とし物と同じ)
   recipes: {
     // 始まりの町 (草原の素材)
@@ -114,35 +125,41 @@ const ITEMS = {
     hornAxe: { name: '角の手斧', slot: 'weapon', type: 'axe', level: 3, materials: { boarHorn: 6, boarMeat: 1 }, gold: 30 },
     jellyStaff: { name: 'ゼリーの杖', slot: 'weapon', type: 'staff', level: 3, materials: { slimeJelly: 6, slimeCore: 1 }, gold: 30 },
     featherSpear: { name: '黒羽の槍', slot: 'weapon', type: 'spear', level: 3, materials: { blackFeather: 6, shinyTrinket: 1 }, gold: 30 },
+    hunterBow: { name: '狩人の短弓', slot: 'weapon', type: 'bow', level: 3, materials: { wolfPelt: 4, blackFeather: 4 }, gold: 30, bonus: { dex: [2, 0.2] } },
     // 風見の宿場 (草原の奥・峡谷の素材)
     flameSword: { name: '火竜鱗の剣', slot: 'weapon', type: 'sword', level: 6, materials: { fireScale: 8, flameSac: 2 }, gold: 50 },
     venomDagger: { name: '毒尾の短剣', slot: 'weapon', type: 'dagger', level: 7, materials: { scorpionShell: 8, venomTail: 2 }, gold: 60 },
     stoneAxe: { name: '岩砕きの斧', slot: 'weapon', type: 'axe', level: 7, materials: { stoneShard: 8, manaCore: 1 }, gold: 60 },
     windStaff: { name: '風切りの杖', slot: 'weapon', type: 'staff', level: 7, materials: { harpyFeather: 8, windCharm: 2 }, gold: 60 },
     goblinSpear: { name: 'ゴブリンの槍', slot: 'weapon', type: 'spear', level: 5, materials: { ragCloth: 8, goblinEarring: 2 }, gold: 45 },
+    harpyBow: { name: 'ハーピーの弓', slot: 'weapon', type: 'bow', level: 6, materials: { harpyFeather: 8, windCharm: 1 }, gold: 50, bonus: { dex: [2, 0.2] } },
     // 森の隠れ里 (森・山の素材とボス)
     silkDagger: { name: '蜘蛛糸の短剣', slot: 'weapon', type: 'dagger', level: 8, materials: { spiderSilk: 8, venomGland: 2 }, gold: 70 },
     scrapSword: { name: 'くず鉄の大剣', slot: 'weapon', type: 'sword', level: 10, materials: { koboldFur: 8, scrapOre: 3 }, gold: 85 },
     kingAxe: { name: '狼王の牙斧', slot: 'weapon', type: 'axe', level: 9, materials: { kingPelt: 2, kingFang: 1, wolfFang: 6 }, gold: 80 },
     treantStaff: { name: '古木の杖', slot: 'weapon', type: 'staff', level: 9, materials: { ancientBranch: 2, mushroomCap: 8, dreamSpore: 2 }, gold: 80 },
     koboldSpear: { name: 'コボルトの鉄槍', slot: 'weapon', type: 'spear', level: 9, materials: { koboldFur: 6, venomGland: 2 }, gold: 75 },
+    silkBow: { name: '蜘蛛糸の弓', slot: 'weapon', type: 'bow', level: 9, materials: { spiderSilk: 8, ancientBranch: 1 }, gold: 80 },
     // 潮風の港 (海岸の素材)
     gullDagger: { name: '海鳥の短剣', slot: 'weapon', type: 'dagger', level: 6, materials: { seabirdFeather: 8, prettyShell: 2 }, gold: 50 },
     clawAxe: { name: '大バサミの斧', slot: 'weapon', type: 'axe', level: 7, materials: { crabShell: 8, bigClaw: 2 }, gold: 60 },
     pearlStaff: { name: '真珠の杖', slot: 'weapon', type: 'staff', level: 7, materials: { inkSac: 8, pearl: 2 }, gold: 60 },
     clawSpear: { name: 'ハサミの銛', slot: 'weapon', type: 'spear', level: 7, materials: { seabirdFeather: 6, bigClaw: 2 }, gold: 60 },
+    gullBow: { name: '海鳥の弓', slot: 'weapon', type: 'bow', level: 7, materials: { seabirdFeather: 8, pearl: 1 }, gold: 60, bonus: { dex: [2, 0.2] } },
     // 霜の村 (高原・湿地の素材)
     iceDagger: { name: '氷牙の短剣', slot: 'weapon', type: 'dagger', level: 10, materials: { whitePelt: 8, iceFang: 2 }, gold: 85 },
     soulSword: { name: '鬼火の剣', slot: 'weapon', type: 'sword', level: 11, materials: { wispLight: 8, soulShard: 2 }, gold: 90 },
     yetiAxe: { name: '雪男の大斧', slot: 'weapon', type: 'axe', level: 11, materials: { yetiFur: 8, iceBlock: 2 }, gold: 90 },
     wispStaff: { name: '氷精の杖', slot: 'weapon', type: 'staff', level: 10, materials: { frostCrystal: 8, wispCore: 2 }, gold: 85 },
     frogSpear: { name: '毒蛙の槍', slot: 'weapon', type: 'spear', level: 10, materials: { frogSkin: 8, poisonGland: 2 }, gold: 85 },
+    frostBow: { name: '氷の大弓', slot: 'weapon', type: 'bow', level: 11, materials: { whitePelt: 8, frostCrystal: 2 }, gold: 90 },
     // 砂の都 (砂丘の素材とボス)
     thiefDagger: { name: '盗賊の短剣', slot: 'weapon', type: 'dagger', level: 12, materials: { stolenPouch: 8, stolenJewel: 2 }, gold: 100 },
     dragonSword: { name: '竜骨の大剣', slot: 'weapon', type: 'sword', level: 14, materials: { dragonScale: 4, dragonHeart: 1 }, gold: 120 },
     wormAxe: { name: '砂虫の斧', slot: 'weapon', type: 'axe', level: 13, materials: { wormHide: 8, desertOrb: 2 }, gold: 110 },
     pharaohStaff: { name: '王墓の杖', slot: 'weapon', type: 'staff', level: 13, materials: { oldBandage: 8, ancientCoin: 2 }, gold: 110 },
     orbSpear: { name: '宝珠の槍', slot: 'weapon', type: 'spear', level: 13, materials: { venomTail: 4, desertOrb: 2 }, gold: 110 },
+    dragonBow: { name: '竜骨の弓', slot: 'weapon', type: 'bow', level: 14, materials: { dragonScale: 3, wormHide: 6 }, gold: 120, bonus: { dex: [2, 0.2] } },
   },
   // 素材 (敵が落とす。商人に売るとお金になる。鍛冶屋で装備を作る材料になる (recipes))
   //   rarity: レア度 (素材ごとに 1 つ) / price: 1 つの売値 / color: マップに落ちているときの色
