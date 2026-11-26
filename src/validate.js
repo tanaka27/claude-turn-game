@@ -83,6 +83,7 @@ function validateData() {
   for (const [slot, e] of Object.entries(PLAYER.startEquip)) {
     check(ITEMS.slots[slot], `data/player.js startEquip: 部位 '${slot}' が data/items.js にない`);
     check(!e || rarityIds.includes(e.rarity), `data/player.js startEquip.${slot}: レア度 '${e && e.rarity}' がない`);
+    check(!e || !ITEMS.slots[slot] || (ITEMS.slots[slot].types ? ITEMS.slots[slot].types[e.type] : e.type === undefined), `data/player.js startEquip.${slot}: 種類 '${e && e.type}' が部位の types にない`);
   }
   // 主人公のステータス: 成長するものは Lv1 の値があり、計算で決まるものは PLAYER.stats に書かない
   for (const k in PLAYER.stats) check(STATS[k], `data/player.js stats: '${k}' が data/stats.js にない`);
@@ -225,14 +226,51 @@ function validateData() {
   zone = null;
 
   for (const [slot, s] of Object.entries(ITEMS.slots)) {
-    for (const k in s.base) check(STATS[k], `data/items.js ${slot}: 基本性能 '${k}' が data/stats.js にない`);
+    const kinds = s.types ? Object.entries(s.types).map(([t, k]) => [`${slot}.types.${t}`, k]) : [[slot, s]];
+    check(!s.types || kinds.length > 0, `data/items.js ${slot}: types に種類がない`);
+    for (const [w, k] of kinds) {
+      check(k.label && Array.isArray(k.names) && k.names.length > 0, `data/items.js ${w}: label か names がない`);
+      for (const b in k.base || {}) check(STATS[b], `data/items.js ${w}: 基本性能 '${b}' が data/stats.js にない`);
+      for (const b in k.fixed || {}) check(STATS[b] && !(b in (k.base || {})), `data/items.js ${w}: fixed の '${b}' が data/stats.js にないか、base と重なっている`);
+    }
   }
+  // 種類のある部位 (武器) で、種類が合っているか (type を省略したらくじにする書き方では、省略を許す)
+  const typeOk = (slot, type, optional) => !ITEMS.slots[slot] || !ITEMS.slots[slot].types ? type === undefined : (optional && type === undefined) || !!ITEMS.slots[slot].types[type];
   for (const k in ITEMS.affixes) check(STATS[k], `data/items.js: 追加性能 '${k}' が data/stats.js にない`);
   for (const [id, sh] of Object.entries(ITEMS.shops)) {
     for (const c of sh.consumables || []) check(ITEMS.consumables[c], `data/items.js shops.${id}: 道具 '${c}' が consumables にない`);
   }
+  for (const r of ITEMS.smithRarities) check(rarityIds.includes(r), `data/items.js smithRarities: レア度 '${r}' がない`);
+  check(ITEMS.craftRarities.length > 0, 'data/items.js craftRarities: くじがない');
+  for (const c of ITEMS.craftRarities) {
+    check(rarityIds.includes(c.rarity), `data/items.js craftRarities: レア度 '${c.rarity}' がない`);
+    check(c.weight > 0, `data/items.js craftRarities: '${c.rarity}' の weight は 0 より大きくする`);
+  }
+  const usedRecipes = new Set();
   for (const [id, sm] of Object.entries(ITEMS.smiths)) {
-    for (const [slot, r] of sm.gear) check(ITEMS.slots[slot] && rarityIds.includes(r), `data/items.js smiths.${id}: 部位 '${slot}' かレア度 '${r}' がない`);
+    for (const [slot, r] of sm.gear) {
+      check(ITEMS.slots[slot] && rarityIds.includes(r), `data/items.js smiths.${id}: 部位 '${slot}' かレア度 '${r}' がない`);
+      check(ITEMS.smithRarities.includes(r), `data/items.js smiths.${id}: レア度 '${r}' は smithRarities にない (鍛冶屋で売れるのは ${ITEMS.smithRarities.join(' / ')})`);
+    }
+    for (const rid of sm.recipes || []) {
+      check(ITEMS.recipes[rid], `data/items.js smiths.${id}: 作り方 '${rid}' が recipes にない`);
+      usedRecipes.add(rid);
+    }
+  }
+  for (const [id, r] of Object.entries(ITEMS.recipes)) {
+    const w = `data/items.js recipes.${id}`;
+    check(r.name, `${w}: name がない`);
+    check(ITEMS.slots[r.slot], `${w}: 部位 '${r.slot}' がない`);
+    check(typeOk(r.slot, r.type, false), `${w}: 種類 '${r.type}' が部位 '${r.slot}' の types にない (種類のない部位には書かない)`);
+    check(Number.isInteger(r.level) && r.level >= 1, `${w}: level は 1 以上の整数にする`);
+    check(Number.isFinite(r.gold) && r.gold >= 0, `${w}: gold は 0 以上にする`);
+    const mats = Object.entries(r.materials || {});
+    check(mats.length > 0, `${w}: materials がない`);
+    for (const [m, n] of mats) {
+      check(ITEMS.materials[m], `${w}: 素材 '${m}' が materials にない`);
+      check(Number.isInteger(n) && n >= 1, `${w}: 素材 '${m}' の数は 1 以上の整数にする`);
+    }
+    check(usedRecipes.has(id), `${w}: どの鍛冶屋の recipes にもない (作れない)`);
   }
   for (const [id, c] of Object.entries(ITEMS.consumables)) check(rarityIds.includes(c.rarity), `data/items.js consumables.${id}: レア度 '${c.rarity}' がない`);
   for (const [id, m] of Object.entries(ITEMS.materials)) check(rarityIds.includes(m.rarity), `data/items.js materials.${id}: レア度 '${m.rarity}' がない`);
@@ -259,6 +297,7 @@ function validateData() {
     check(!q.requires || !(questById(q.requires) || {}).repeatable, `data/quests.js '${q.id}': requires '${q.requires}' はくり返しのクエストなので使えない`);
     const it = q.reward.item;
     check(!it || (ITEMS.slots[it.slot] && rarityIds.includes(it.rarity)), `data/quests.js '${q.id}': 報酬の装備の部位かレア度がない`);
+    check(!it || typeOk(it.slot, it.type, true), `data/quests.js '${q.id}': 報酬の装備の種類 '${it && it.type}' が部位の types にない`);
     for (const c of q.reward.consumables || []) {
       check(ITEMS.consumables[c.id], `data/quests.js '${q.id}': 報酬の道具 '${c.id}' が data/items.js の consumables にない`);
       check(Number.isInteger(c.count) && c.count >= 1, `data/quests.js '${q.id}': 報酬の道具 '${c.id}' の count は 1 以上の整数にする`);

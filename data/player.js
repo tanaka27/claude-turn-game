@@ -74,9 +74,9 @@ const PLAYER = {
     { key: '4', skill: 'dash' },
     { key: '5', skill: 'battleAura' },
   ],
-  // はじめから遊ぶときの装備 (部位: { level, rarity }。null は何も付けない)
+  // はじめから遊ぶときの装備 (部位: { level, rarity, type }。type は種類のある部位 (武器) の種類。null は何も付けない)
   startEquip: {
-    weapon: { level: 1, rarity: 'common' },
+    weapon: { level: 1, rarity: 'common', type: 'sword' },
     armor: { level: 1, rarity: 'common' },
     accessory: null,
   },

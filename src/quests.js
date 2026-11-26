@@ -99,7 +99,7 @@ function rewardText(r) {
   if (r.exp) parts.push(txt('quests.rewardExp', { n: r.exp }));
   if (r.gold) parts.push(txt('quests.rewardGold', { n: r.gold }));
   for (const c of r.consumables || []) parts.push(txt('quests.rewardItem', { name: ITEMS.consumables[c.id].name, n: c.count }));
-  if (r.item) parts.push(txt('quests.rewardGear', { rarity: rarityOf(r.item.rarity).name, slot: ITEMS.slots[r.item.slot].label }));
+  if (r.item) parts.push(txt('quests.rewardGear', { rarity: rarityOf(r.item.rarity).name, slot: (gearKindOf(r.item.slot, r.item.type) || ITEMS.slots[r.item.slot]).label }));
   return parts.join(txt('quests.rewardSep'));
 }
 
@@ -112,7 +112,7 @@ function claimQuest(q) {
   p.gold += r.gold || 0;
   // 道具は持てる数 (max) まで。超えた分はもらえない
   for (const c of r.consumables || []) p.consumables[c.id] = Math.min(ITEMS.consumables[c.id].max, consumableCount(p, c.id) + c.count);
-  if (r.item) p.inventory.push(makeItem(r.item.slot, p.level, r.item.rarity));
+  if (r.item) p.inventory.push(makeItem(r.item.slot, p.level, r.item.rarity, false, { type: r.item.type }));
   questNote = txt('quests.claimed', { quest: q.name, reward: rewardText(r) });
   if (r.exp) gainExp(r.exp, p.x, p.y); // レベルアップの表示が最後に出るように
 }

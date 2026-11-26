@@ -125,12 +125,12 @@ test('鍛冶屋: 品ぞろえは自分のレベルで決まり、同じレベル
   press(g, 'f');
   setLevel(g, 3);
   openNpc(g, 'townSmith');
-  assert.deepStrictEqual(smithStock(g, 'townSmith').map((it) => it.level), [3, 3, 3]);
+  assert.deepStrictEqual(smithStock(g, 'townSmith').map((it) => it.level), Array.from(d.gear, () => 3));
   assert.ok(htmlOf(g, 'shopList').includes('Lv3'));
   press(g, 'f');
   setLevel(g, 7);
   openNpc(g, 'townSmith');
-  assert.deepStrictEqual(smithStock(g, 'townSmith').map((it) => it.level), [d.maxLevel, d.maxLevel, d.maxLevel], '装備レベルの上限');
+  assert.deepStrictEqual(smithStock(g, 'townSmith').map((it) => it.level), Array.from(d.gear, () => d.maxLevel), '装備レベルの上限');
 });
 
 test('鍛冶屋: 隠れ里は自分のレベル + levelOffset の装備', () => {

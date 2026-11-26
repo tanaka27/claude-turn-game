@@ -27,6 +27,7 @@ const STATS = {
   def: { label: 'しゅび力', dec: 0 },
   mdef: { label: '術防御', dec: 0 },
   speed: { label: '速度', dec: 0 },
+  reach: { label: '攻撃範囲', dec: 0 },      // 通常攻撃が 1 + この値 のマスまで届く (槍。docs/crafting.md)
   skillHaste: { label: 'スキル加速', dec: 0 },
   hit: { label: '命中', pct: true },
   eva: { label: '回避', pct: true },

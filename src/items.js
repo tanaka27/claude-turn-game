@@ -9,10 +9,12 @@ function fmtStat(k, v, sign) {
   const s = info.pct ? (v * 100).toFixed(1) + '%' : v.toFixed(info.dec);
   return sign && v >= 0 ? '+' + s : s;
 }
+// 負の値 (重い武器のすばやさなど) は負のまま丸める
 function roundStat(k, v) {
   const info = STATS[k];
   const m = info.pct ? 1000 : Math.pow(10, info.dec);
-  return Math.max(1 / m, Math.round(v * m) / m);
+  const r = Math.max(1 / m, Math.round(Math.abs(v) * m) / m);
+  return v < 0 ? -r : r;
 }
 const scaledByLevel = ([a, b], lv) => a + b * (lv - 1);
 const rarityOf = (id) => ITEMS.rarities.find((r) => r.id === id) || ITEMS.rarities[0];
@@ -27,19 +29,67 @@ function pickWeighted(list, key) {
   return list[list.length - 1];
 }
 
-// 装備を作る。rarity を省略するとレア度の出やすさ (boss なら bossWeight) で決める
-function makeItem(slot, level, rarity, boss) {
+// 装備の種類の定義 (部位に types (武器種) があればその種類、なければ部位そのもの)。label・base・names を持つ
+function gearKindOf(slot, type) {
   const S = ITEMS.slots[slot];
+  return S.types ? S.types[type] : S;
+}
+const itemKind = (it) => gearKindOf(it.slot, it.type);
+// 種類で決まる性能のキー (基本性能 base と、決まった値の能力 fixed)
+const kindStatKeys = (K) => [...Object.keys(K.base || {}), ...Object.keys(K.fixed || {})];
+// 画面に出す装備の種類の名前 (武器は武器種「短剣」、ほかは部位「防具」)
+const itemKindLabel = (it) => (itemKind(it) || ITEMS.slots[it.slot]).label;
+// 部位の種類のキーの並び (種類がない部位は空)
+const gearTypesOf = (slot) => Object.keys(ITEMS.slots[slot].types || {});
+
+// 装備を作る。rarity を省略するとレア度の出やすさ (boss なら bossWeight) で決める
+//   opt.type: 種類 (武器種。省略するとくじ) / opt.name: 決まった名前 (作った装備) / opt.recipe: 作り方のキー (作った装備)
+function makeItem(slot, level, rarity, boss, opt = {}) {
+  const S = ITEMS.slots[slot], types = gearTypesOf(slot);
+  const type = types.length ? (types.includes(opt.type) ? opt.type : types[Math.floor(Math.random() * types.length)]) : null;
+  const K = gearKindOf(slot, type);
   const R = rarity ? rarityOf(rarity) : pickWeighted(ITEMS.rarities, boss ? 'bossWeight' : 'weight');
   const stats = {};
-  for (const k in S.base) stats[k] = roundStat(k, scaledByLevel(S.base[k], level) * R.mult);
+  for (const k in K.base) {
+    const v = scaledByLevel(K.base[k], level);
+    stats[k] = roundStat(k, v > 0 ? v * R.mult : v);
+  }
+  for (const k in K.fixed || {}) stats[k] = K.fixed[k]; // 種類だけが持つ決まった値 (槍の攻撃範囲。レベル・レア度で変わらない)
   const pool = Object.keys(ITEMS.affixes).filter((k) => !(k in stats));
   for (let i = 0; i < R.affixes + S.extraAffixes && pool.length; i++) {
     const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
     stats[k] = roundStat(k, scaledByLevel(ITEMS.affixes[k], level) * rand(0.8, 1.2));
   }
-  const name = S.names[Math.min(S.names.length - 1, Math.floor((level - 1) / ITEMS.nameTierEvery))];
-  return { id: `${Date.now().toString(36)}-${itemSeq++}`, slot, name, rarity: R.id, level, stats };
+  const name = opt.name || K.names[Math.min(K.names.length - 1, Math.floor((level - 1) / ITEMS.nameTierEvery))];
+  const it = { id: `${Date.now().toString(36)}-${itemSeq++}`, slot, name, rarity: R.id, level, stats };
+  if (type) it.type = type;
+  if (opt.recipe) it.recipe = opt.recipe;
+  return it;
+}
+
+// ----- 鍛冶屋で作る (data/items.js の ITEMS.recipes) -----
+// 作れない理由 (作れるなら '')。素材・お金が足りない、持ち物がいっぱい
+function craftBlock(p, id) {
+  const r = ITEMS.recipes[id];
+  if (!r) return txt('craft.noRecipe');
+  if (Object.entries(r.materials).some(([m, n]) => (p.materials[m] || 0) < n)) return txt('craft.lackMaterials');
+  if (p.gold < r.gold) return txt('craft.lackGold');
+  if (p.inventory.length >= ECON.inventorySize) return txt('craft.bagFull');
+  return '';
+}
+// 作る。素材とお金を使い、レア度は ITEMS.craftRarities のくじ。作った装備を持ち物に入れて返す (作れなければ null)
+function craftItem(p, id) {
+  if (craftBlock(p, id)) return null;
+  const r = ITEMS.recipes[id];
+  for (const [m, n] of Object.entries(r.materials)) {
+    p.materials[m] -= n;
+    if (!p.materials[m]) delete p.materials[m];
+  }
+  p.gold -= r.gold;
+  const it = makeItem(r.slot, r.level, pickWeighted(ITEMS.craftRarities, 'weight').rarity, false, { type: r.type, name: r.name, recipe: id });
+  p.inventory.push(it);
+  questEvent('materials'); // 集めるクエストは素材が足りなくなると「受けている」に戻る
+  return it;
 }
 
 const materialOf = (id) => ITEMS.materials[id];
