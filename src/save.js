@@ -4,14 +4,14 @@
 // =====================================================================
 'use strict';
 
-// セーブの形 (v10。くわしくは docs/save-format.md)
-//   { v: 10, savedAt,
+// セーブの形 (v12。くわしくは docs/save-format.md)
+//   { v: 12, savedAt,
 //     player:   { level, exp, base, potential, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
 // もとのリアルタイム版 (斬界アリーナ) とは別のキーに保存する。同じブラウザで両方遊んでも混ざらない
-const SAVE_VERSION = 11;
+const SAVE_VERSION = 12;
 const SAVE_OLDEST = 1;                       // 読める一番古い形
 const SAVE_KEY = 'zankai-turn-save';
 const SAVE_UNREAD_KEY = 'zankai-turn-save-unread'; // この版で読めなかったブラウザのセーブの控え
@@ -137,6 +137,15 @@ const SAVE_MIGRATIONS = {
     for (const o of [p.base, p.potential]) if (o && typeof o === 'object') delete o.vit;
     return d;
   },
+  // v11 → v12: 武器に種類 (武器種) type ができた。それまでの武器は全部剣なので、type が 'sword' の剣にする
+  11: (d) => {
+    const p = d.player;
+    if (!p || typeof p !== 'object') return d;
+    const toSword = (it) => { if (it && typeof it === 'object' && it.slot === 'weapon' && it.type === undefined) it.type = 'sword'; };
+    if (Array.isArray(p.inventory)) p.inventory.forEach(toSword);
+    if (p.equip && typeof p.equip === 'object') Object.values(p.equip).forEach(toSword);
+    return d;
+  },
 };
 
 // タブの名前 (でたらめな 16 進の文字)。ゲームの乱数 (Math.random) は使わない
@@ -233,7 +242,9 @@ function applySave(save) {
   for (const id in ITEMS.consumables) p.consumables[id] = clamp(Math.floor(owned[id]) || 0, 0, ITEMS.consumables[id].max);
   const home = WORLD.zones[save.home];
   p.home = home && home.safe && home.respawn ? save.home : WORLD.respawnZone;
-  const valid = (it) => it && ITEMS.slots[it.slot] && it.stats && Object.keys(it.stats).every((k) => STATS[k]);
+  // 種類のある部位 (武器) は、今ある種類のときだけ使う
+  const valid = (it) => it && ITEMS.slots[it.slot] && (!ITEMS.slots[it.slot].types || ITEMS.slots[it.slot].types[it.type]) &&
+    it.stats && Object.keys(it.stats).every((k) => STATS[k]);
   p.inventory = (Array.isArray(s.inventory) ? s.inventory : []).filter(valid).slice(0, ECON.inventorySize);
   for (const slot in ITEMS.slots) {
     const it = s.equip && s.equip[slot];

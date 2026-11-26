@@ -96,6 +96,14 @@ const TEXT = {
   },
 
   // ----- ゾーン (src/map.js) -----
+  // 鍛冶屋で作る (src/items.js の craftBlock / craftItem と、鍛冶屋の画面)。craftBlock の文は「〇〇ので作れない」の〇〇
+  craft: {
+    noRecipe: '作り方がない',
+    lackMaterials: '素材が足りない',
+    lackGold: 'お金が足りない',
+    bagFull: '持ち物がいっぱいな',
+    made: '{name}（{rarity}）を作った。',
+  },
   zone: {
     safe: '安全地帯',
     level: 'Lv{lo}',
@@ -188,7 +196,7 @@ const TEXT = {
     matPriceValue: '{price} G（全部で {total} G）',
     matFrom: '落とす魔物',
     matFromSep: '、',
-    matHint: '商人に売るとお金になる',
+    matHint: '商人に売るとお金になる。鍛冶屋で武器を作る材料にもなる',
     matName: '{name} ×{n}',
     matLine: '{rarity}・売値 {price} G',
     sellOne: '1つ売る',
@@ -200,6 +208,26 @@ const TEXT = {
     shopBuy: '買う（{n} G）',
     shopEmpty: '売り物はない',
     smithEmpty: '装備は売り切れ（レベルが上がると入れ替わる）',
+    goods: '商品',
+    // 鍛冶屋の切り替え (src/ui.js の鍛冶屋の views の id)
+    views: { trade: '売買', craft: '武器を作る' },
+    hintViews: '← → / 1〜{n} で切り替え',
+    // 鍛冶屋の「作る」
+    craftHead: '作れる武器',
+    craftEmpty: 'この鍛冶屋では作れるものがない',
+    hintRecipe: '作りたい武器を選ぶと、使う素材とできあがりを表示します',
+    recipeSub: '{kind} Lv{level}・{gold} G',
+    recipeMat: '{name} {have}/{n}',
+    recipeDsub: '{kind}・Lv{level}・作るとレア度はくじで決まる',
+    range: '{a}〜{b}',
+    pct: '{n}%',
+    craftRarity: 'できあがるレア度',
+    craftAffixes: '種類と値はできあがるまで分からない',
+    craftMaterials: '使う素材と代金',
+    craftGold: '代金',
+    craftGoldValue: '{n} G（所持 {have} G）',
+    craft: '作る（{n} G）',
+    cannotCraft: '{reason}ので作れない',
     // キャラクターの画面のタブ (src/ui.js の CHAR_TABS の id)
     tabs: { status: 'ステータス', equip: '装備', items: '持ち物', quest: 'クエスト' },
     hintTabs: '← → / 1〜4 でタブを切り替え',
@@ -226,8 +254,8 @@ const TEXT = {
     // つよさ ({buffed} は buffedSample を強化の色で書いたもの)
     strength: 'つよさ',
     strengthNote: 'Lv{level}　（ ）は装備で上がっている分。{buffed}は強化（バフ）中。基礎能力値はマウスを重ねると潜在が出る',
-    baseStats: '基礎能力値（行動で伸びる）',            // つよさの見出し: params.js の progression.growth.stats にあるもの
-    derivedStats: 'ステータス（基礎能力値と装備で決まる）',  // つよさの見出し: それ以外 (計算で決まるもの・装備でだけ変わるもの)
+    strengthBase: '基礎能力値（行動で伸びる）',            // つよさの見出し: params.js の progression.growth.stats にあるもの
+    strengthDerived: 'ステータス（基礎能力値と装備で決まる）',  // つよさの見出し: それ以外 (計算で決まるもの・装備でだけ変わるもの)
     potential: '潜在 {n}',                            // 能力にマウスを重ねたときの吹き出し (100 が基準)
     exact: 'いまの値 {n}',                            // 小数点以下まで入れた値 (一の位が上がるとステータスが上がる)
     buffedSample: 'この色',

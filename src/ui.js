@@ -66,7 +66,9 @@ function closeMenu() {
 // pop: 開いているアイテムの詳細 (ポップアップ。画面の pop が true のときだけ) null / { kind: 'gear' } (装備。どれかは sel) /
 //   { kind: 'tool', id: 道具のキー (data/items.js の consumables) } / { kind: 'mat', id: 素材のキー }
 // tab: キャラクターの画面で開いているタブ (CHAR_TABS の id。閉じても覚えておく。セーブしない)
-const menuState = { mode: 'inv', shop: null, sel: null, pop: null, tab: 'status' };
+// view: 切り替えのある画面 (画面の views) で今出しているもの (鍛冶屋の 'trade' 売買 / 'craft' 作る。開くたびに最初のものに戻す)
+// recipe: 鍛冶屋の「作る」で選んでいる作り方 (data/items.js の ITEMS.recipes のキー)
+const menuState = { mode: 'inv', shop: null, sel: null, pop: null, tab: 'status', view: null, recipe: null };
 // キャラクターの画面のタブ。名前は data/text.js の menu.tabs、どのまとまりを出すかは index.html の data-sec (と style.css)
 //   ← → で隣のタブ、1〜4 でそのタブ
 const CHAR_TABS = ['status', 'equip', 'items', 'quest'];
@@ -89,6 +91,8 @@ function refreshSmith(id) {
 
 // #menu を使う画面を作る。def に書いたもので共通のものを上書き・追加する
 //   title(): 見出し / profile: 左上に profileHtml を出す / tabs: タブの id の並び (あればタブに分ける。CHAR_TABS) / pop: アイテムの詳細をポップアップで出す /
+//   views: 切り替えの id の並び (あればタブの位置に切り替えのボタンを出す。名前は data/text.js の menu.views。tabs とは一緒に使わない) /
+//   shopHead(): 「商品」の欄の見出し (なければ「商品」) / detail(): 右の欄の中身 (null なら共通のもの) /
 //   toolUse: 道具の「使う」を出す / sellMaterials: 素材を売るボタンを出す /
 //   defs(): 店の定義の表 (data/items.js) / stock(): 商品の装備 / shopList(): 「商品」の欄の中身 (あれば「商品」の欄を出す) /
 //   invGearButton(it): 持ち物の装備を選んだときの「装備する」の横のボタン (なければ「捨てる」) /
@@ -100,6 +104,8 @@ function menuScreen(def) {
       menuState.shop = null;
       menuState.sel = null;
       menuState.pop = null;
+      menuState.recipe = null;
+      menuState.view = def.views ? def.views[0] : null;
       if (def.open) def.open(arg);
     },
     actions: { ...MENU_ACTIONS, ...(def.actions || {}) },
@@ -133,6 +139,24 @@ function switchTab(id) {
   menuState.sel = null;
   renderMenu();
 }
+// 切り替えのある画面 (views): ← → で隣、1〜(数) でそれにする
+function viewKeys(k) {
+  const views = screenNow().views;
+  if (!views) return false;
+  const i = views.indexOf(menuState.view);
+  let next = null;
+  if (k === 'arrowleft' || k === 'arrowright') next = views[(i + (k === 'arrowright' ? 1 : views.length - 1)) % views.length];
+  else if (/^[1-9]$/.test(k) && Number(k) <= views.length) next = views[Number(k) - 1];
+  if (!next) return false;
+  switchView(next);
+  return true;
+}
+function switchView(id) {
+  menuState.view = id;
+  menuState.sel = null;
+  menuState.recipe = null;
+  renderMenu();
+}
 
 function findSel() {
   const s = menuState.sel, p = player;
@@ -147,7 +171,7 @@ function itemChip(it, from) {
   const on = menuState.sel && menuState.sel.id === it.id ? ' sel' : '';
   const price = from === 'shop' ? `<span class="price">${txt('menu.price', { n: itemValue(it) })}</span>` : '';
   return `<div class="item${on}${usesPop() ? ' pop' : ''}" data-from="${from}" data-id="${it.id}" style="--rc:${r.color}">
-    <b>${it.name}</b><span>${txt('menu.chipSub', { slot: ITEMS.slots[it.slot].label, level: it.level })}</span>${price}</div>`;
+    <b>${it.name}</b><span>${txt('menu.chipSub', { slot: itemKindLabel(it), level: it.level })}</span>${price}</div>`;
 }
 
 // 選んだ装備の詳細。部位で決まる基本性能と、ランダムに付いた追加性能を分けて出し、
@@ -161,12 +185,14 @@ function detailHtml(it, from) {
       `<span class="${diff > 0 ? 'up' : 'down'}">${fmtStat(k, diff, true)}</span>`;
     return `<div class="row${v ? '' : ' lost'}"><span>${STATS[k].label}</span><span>${v ? fmtStat(k, v, true) : txt('menu.noValue')} ${d}</span></div>`;
   };
-  const baseKeys = Object.keys(ITEMS.slots[it.slot].base);
+  // 基本性能は種類 (武器種) で決まる。装備中のものと種類が違えば、装備中のものにだけある基本性能は基本性能の欄の最後に薄く出す
+  const baseKeys = Object.keys(itemKind(it).base), curBase = cur ? Object.keys(itemKind(cur).base) : [];
   const own = Object.keys(it.stats).filter((k) => !baseKeys.includes(k));
-  const lost = cur ? Object.keys(cur.stats).filter((k) => !baseKeys.includes(k) && !own.includes(k)) : [];
+  const lostBase = curBase.filter((k) => !(k in it.stats));
+  const lost = cur ? Object.keys(cur.stats).filter((k) => !curBase.includes(k) && !(k in it.stats)) : [];
   const section = (title, keys, empty) => `<div class="shead">${title}</div>
     <div class="stats">${keys.length ? keys.map(row).join('') : `<div class="row none">${empty}</div>`}</div>`;
-  const rows = section(txt('menu.baseStats'), baseKeys, txt('menu.noStats')) +
+  const rows = section(txt('menu.baseStats'), [...baseKeys, ...lostBase], txt('menu.noStats')) +
     section(txt('menu.extraStats', { n: own.length }), [...own, ...lost], txt('menu.noStats'));
   const btn = actButton, s = screenNow();
   const full = p.inventory.length >= ECON.inventorySize;
@@ -178,7 +204,7 @@ function detailHtml(it, from) {
     btns += s.invGearButton ? s.invGearButton(it) : btn('drop', txt('menu.drop'));
   }
   return `<div class="dname" style="color:${r.color}">${it.name}</div>
-    <div class="dsub">${txt('menu.gearSub', { rarity: r.name, slot: ITEMS.slots[it.slot].label, level: it.level })}</div>
+    <div class="dsub">${txt('menu.gearSub', { rarity: r.name, slot: itemKindLabel(it), level: it.level })}</div>
     ${cur ? `<div class="dsub">${txt('menu.compare', { name: cur.name })}</div>` : ''}
     ${rows}<div class="btns">${btns}</div>`;
 }
@@ -200,6 +226,7 @@ function renderMenu() {
   $('invCount').textContent = txt('menu.invCount', { n: p.inventory.length, max: ECON.inventorySize });
   $('invList').innerHTML = p.inventory.map((it) => itemChip(it, 'inv')).join('') || `<p class="hint">${txt('menu.noItems')}</p>`;
   $('shopCol').style.display = s.shopList ? '' : 'none';
+  $('shopHead').textContent = s.shopHead ? s.shopHead() : txt('menu.goods');
   if (s.shopList) $('shopList').innerHTML = s.shopList();
   renderMaterials();
   const it = findSel();
@@ -210,11 +237,20 @@ function renderMenu() {
     renderPop();
     return;
   }
-  $('detail').innerHTML = !it ? strengthHtml() + `<p class="hint">${txt('menu.hintSelect')}</p>` : detailHtml(it, menuState.sel.from);
+  const own = s.detail ? s.detail(it) : null;
+  $('detail').innerHTML = own !== null ? own : !it ? strengthHtml() + `<p class="hint">${txt('menu.hintSelect')}</p>` : detailHtml(it, menuState.sel.from);
 }
 
 // タブ (画面の tabs があるときだけ)。#menuBody の data-tab で、どのまとまりを出すかを style.css が決める
 function renderTabs(s) {
+  if (s.views) {
+    // 切り替え (鍛冶屋の売買・作る)。キャラクターの画面のタブと同じ見た目で、出すまとまりは画面ごとに変える (data-tab は使わない)
+    delete $('menuBody').dataset.tab;
+    $('menuTabs').innerHTML = s.views.map((id, i) =>
+      `<button data-act="view" data-view="${id}"${id === menuState.view ? ' class="on"' : ''}>${txt(`menu.views.${id}`)}<small>${i + 1}</small></button>`).join('') +
+      `<span class="tabhint">${txt('menu.hintViews', { n: s.views.length })}</span>`;
+    return;
+  }
   if (!s.tabs) {
     $('menuTabs').innerHTML = '';
     delete $('menuBody').dataset.tab;
@@ -324,8 +360,8 @@ function strengthHtml() {
   const section = (title, ks) => `<div class="shead">${title}</div><div class="stats">${ks.map(row).join('')}</div>`;
   const note = txt('menu.strengthNote', { level: p.level, buffed: `<span class="buffed">${txt('menu.buffedSample')}</span>` });
   return `<div class="dname">${txt('menu.strength')}</div><div class="dsub">${note}</div>`
-    + section(txt('menu.baseStats'), keys.filter((k) => GROWTH.stats[k]))
-    + section(txt('menu.derivedStats'), keys.filter((k) => !GROWTH.stats[k]));
+    + section(txt('menu.strengthBase'), keys.filter((k) => GROWTH.stats[k]))
+    + section(txt('menu.strengthDerived'), keys.filter((k) => !GROWTH.stats[k]));
 }
 
 // ----- 道具 (使うもの。data/items.js の ITEMS.consumables) -----
@@ -405,6 +441,7 @@ const selFrom = (from) => { const it = findSel(); return it && menuState.sel.fro
 const MENU_ACTIONS = {
   close: () => { closeMenu(); return true; },
   tab: (btn) => { if (screenNow().tabs && screenNow().tabs.includes(btn.dataset.tab)) switchTab(btn.dataset.tab); return true; },
+  view: (btn) => { if (screenNow().views && screenNow().views.includes(btn.dataset.view)) switchView(btn.dataset.view); return true; },
   popClose: () => { closePop(); return true; },
   equip: () => { const it = selFrom('inv'); if (it) equipItem(it); },
   unequip: () => { const it = selFrom('equip'); if (it && player.inventory.length < ECON.inventorySize) unequipItem(it); },
@@ -427,12 +464,12 @@ function buyConsumableAction(btn) {
   }
 }
 function sellGearAction() {
-  const p = player, it = selFrom('inv');
+  const p = player, it = menuState.view === 'trade' ? selFrom('inv') : null;
   if (it) { p.gold += sellPrice(it); p.inventory = p.inventory.filter((x) => x !== it); menuState.sel = null; }
 }
 // 買えるのは、この鍛冶屋の今の品ぞろえから選んだ装備だけ (findSel は from が 'shop' なら shopStock から探す)
 function buyGearAction() {
-  const p = player, it = selFrom('shop');
+  const p = player, it = menuState.view === 'trade' ? selFrom('shop') : null;
   if (it && p.gold >= itemValue(it) && p.inventory.length < ECON.inventorySize) {
     p.gold -= itemValue(it);
     shopStocks[menuState.shop].items = shopStock().filter((x) => x !== it);
@@ -485,16 +522,88 @@ registerScreen('shop', menuScreen({
     sellAllMat: () => { for (const id in player.materials) sellMaterial(id, true); },
   },
 }));
-// 鍛冶屋: 装備を買う・売る (arg: data/items.js の ITEMS.smiths のキー)。品ぞろえは開いたときに自分のレベルで作り直す
+// ----- 鍛冶屋の「作る」(data/items.js の ITEMS.recipes。作るのは src/items.js の craftItem) -----
+// 開いている鍛冶屋で作れるものか (古い画面のボタン・ほかの鍛冶屋の作り方では作らない)
+const smithHasRecipe = (id) => (shopDef().recipes || []).includes(id);
+const craftColor = () => rarityOf(ITEMS.craftRarities[0].rarity).color;
+// 作り方の一覧の 1 行: 名前・武器種とレベル・代金、素材 (足りないものは赤)
+function recipeChip(id) {
+  const r = ITEMS.recipes[id], p = player, on = menuState.recipe === id ? ' sel' : '';
+  const ok = !craftBlock(p, id);
+  const mats = Object.entries(r.materials).map(([m, n]) => {
+    const have = p.materials[m] || 0;
+    return `<span class="${have >= n ? '' : 'down'}">${txt('menu.recipeMat', { name: ITEMS.materials[m].name, have, n })}</span>`;
+  }).join(txt('menu.matFromSep'));
+  return `<div class="item recipe${on}${ok ? '' : ' none'}" data-recipe="${id}" style="--rc:${craftColor()}">
+    <b>${r.name}</b><span>${txt('menu.recipeSub', { kind: (gearKindOf(r.slot, r.type) || ITEMS.slots[r.slot]).label, level: r.level, gold: r.gold })}</span>
+    <span class="mats">${mats}</span></div>`;
+}
+// 作り方の詳細: できあがるレア度のくじ・基本性能 (いちばん低いレア度〜高いレア度)・追加性能の数・素材・代金・「作る」
+function recipeHtml(id) {
+  const r = ITEMS.recipes[id], p = player, K = gearKindOf(r.slot, r.type) || ITEMS.slots[r.slot], S = ITEMS.slots[r.slot];
+  const lots = ITEMS.craftRarities, total = lots.reduce((a, c) => a + c.weight, 0);
+  const rs = lots.map((c) => rarityOf(c.rarity)), lo = rs[0], hi = rs[rs.length - 1];
+  const row = (label, value, cls = '') => `<div class="row"><span>${label}</span><span class="${cls}">${value}</span></div>`;
+  const baseAt = (k, R) => { const v = scaledByLevel(K.base[k], r.level); return roundStat(k, v > 0 ? v * R.mult : v); };
+  const base = Object.keys(K.base).map((k) => {
+    const a = fmtStat(k, baseAt(k, lo), true), b = fmtStat(k, baseAt(k, hi), true);
+    return row(STATS[k].label, a === b ? a : txt('menu.range', { a, b }));
+  }).join('') || `<div class="row none">${txt('menu.noStats')}</div>`;
+  const nA = lo.affixes + S.extraAffixes, nB = hi.affixes + S.extraAffixes;
+  const mats = Object.entries(r.materials).map(([m, n]) => {
+    const have = p.materials[m] || 0;
+    return row(`<i class="swatch" style="background:${ITEMS.materials[m].color}"></i>${ITEMS.materials[m].name}`, txt('menu.haveOf', { n: have, max: n }), have >= n ? '' : 'down');
+  }).join('');
+  const block = craftBlock(p, id);
+  return `<div class="dname" style="color:${craftColor()}">${r.name}</div>
+    <div class="dsub">${txt('menu.recipeDsub', { kind: K.label, level: r.level })}</div>
+    <div class="shead">${txt('menu.craftRarity')}</div>
+    <div class="stats">${lots.map((c, i) => row(`<span style="color:${rs[i].color}">${rs[i].name}</span>`, txt('menu.pct', { n: Math.round(c.weight / total * 1000) / 10 }))).join('')}</div>
+    <div class="shead">${txt('menu.baseStats')}</div><div class="stats">${base}</div>
+    <div class="shead">${txt('menu.extraStats', { n: nA === nB ? nA : txt('menu.range', { a: nA, b: nB }) })}</div>
+    <div class="stats"><div class="row none">${txt('menu.craftAffixes')}</div></div>
+    <div class="shead">${txt('menu.craftMaterials')}</div>
+    <div class="stats">${mats}${row(txt('menu.craftGold'), txt('menu.craftGoldValue', { n: r.gold, have: p.gold }), p.gold >= r.gold ? '' : 'down')}</div>
+    <div class="btns">${actButton('craft', txt('menu.craft', { n: r.gold }), !block)}</div>
+    ${block ? `<p class="hint">${txt('menu.cannotCraft', { reason: block })}</p>` : ''}`;
+}
+function craftAction() {
+  const id = menuState.recipe;
+  if (menuState.view !== 'craft' || !id || !smithHasRecipe(id)) return;
+  const it = craftItem(player, id);
+  if (!it) return;
+  const rc = rarityOf(it.rarity);
+  logMsg(txt('craft.made', { name: it.name, rarity: rc.name }), rc.color);
+  // 右の欄に作った装備を出す (レア度・性能を見られる)
+  menuState.sel = { from: 'inv', id: it.id };
+}
+
+// 鍛冶屋: 装備を買う・売る、武器を作る (arg: data/items.js の ITEMS.smiths のキー)。品ぞろえは開いたときに自分のレベルで作り直す
+//   売買 ('trade') と作る ('craft') は上のボタン・← →・1 / 2 で切り替える
 registerScreen('smith', menuScreen({
   title: () => shopDef().name, closeKeys: ['f'],
+  views: ['trade', 'craft'],
+  keys: (k, e) => menuKeys(k, e) || viewKeys(k),
   defs: () => ITEMS.smiths,
-  stock: () => (shopStocks[menuState.shop] ? shopStocks[menuState.shop].items : []),
+  stock: () => (menuState.view === 'trade' && shopStocks[menuState.shop] ? shopStocks[menuState.shop].items : []),
   open: (id) => { menuState.shop = id; refreshSmith(id); },
-  shopList: () => shopStock().map((it) => itemChip(it, 'shop')).join('') ||
-    `<p class="hint">${txt('menu.smithEmpty')}</p>`,
-  invGearButton: (it) => actButton('sell', txt('menu.sell', { n: sellPrice(it) })),
-  actions: { sell: sellGearAction, buy: buyGearAction },
+  shopHead: () => (menuState.view === 'craft' ? txt('menu.craftHead') : txt('menu.goods')),
+  shopList: () => (menuState.view === 'craft'
+    ? (shopDef().recipes || []).map(recipeChip).join('') || `<p class="hint">${txt('menu.craftEmpty')}</p>`
+    : shopStock().map((it) => itemChip(it, 'shop')).join('') || `<p class="hint">${txt('menu.smithEmpty')}</p>`),
+  // 「作る」で持ち物の装備を選んだら、作り方より装備の詳細を出す。どちらも選んでいなければ共通 (つよさ)
+  detail: (it) => {
+    if (menuState.view !== 'craft' || it) return null;
+    return menuState.recipe && smithHasRecipe(menuState.recipe) ? recipeHtml(menuState.recipe)
+      : strengthHtml() + `<p class="hint">${txt('menu.hintRecipe')}</p>`;
+  },
+  click: (e) => {
+    const chip = e.target.closest('.item[data-recipe]');
+    if (chip && menuState.view === 'craft') { menuState.recipe = chip.dataset.recipe; menuState.sel = null; renderMenu(); return; }
+    menuClick(e);
+  },
+  invGearButton: (it) => (menuState.view === 'trade' ? actButton('sell', txt('menu.sell', { n: sellPrice(it) })) : ''),
+  actions: { sell: sellGearAction, buy: buyGearAction, craft: craftAction },
 }));
 
 // 話しかけられる NPC (となりのマスにいる人)

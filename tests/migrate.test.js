@@ -5,7 +5,7 @@ const { loadGame } = require('./harness');
 const { plain, bagOf } = require('./helpers');
 
 // 今のセーブの形の版 (src/save.js の SAVE_VERSION。版を上げたらここも上げる)
-const CURRENT = 11;
+const CURRENT = 12;
 // 形 v1 のセーブ (クエストの id が古い名前のころ)。そのまま書いておく
 const V1_SAVE = {
   v: 1, savedAt: 1794000000000,
@@ -146,7 +146,9 @@ test('v1 のセーブは今の形に直して読め、クエストの進み具�
   assert.strictEqual(p.gold, 210);
   assert.deepStrictEqual(plain(bagOf(p)), { potion: 5, hiPotion: 1 });
   assert.deepStrictEqual(plain(p.inventory), V1_SAVE.player.inventory);
-  assert.deepStrictEqual(plain(p.equip), V1_SAVE.player.equip);
+  // v12 で武器に種類 (剣) が付く
+  const sword = (eq) => ({ ...eq, weapon: eq.weapon && { ...eq.weapon, type: 'sword' } });
+  assert.deepStrictEqual(plain(p.equip), sword(V1_SAVE.player.equip));
   assert.deepStrictEqual(plain(p.materials), { wolfPelt: 6, beeStinger: 4 });
   assert.deepStrictEqual(plain(p.quests), V2_QUESTS);
   assert.strictEqual(g.questStatus(g.questById('c_salamander')), 'ready');
@@ -214,7 +216,7 @@ test('v2 のセーブは、保存したレベルではじめの覚え方 (レベ
     assert.strictEqual(p.level, lv);
     assert.deepStrictEqual(Array.from(p.knownSkills), expected[lv], `Lv${lv}: 読んだあと`);
     assert.deepStrictEqual(plain(p.quests), V2_SAVE.player.quests);
-    assert.deepStrictEqual(plain(p.equip), V2_SAVE.player.equip);
+    assert.deepStrictEqual(plain(p.equip), { ...V2_SAVE.player.equip, weapon: { ...V2_SAVE.player.equip.weapon, type: 'sword' } }, 'v12 で武器に種類 (剣) が付く');
     // 書いたものは今の形で、読み直してまた書いても同じ
     const saved = JSON.parse(g.storage.get('zankai-turn-save'));
     assert.strictEqual(saved.v, CURRENT);
@@ -482,4 +484,31 @@ test('v10 のセーブは、みのまもり (伸びた値・潜在) を消す。
   g.startGame(d);
   assert.strictEqual(g.player.stats.vit, 7.6, 'みのまもり = 筋力 × 0.32 + 器用さ × 0.08 = 7.6');
   assert.strictEqual(g.player.stats.str, 18.5, 'ちから は同じ式のまま 18.5');
+});
+
+test('v11 のセーブは、種類 (武器種) のない武器を剣 (type: sword) にする。防具・装飾品はそのまま、種類のある武器は変えない', () => {
+  const V11_SAVE = { ...V4_SAVE, v: 11, player: { ...V4_SAVE.player,
+    inventory: [
+      { id: 'fx-a', slot: 'weapon', name: '鉄の剣', rarity: 'rare', level: 5, stats: { atk: 5, luk: 6 } },
+      { id: 'fx-b', slot: 'armor', name: '革の鎧', rarity: 'common', level: 3, stats: { def: 2, maxHp: 2 } },
+      { id: 'fx-c', slot: 'weapon', type: 'axe', name: '手斧', rarity: 'common', level: 1, stats: { atk: 2, agi: -3 } },
+    ],
+    equip: { weapon: { id: 'fx-d', slot: 'weapon', name: '銅の剣', rarity: 'common', level: 2, stats: { atk: 2 } }, armor: null, accessory: null } } };
+  const g = loadGame({ storage: { 'zankai-turn-save': JSON.stringify(V11_SAVE) } });
+  const d = g.readLocalSave();
+  assert.strictEqual(d.v, CURRENT);
+  assert.deepStrictEqual(plain(d.player.inventory.map((it) => it.type || null)), ['sword', null, 'axe']);
+  assert.strictEqual(d.player.equip.weapon.type, 'sword');
+  g.startGame(d);
+  assert.strictEqual(g.player.equip.weapon.name, '銅の剣');
+  assert.deepStrictEqual(plain(g.player.inventory.map((it) => it.id)), ['fx-a', 'fx-b', 'fx-c']);
+});
+
+test('今はない種類 (武器種) の武器は、読むときに捨てる', () => {
+  const g = loadGame();
+  g.startGame(null);
+  const s = g.buildSave();
+  s.player.inventory = [{ id: 'fx-x', slot: 'weapon', type: 'whip', name: '鞭', rarity: 'common', level: 1, stats: { atk: 1 } }];
+  g.startGame(JSON.parse(JSON.stringify(s)));
+  assert.strictEqual(g.player.inventory.length, 0);
 });

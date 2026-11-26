@@ -12,7 +12,7 @@
 //   minLevel: 受けられるレベル / requires: 先に報告しておくクエスト
 //   repeatable: true なら報告したあと、また受けられる (ほかのクエストの requires には使えない)
 //   reward: exp / gold / consumables ([{ id: data/items.js の consumables のキー, count }]。持てる数 (max) を超えた分はもらえない) /
-//           item ({ slot, rarity }。装備レベルは報告したときの自分のレベル)
+//           item ({ slot, rarity, type }。装備レベルは報告したときの自分のレベル。type は武器種 (省略するとくじ))
 const QUESTS = [
   { id: 'c_wolf', giver: 'captain', name: 'ウルフ退治', goal: { kind: 'kill', enemy: 'wolf', count: 8 }, where: '風の草原', minLevel: 1,
     desc: '町の外にウルフの群れが増えている。まずは数を減らしてくれ。', reward: { exp: 80, gold: 50 } },

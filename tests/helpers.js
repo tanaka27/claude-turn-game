@@ -335,6 +335,17 @@ function clickMat(g, id) {
   if (!n) throw new Error(`素材 ${id} が画面にない`);
   clickNode(g, 'menu', n);
 }
+// 鍛冶屋の「作る」の作り方をクリックする (id: data/items.js の ITEMS.recipes のキー)
+function clickRecipe(g, id) {
+  const n = screenNodes(g, 'menu').find((x) => x.tag === 'div' && x.classes.includes('item') && x.dataset.recipe === id);
+  if (!n) throw new Error(`作り方 ${id} が画面にない`);
+  clickNode(g, 'menu', n);
+}
+// 鍛冶屋の画面で今出している切り替え ('trade' | 'craft') / 作り方の一覧の id の並び
+const smithView = (g) => g.menuState.view;
+const recipeIds = (g) => screenNodes(g, 'menu').filter((x) => x.tag === 'div' && x.dataset.recipe).map((x) => x.dataset.recipe);
+// 画面を通さずに作る (作れなければ null)
+const craftWith = (g, id) => g.craftItem(g.player, id);
 // 詳細のポップアップの外 (暗い幕) をクリックする
 const clickPopBackdrop = (g) => clickNode(g, 'menu', staticNode('itemPop'));
 // 会話の枠の文のところをクリックする
@@ -442,4 +453,5 @@ module.exports = {
   useSkillBy, cooldownLeftOf, cooldownLengthOf, canUseSkillOf, setCooldown, enemyAttack,
   skillById, keyOf, knows, knownSkillIds, teach, defineSkill, bindSkill, storedCooldown, dataProblems,
   bagOf, consumableDef, healRatio, useItem, defineConsumable, buyButton,
+  clickRecipe, smithView, recipeIds, craftWith,
 };

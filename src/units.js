@@ -17,7 +17,7 @@ function createPlayer() {
   const equip = {};
   for (const slot in ITEMS.slots) {
     const e = d.startEquip[slot];
-    equip[slot] = e ? makeItem(slot, e.level, e.rarity) : null;
+    equip[slot] = e ? makeItem(slot, e.level, e.rarity, false, { type: e.type }) : null;
   }
   const p = {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
