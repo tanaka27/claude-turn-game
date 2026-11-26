@@ -156,8 +156,10 @@ function validateData() {
   const reserved = [...Object.keys(MOVE_KEYS), ...WAIT_KEYS, 'i', 'f', 'p', 'm', 'tab', 'escape', 'enter'];
   for (const k of keys) check(!reserved.includes(k), `data/player.js: スキルのキー '${k}' は移動や画面のキーと重なっている`);
   // 道具 (consumables): キーは移動・画面・スキルのキーと重ならない。効果の種類は src/items.js の ITEM_EFFECTS にある
-  const itemKeys = Object.values(ITEMS.consumables).map((c) => c.key);
-  check(itemKeys.every((k) => typeof k === 'string' && k !== ''), 'data/items.js consumables: key がないものがある');
+  //   矢 (arrow を持つもの) はキーで使わないので key・effects を持たない
+  const usables = Object.values(ITEMS.consumables).filter((c) => !c.arrow);
+  const itemKeys = usables.map((c) => c.key);
+  check(itemKeys.every((k) => typeof k === 'string' && k !== ''), 'data/items.js consumables: key がないものがある (矢でない道具)');
   check(new Set(itemKeys).size === itemKeys.length, 'data/items.js consumables: 道具のキーが重なっている');
   for (const k of itemKeys) check(!reserved.includes(k) && !keys.includes(k), `data/items.js consumables: キー '${k}' は移動・画面・スキルのキーと重なっている`);
   for (const [id, c] of Object.entries(ITEMS.consumables)) {
@@ -166,6 +168,12 @@ function validateData() {
     check(Number.isInteger(c.max) && c.max >= 1, `${at}: max は 1 以上の整数にする`);
     check(Number.isInteger(c.start) && c.start >= 0 && c.start <= c.max, `${at}: start は 0〜max の整数にする`);
     check(Number.isInteger(c.price) && c.price >= 1, `${at}: price は 1 以上の整数にする`);
+    check(c.buyCount === undefined || (Number.isInteger(c.buyCount) && c.buyCount >= 1 && c.buyCount <= c.max), `${at}: buyCount は 1〜max の整数にする`);
+    if (c.arrow) {
+      check(Number.isFinite(c.arrow.atk) && c.arrow.atk >= 0, `${at}: arrow.atk は 0 以上の数にする`);
+      check(c.key === undefined && c.effects === undefined, `${at}: 矢 (arrow) には key・effects を書かない`);
+      continue;
+    }
     check(Array.isArray(c.effects) && c.effects.length > 0, `${at}: effects (効果の並び) がない`);
     for (const e of Array.isArray(c.effects) ? c.effects : []) {
       const K = e && ITEM_EFFECTS[e.kind];
@@ -232,6 +240,8 @@ function validateData() {
       check(k.label && Array.isArray(k.names) && k.names.length > 0, `data/items.js ${w}: label か names がない`);
       for (const b in k.base || {}) check(STATS[b], `data/items.js ${w}: 基本性能 '${b}' が data/stats.js にない`);
       for (const b in k.fixed || {}) check(STATS[b] && !(b in (k.base || {})), `data/items.js ${w}: fixed の '${b}' が data/stats.js にないか、base と重なっている`);
+      check(!k.ammo || Object.values(ITEMS.consumables).some((c) => c.arrow), `data/items.js ${w}: ammo (矢を撃つ) なのに consumables に矢 (arrow) がない`);
+      check(!k.ammo || (k.fixed && k.fixed.range >= 1), `data/items.js ${w}: ammo (矢を撃つ) の武器には fixed.range (射程。1 以上) を書く`);
     }
   }
   // 種類のある部位 (武器) で、種類が合っているか (type を省略したらくじにする書き方では、省略を許す)
@@ -271,6 +281,11 @@ function validateData() {
       check(Number.isInteger(n) && n >= 1, `${w}: 素材 '${m}' の数は 1 以上の整数にする`);
     }
     check(usedRecipes.has(id), `${w}: どの鍛冶屋の recipes にもない (作れない)`);
+    const K = ITEMS.slots[r.slot] && gearKindOf(r.slot, r.type);
+    for (const [b, v] of Object.entries(r.bonus || {})) {
+      check(STATS[b] && K && !kindStatKeys(K).includes(b), `${w}: bonus の '${b}' が data/stats.js にないか、種類の基本性能・fixed と重なっている`);
+      check(Array.isArray(v) && v.length === 2 && v.every(Number.isFinite), `${w}: bonus の '${b}' は [Lv1 の値, 1 レベルごとの増加] にする`);
+    }
   }
   for (const [id, c] of Object.entries(ITEMS.consumables)) check(rarityIds.includes(c.rarity), `data/items.js consumables.${id}: レア度 '${c.rarity}' がない`);
   for (const [id, m] of Object.entries(ITEMS.materials)) check(rarityIds.includes(m.rarity), `data/items.js materials.${id}: レア度 '${m.rarity}' がない`);

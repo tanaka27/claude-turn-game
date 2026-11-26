@@ -43,7 +43,7 @@ test('セーブを読み直すと、レベル・ステータス・お金・持�
   assert.strictEqual(p.potential.int, 140);
   assert.ok(Math.abs(p.stats.str - (Math.floor(base.mus) * 0.7 + Math.floor(base.dex) * 0.3)) < 1e-9, '戦いで使うのは一の位まで (筋力 14.325 → 14)');
   assert.strictEqual(p.gold, 321);
-  assert.deepStrictEqual(plain(bagOf(p)), { potion: 7, hiPotion: 2 });
+  assert.deepStrictEqual(plain(bagOf(p)), { potion: 7, hiPotion: 2, woodArrow: 0, ironArrow: 0, steelArrow: 0 });
   assert.deepStrictEqual(plain(p.inventory), plain(q.inventory));
   assert.deepStrictEqual(plain(p.equip), plain(q.equip));
   assert.deepStrictEqual(plain(p.materials), { wolfPelt: 5, honey: 2 });

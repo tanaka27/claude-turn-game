@@ -176,9 +176,16 @@ function dash(u, sk, tx, ty) {
 }
 
 // 物理の攻撃が当たる確率 = 攻撃側の命中 − 受ける側の回避 (params.js の damage.hitMin〜hitMax に収める)
-const hitChance = (src, tgt) => clamp(src.stats.hit - tgt.stats.eva, PARAMS.damage.hitMin, PARAMS.damage.hitMax);
+//   投擲 (a.thrown。弓) は、相手までの歩数が freeSteps を超えた 1 マスごとに thrown.falloff ずつ下げ、下限は thrown.hitMin
+function hitChance(src, tgt, a = {}) {
+  const D = PARAMS.damage;
+  if (!a.thrown) return clamp(src.stats.hit - tgt.stats.eva, D.hitMin, D.hitMax);
+  const T = D.thrown, far = Math.max(0, tileSteps(src.tx, src.ty, tgt.tx, tgt.ty) - T.freeSteps);
+  return clamp(src.stats.hit - tgt.stats.eva - T.falloff * far, T.hitMin, D.hitMax);
+}
 
 // 技 a (kind / power / base / matkRate) のダメージ。戻り値 { dmg, crit }
+//   物理の a.atkBonus: この攻撃だけこうげき力に足す値 (弓の矢の攻撃力。矢がなく素手で殴るときは武器の分を引く) / a.thrown: 投擲 (hitChance)
 function rollDamage(src, tgt, a) {
   const s = src.stats, D = PARAMS.damage;
   const vary = () => 1 + rand(-1, 1) * D.variance;
@@ -189,16 +196,16 @@ function rollDamage(src, tgt, a) {
     return { dmg: Math.max(1, Math.round(base * M.mdefScale / (M.mdefScale + Math.max(0, tgt.stats.mdef)) * vary())), crit: false };
   }
   // 物理 (ドラクエ式)。乱数 1 つで、会心 (会心率より下) → 外れ (そのすぐ上の 1 − 当たる確率 の幅) → ふつう を決める
-  const power = a.power;
+  const power = a.power, atk = Math.max(0, s.atk + (a.atkBonus || 0));
   const r = Math.random();
   const crit = r < s.critRate;
-  if (!crit && r < s.critRate + (1 - hitChance(src, tgt))) return { dmg: 0, crit: false };
+  if (!crit && r < s.critRate + (1 - hitChance(src, tgt, a))) return { dmg: 0, crit: false };
   let dmg;
   if (crit) {
     // 会心は防御を無視する
-    dmg = Math.max(1, Math.round(s.atk * D.atkRate * s.critMult * power * vary()));
+    dmg = Math.max(1, Math.round(atk * D.atkRate * s.critMult * power * vary()));
   } else {
-    const base = (s.atk * D.atkRate - Math.max(0, tgt.stats.def) * D.defRate) * power;
+    const base = (atk * D.atkRate - Math.max(0, tgt.stats.def) * D.defRate) * power;
     dmg = base < D.minBase ? randInt(0, 1) : Math.max(1, Math.round(base * vary()));
   }
   return { dmg, crit };

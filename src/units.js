@@ -23,7 +23,7 @@ function createPlayer() {
     isPlayer: true, faction: 'player', name: d.name, tx: 0, ty: 0, x: 0, y: 0, r: d.radius, color: d.color,
     stats: null, base: startBase(), potential: startPotential(), hp: 0, mp: 0, facing: -Math.PI / 2, level: 1, exp: 0, lastHurt: -99,
     gold: ECON.startGold, consumables: startConsumables(), home: WORLD.respawnZone, inventory: [], materials: {}, quests: {},
-    equip, next: 0, travel: null, control: 'input',
+    equip, next: 0, travel: null, control: 'input', arrow: null, // arrow: 使う矢に選んだ道具のキー (src/items.js の currentArrow)
     // 覚えられる技 (data/skills.js 全部)・覚えている技の id (はじめは下の learnSkillsByLevel で Lv1 のもの)・スキル欄 (キー → スキルの id)
     skills: SKILLS, knownSkills: [], skillSlots: d.skillSlots.map((b) => ({ ...b })), skillRule: 'hero', skillCd, buffs: [], hitFlash: 0, dead: false,
   };

@@ -6,7 +6,7 @@
 
 // セーブの形 (v12。くわしくは docs/save-format.md)
 //   { v: 12, savedAt,
-//     player:   { level, exp, base, potential, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills },
+//     player:   { level, exp, base, potential, hp, mp, gold, consumables, inventory, materials, equip, quests, knownSkills, arrow },
 //     progress: { kills, time },
 //     location: { zone, tx, ty } (マス), home: 倒れたときに戻る町のゾーン }
 // 読むときは SAVE_MIGRATIONS で 1 版ずつ今の形に直してから使う (readSave)
@@ -175,7 +175,7 @@ function buildSave() {
   return {
     v: SAVE_VERSION, savedAt: Date.now(),
     player: { level: p.level, exp: p.exp, base: p.base, potential: p.potential, hp: p.dead ? null : p.hp, mp: p.dead ? null : p.mp, gold: p.gold, consumables: p.consumables,
-      inventory: p.inventory, materials: p.materials, equip: p.equip, quests: p.quests, knownSkills: p.knownSkills },
+      inventory: p.inventory, materials: p.materials, equip: p.equip, quests: p.quests, knownSkills: p.knownSkills, arrow: p.arrow || null },
     progress: { kills: game.kills, time: game.time },
     location: p.dead ? { zone: home, tx: tileOf(r.x), ty: tileOf(r.y) } : { zone: zone.id, tx: p.tx, ty: p.ty },
     home,
@@ -240,6 +240,8 @@ function applySave(save) {
   // 道具: 今はない道具は捨て、持てる数 (max) までにする
   const owned = s.consumables && typeof s.consumables === 'object' ? s.consumables : {};
   for (const id in ITEMS.consumables) p.consumables[id] = clamp(Math.floor(owned[id]) || 0, 0, ITEMS.consumables[id].max);
+  // 使う矢に選んだもの: 今ある矢のときだけ (なければ選んでいない = 先の矢から使う)
+  p.arrow = typeof s.arrow === 'string' && isArrow(s.arrow) ? s.arrow : null;
   const home = WORLD.zones[save.home];
   p.home = home && home.safe && home.respawn ? save.home : WORLD.respawnZone;
   // 種類のある部位 (武器) は、今ある種類のときだけ使う

@@ -100,7 +100,10 @@ function drawHUD() {
   // スキルバー (主人公のスキル欄の並び。覚えていないスキルは lock に出す文)
   const slots = skillSlotsOf(p).map(({ key, sk: s }) => ({ label: key.toUpperCase(), name: s.name, cd: cooldownLeft(p, s), max: skillCooldown(p, s), active: aiming === s,
       lock: knowsSkill(p, s) ? '' : learnLevelOf(s) ? txt('hud.skillLocked', { level: learnLevelOf(s) }) : txt('hud.skillUnknown'), mp: skillMp(s), short: !enoughMp(p, s) }))
-    .concat(Object.entries(ITEMS.consumables).map(([id, c]) => ({ label: c.key.toUpperCase(), name: c.name, cd: 0, max: 1, count: consumableCount(p, id) })))
+    .concat(Object.entries(ITEMS.consumables).filter(([, c]) => c.key).map(([id, c]) => ({ label: c.key.toUpperCase(), name: c.name, cd: 0, max: 1, count: consumableCount(p, id) })))
+    // 弓を装備しているときは、次に撃つ矢と数 (矢がなければ「矢なし」と 0)
+    .concat(wieldsBow(p) ? [{ label: txt('hud.arrowKey'), name: currentArrow(p) ? ITEMS.consumables[currentArrow(p)].name : txt('hud.noArrow'), cd: 0, max: 1,
+      count: currentArrow(p) ? consumableCount(p, currentArrow(p)) : 0 }] : [])
     .concat([{ label: txt('hud.itemsKey'), name: txt('hud.itemsButton'), cd: 0, max: 1, button: 'items' }]);
   const SB = THEME.hud.skillBar;
   const sz = SB.size, gap = SB.gap, total = slots.length * sz + (slots.length - 1) * gap;
