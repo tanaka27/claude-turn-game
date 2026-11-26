@@ -4,6 +4,7 @@ const assert = require('assert');
 const {
   newGame, press, htmlOf, findButton, buttonLabels, clickButton, clickGear, nextToNpc, fillInventory, smithStock, giveItem,
   clickRecipe, smithView, recipeIds, craftWith, plain, messages, clickStaleButton,
+  arena, step, addAlly, clickTile, recompute,
 } = require('./helpers');
 
 function openNpc(g, id) { nextToNpc(g, id); press(g, 'f'); }
@@ -16,14 +17,14 @@ function haveFor(g, id) {
 }
 
 // ----- 武器の種類 -----
-test('武器種: 武器はどれも種類 (剣・短剣・斧・杖) を持ち、基本性能は種類で決まる。防具・装飾品は種類を持たない', () => {
+test('武器種: 武器はどれも種類 (剣・短剣・斧・杖・槍) を持ち、基本性能は種類で決まる。防具・装飾品は種類を持たない', () => {
   const g = newGame();
   const types = g.ITEMS.slots.weapon.types;
-  assert.deepStrictEqual(Object.keys(types), ['sword', 'dagger', 'axe', 'staff']);
+  assert.deepStrictEqual(Object.keys(types), ['sword', 'dagger', 'axe', 'staff', 'spear']);
   for (const t of Object.keys(types)) {
     const it = g.makeItem('weapon', 5, 'common', false, { type: t });
     assert.strictEqual(it.type, t);
-    assert.deepStrictEqual(Object.keys(it.stats).sort(), Object.keys(types[t].base).sort(), `${t} の基本性能`);
+    assert.deepStrictEqual(Object.keys(it.stats).sort(), [...Object.keys(types[t].base), ...Object.keys(types[t].fixed || {})].sort(), `${t} の基本性能`);
     assert.strictEqual(it.name, types[t].names[2], 'Lv5 は 3 つ目の名前');
   }
   assert.ok(!('type' in g.makeItem('armor', 3, 'rare')));
@@ -74,6 +75,88 @@ test('武器種: 種類の違う武器を選ぶと、装備中の武器にだけ
   assert.ok(base.includes('こうげき力'));
   assert.ok(/class="row lost"><span>術攻撃力/.test(base), '杖にだけある術攻撃力は基本性能の欄に薄く出る');
   assert.ok(!html.slice(html.indexOf('追加性能')).includes('術攻撃力'));
+});
+
+// ----- 槍 (攻撃範囲) -----
+// 試験場に主人公 (5, 7) と敵を置き、槍 (攻撃範囲 reach) を持たせる
+function spearArena(enemies, opts = {}) {
+  const g = newGame();
+  const es = arena(g, { cols: 15, rows: 15, player: [5, 7], enemies, ...opts });
+  const p = g.player;
+  if (opts.reach !== 0) {
+    const spear = g.makeItem('weapon', 1, 'common', false, { type: 'spear' });
+    if (opts.reach) spear.stats.reach = opts.reach;
+    p.equip.weapon = spear;
+    recompute(g, p);
+  }
+  g.rng.force(0.99, 0.5); // 外れない
+  return { g, p, es };
+}
+
+test('槍: 攻撃範囲 +1 を持つ。レベル・レア度で変わらず、追加性能にも付かない。つよさに出る', () => {
+  const g = newGame();
+  for (const [lv, r] of [[1, 'common'], [12, 'legendary']]) {
+    const it = g.makeItem('weapon', lv, r, false, { type: 'spear' });
+    assert.strictEqual(it.stats.reach, 1);
+    assert.ok(it.stats.atk >= 1);
+  }
+  assert.ok(!('reach' in g.ITEMS.affixes));
+  const p = g.player;
+  press(g, 'i');
+  assert.ok(htmlOf(g, 'detail').includes('攻撃範囲'), '槍がなくても つよさ に 攻撃範囲 0 を出す');
+  press(g, 'i');
+  p.equip.weapon = g.makeItem('weapon', 3, 'common', false, { type: 'spear' });
+  recompute(g, p);
+  assert.strictEqual(p.stats.reach, 1);
+});
+
+test('槍: 2 マス先の敵へ動こうとすると、動かずに突く。槍でなければ 1 歩進む', () => {
+  const { g, p, es: [e] } = spearArena([{ type: 'golem', at: [7, 7] }]);
+  step(g, 1, 0);
+  assert.deepStrictEqual([p.tx, p.ty], [5, 7]);
+  assert.ok(e.hp < e.stats.maxHp, '離れた敵に当たる');
+  const b = spearArena([{ type: 'golem', at: [7, 7] }], { reach: 0 });
+  step(b.g, 1, 0);
+  assert.deepStrictEqual([b.p.tx, b.p.ty], [6, 7], '剣なら歩く');
+  assert.strictEqual(b.es[0].hp, b.es[0].stats.maxHp);
+});
+
+test('槍: 当たるのは範囲の中でいちばん近い敵だけ。斜めにも届く', () => {
+  const { g, es: [near, far] } = spearArena([{ type: 'golem', at: [7, 7] }, { type: 'golem', at: [8, 7], camp: 'b' }], { reach: 2 });
+  step(g, 1, 0);
+  assert.ok(near.hp < near.stats.maxHp);
+  assert.strictEqual(far.hp, far.stats.maxHp, '奥の敵には当たらない');
+  const d = spearArena([{ type: 'golem', at: [7, 9] }]);
+  step(d.g, 1, 1);
+  assert.deepStrictEqual([d.p.tx, d.p.ty], [5, 7]);
+  assert.ok(d.es[0].hp < d.es[0].stats.maxHp);
+});
+
+test('槍: 壁の向こう・手前に仲間がいるときは届かない', () => {
+  const w = spearArena([{ type: 'golem', at: [7, 7] }], { walls: [[6, 7, 1, 1]] });
+  const t0 = w.g.game.time;
+  step(w.g, 1, 0);
+  assert.strictEqual(w.es[0].hp, w.es[0].stats.maxHp);
+  assert.strictEqual(w.g.game.time, t0, '壁には進めず、行動にもならない');
+  const a = spearArena([{ type: 'golem', at: [7, 7] }]);
+  addAlly(a.g, [6, 7]);
+  step(a.g, 1, 0);
+  assert.strictEqual(a.es[0].hp, a.es[0].stats.maxHp);
+  assert.deepStrictEqual([a.p.tx, a.p.ty], [5, 7]);
+});
+
+test('槍: 届く敵をクリックすると突く。届かない敵をクリックしたら歩き、歩く途中では離れた敵を突かない', () => {
+  const { g, p, es: [e] } = spearArena([{ type: 'golem', at: [7, 7] }]);
+  clickTile(g, 7, 7);
+  assert.deepStrictEqual([p.tx, p.ty], [5, 7]);
+  assert.ok(e.hp < e.stats.maxHp);
+  const f = spearArena([{ type: 'golem', at: [9, 7] }]);
+  clickTile(f.g, 9, 7);
+  assert.strictEqual(f.es[0].hp, f.es[0].stats.maxHp);
+  assert.ok(f.p.travel, '届かないので歩く');
+  f.g.tryMove(1, 0, true); // 歩く 1 歩 (この先 2 マスに敵がいても突かない)
+  assert.deepStrictEqual([f.p.tx, f.p.ty], [6, 7]);
+  assert.strictEqual(f.es[0].hp, f.es[0].stats.maxHp);
 });
 
 // ----- 鍛冶屋の品ぞろえ -----

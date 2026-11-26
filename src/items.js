@@ -35,6 +35,8 @@ function gearKindOf(slot, type) {
   return S.types ? S.types[type] : S;
 }
 const itemKind = (it) => gearKindOf(it.slot, it.type);
+// 種類で決まる性能のキー (基本性能 base と、決まった値の能力 fixed)
+const kindStatKeys = (K) => [...Object.keys(K.base || {}), ...Object.keys(K.fixed || {})];
 // 画面に出す装備の種類の名前 (武器は武器種「短剣」、ほかは部位「防具」)
 const itemKindLabel = (it) => (itemKind(it) || ITEMS.slots[it.slot]).label;
 // 部位の種類のキーの並び (種類がない部位は空)
@@ -52,6 +54,7 @@ function makeItem(slot, level, rarity, boss, opt = {}) {
     const v = scaledByLevel(K.base[k], level);
     stats[k] = roundStat(k, v > 0 ? v * R.mult : v);
   }
+  for (const k in K.fixed || {}) stats[k] = K.fixed[k]; // 種類だけが持つ決まった値 (槍の攻撃範囲。レベル・レア度で変わらない)
   const pool = Object.keys(ITEMS.affixes).filter((k) => !(k in stats));
   for (let i = 0; i < R.affixes + S.extraAffixes && pool.length; i++) {
     const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];

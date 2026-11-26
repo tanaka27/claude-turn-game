@@ -120,6 +120,13 @@ canvas.addEventListener('mousedown', (e) => {
   const n = tileSteps(player.tx, player.ty, tx, ty);
   if (n === 0) { doPlayerAction(waitTurn); return; }
   if (n === 1) { doPlayerAction(() => tryMove(tx - player.tx, ty - player.ty)); return; }
+  // 通常攻撃が届く敵 (槍。縦・横・斜めにまっすぐ並んだ 1 + 攻撃範囲 マス以内) をクリックしたら、その向きに攻撃する (当たるのはいちばん近い敵)
+  const ddx = tx - player.tx, ddy = ty - player.ty, foe = unitAt(tx, ty);
+  if (foe && hostileTo(player.faction, foe.faction) && (ddx === 0 || ddy === 0 || Math.abs(ddx) === Math.abs(ddy)) &&
+    n <= 1 + Math.floor(player.stats.reach || 0) && reachTarget(player, Math.sign(ddx), Math.sign(ddy))) {
+    doPlayerAction(() => tryMove(Math.sign(ddx), Math.sign(ddy)));
+    return;
+  }
   // 遠くのマス: そこまで 1 歩ずつ歩く (src/main.js の stepTravel)
   const path = findPath(tx, ty);
   if (path) player.travel = path;
@@ -132,10 +139,33 @@ function doPlayerAction(fn) {
   if (fn()) endPlayerAction();
 }
 
-// (dx, dy) へ 1 歩。敵がいれば攻撃、味方がいれば進めない (行動にならない)、NPC がいれば話しかける
-function tryMove(dx, dy) {
+// 通常攻撃が届く相手と、そこまでのマス: (dx, dy) の向き (縦・横・斜めの 1 歩) に 1 + 攻撃範囲 (stats.reach。槍) マス先まで。
+//   当たるのはいちばん近いキャラだけで、それが敵のときだけ { target, tiles } を返す (味方・NPC が手前にいれば届かない)。
+//   攻撃を遮る地形 (壁など) の先には届かない。2 マス目からは、斜めに進むとき角を挟む 2 マスが両方とも遮るなら止まる (直線 rayTiles と同じ決まり)
+function reachTarget(u, dx, dy) {
+  const reach = 1 + Math.max(0, Math.floor(u.stats.reach || 0));
+  const tiles = [];
+  let x = u.tx, y = u.ty;
+  for (let i = 1; i <= reach; i++) {
+    const nx = x + dx, ny = y + dy;
+    if (isShotBlocked(nx, ny)) return null;
+    if (i > 1 && dx && dy && isShotBlocked(nx, y) && isShotBlocked(x, ny)) return null;
+    tiles.push([nx, ny]);
+    const t = unitAt(nx, ny);
+    if (t) return hostileTo(u.faction, t.faction) ? { target: t, tiles } : null;
+    if ((zone.npcs || []).some((n) => n.tx === nx && n.ty === ny)) return null;
+    x = nx; y = ny;
+  }
+  return null;
+}
+
+// (dx, dy) へ 1 歩。通常攻撃が届く敵がいれば攻撃 (槍なら離れた敵にも)、味方がいれば進めない (行動にならない)、NPC がいれば話しかける
+//   walk: クリックで歩いている途中 (離れた敵には攻撃せずに歩く)
+function tryMove(dx, dy, walk = false) {
   const p = player, nx = p.tx + dx, ny = p.ty + dy;
   p.facing = Math.atan2(dy, dx);
+  const hit = walk ? null : reachTarget(p, dx, dy);
+  if (hit) { bumpAttack(hit.target, hit.tiles); return true; }
   const u = unitAt(nx, ny);
   if (u && hostileTo(p.faction, u.faction)) { bumpAttack(u); return true; }
   if (u) return false;
@@ -148,10 +178,11 @@ function tryMove(dx, dy) {
   return true;
 }
 
-function bumpAttack(e) {
+// tiles: 攻撃が通ったマス (槍で離れた敵を突いたときは、間のマスにも演出を出す)
+function bumpAttack(e, tiles = [[e.tx, e.ty]]) {
   const p = player;
   p.facing = Math.atan2(e.ty - p.ty, e.tx - p.tx);
-  fxTiles([[e.tx, e.ty]], 'player', FX_THEME.bump.life);
+  fxTiles(tiles, 'player', FX_THEME.bump.life);
   dealDamage(p, e, BASIC_ATTACK, BASIC_ATTACK.name);
 }
 

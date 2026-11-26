@@ -380,6 +380,12 @@ function clickHud(g, id) {
   g.hudButtons.push({ id, x: 0, y: 0, w: 10, h: 10 });
   for (const f of el(g, 'game')._listeners.mousedown || []) f({ button: 0, clientX: 5, clientY: 5, preventDefault() {} });
 }
+// マス (tx, ty) を左クリックする (マウスをそのマスに置いて、画面の mousedown に渡す。HUD のボタンは無いことにする)
+function clickTile(g, tx, ty) {
+  g.hudButtons.length = 0;
+  hoverTile(g, tx, ty);
+  for (const f of el(g, 'game')._listeners.mousedown || []) f({ button: 0, clientX: -999, clientY: -999, preventDefault() {} });
+}
 // セーブ (saveGame) を呼んだ回数を数える。戻り値 { count }。stop() でやめる
 function trackSaves(g) {
   const ctx = g.context, orig = ctx.saveGame, t = { count: 0 };
@@ -453,5 +459,5 @@ module.exports = {
   useSkillBy, cooldownLeftOf, cooldownLengthOf, canUseSkillOf, setCooldown, enemyAttack,
   skillById, keyOf, knows, knownSkillIds, teach, defineSkill, bindSkill, storedCooldown, dataProblems,
   bagOf, consumableDef, healRatio, useItem, defineConsumable, buyButton,
-  clickRecipe, smithView, recipeIds, craftWith,
+  clickRecipe, smithView, recipeIds, craftWith, clickTile,
 };

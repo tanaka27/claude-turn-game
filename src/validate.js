@@ -231,6 +231,7 @@ function validateData() {
     for (const [w, k] of kinds) {
       check(k.label && Array.isArray(k.names) && k.names.length > 0, `data/items.js ${w}: label か names がない`);
       for (const b in k.base || {}) check(STATS[b], `data/items.js ${w}: 基本性能 '${b}' が data/stats.js にない`);
+      for (const b in k.fixed || {}) check(STATS[b] && !(b in (k.base || {})), `data/items.js ${w}: fixed の '${b}' が data/stats.js にないか、base と重なっている`);
     }
   }
   // 種類のある部位 (武器) で、種類が合っているか (type を省略したらくじにする書き方では、省略を許す)

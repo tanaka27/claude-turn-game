@@ -74,7 +74,7 @@ function stepTravel() {
   }
   p.travel.shift();
   if (!p.travel.length) p.travel = null;
-  doPlayerAction(() => tryMove(nx - p.tx, ny - p.ty));
+  doPlayerAction(() => tryMove(nx - p.tx, ny - p.ty, true));
 }
 
 function updateWorld(dt) {

@@ -25,7 +25,7 @@
 ## よくある足し方
 
 - 敵を足す: `data/enemies.js` に 1 つ足し、`world.js` の湧き場所の `members` にキーを書く。新しい素材を落とすなら `data/items.js` の `materials` にも足す
-- 装備の名前・性能を変える: `data/items.js` の `slots` / `affixes`（武器は `slots.weapon.types` の種類ごと）
+- 装備の名前・性能を変える: `data/items.js` の `slots` / `affixes`（武器は `slots.weapon.types` の種類ごと。種類だけが持つ決まった値は `fixed`（槍の攻撃範囲））
 - 武器種・鍛冶屋で作る武器を足す: `data/items.js` の `slots.weapon.types` / `recipes` と鍛冶屋の `recipes`（[crafting.md](crafting.md)）
 - 店を足す: 商人は `data/items.js` の `shops` に 1 つ足し、`world.js` の NPC に `role: 'shop', shop: '店のキー'` を書く。鍛冶屋は `smiths` に足し、NPC に `role: 'smith', smith: '鍛冶屋のキー'` を書く。新しい種類の施設（役目）を足すときは [screens.md](screens.md) の「施設の足し方」
 - 入れる建物を足す・話すだけの NPC を足す: [buildings.md](buildings.md)

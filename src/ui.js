@@ -186,7 +186,7 @@ function detailHtml(it, from) {
     return `<div class="row${v ? '' : ' lost'}"><span>${STATS[k].label}</span><span>${v ? fmtStat(k, v, true) : txt('menu.noValue')} ${d}</span></div>`;
   };
   // 基本性能は種類 (武器種) で決まる。装備中のものと種類が違えば、装備中のものにだけある基本性能は基本性能の欄の最後に薄く出す
-  const baseKeys = Object.keys(itemKind(it).base), curBase = cur ? Object.keys(itemKind(cur).base) : [];
+  const baseKeys = kindStatKeys(itemKind(it)), curBase = cur ? kindStatKeys(itemKind(cur)) : [];
   const own = Object.keys(it.stats).filter((k) => !baseKeys.includes(k));
   const lostBase = curBase.filter((k) => !(k in it.stats));
   const lost = cur ? Object.keys(cur.stats).filter((k) => !curBase.includes(k) && !(k in it.stats)) : [];
@@ -353,7 +353,8 @@ function strengthHtml() {
   const row = (k) => {
     const e = equip[k] || 0;
     const d = e ? `<span class="${e > 0 ? 'up' : 'down'}">${txt('menu.equipBonus', { v: fmtStat(k, e, true) })}</span>` : '';
-    const v = buffed.has(k) ? `<span class="buffed">${fmtStat(k, st[k])}</span>` : fmtStat(k, st[k]);
+    // 装備でだけ持つステータス (攻撃範囲) は、持っていなければ 0
+    const v = buffed.has(k) ? `<span class="buffed">${fmtStat(k, st[k] || 0)}</span>` : fmtStat(k, st[k] || 0);
     return `<div class="row${GROWTH.stats[k] ? ' has-tip' : ''}"><span>${STATS[k].label}</span><span>${v} ${d}</span>${growthTipHtml(k)}</div>`;
   };
   const keys = Object.keys(STATS);
@@ -548,7 +549,8 @@ function recipeHtml(id) {
   const base = Object.keys(K.base).map((k) => {
     const a = fmtStat(k, baseAt(k, lo), true), b = fmtStat(k, baseAt(k, hi), true);
     return row(STATS[k].label, a === b ? a : txt('menu.range', { a, b }));
-  }).join('') || `<div class="row none">${txt('menu.noStats')}</div>`;
+  }).join('') + Object.entries(K.fixed || {}).map(([k, v]) => row(STATS[k].label, fmtStat(k, v, true))).join('') ||
+    `<div class="row none">${txt('menu.noStats')}</div>`;
   const nA = lo.affixes + S.extraAffixes, nB = hi.affixes + S.extraAffixes;
   const mats = Object.entries(r.materials).map(([m, n]) => {
     const have = p.materials[m] || 0;
